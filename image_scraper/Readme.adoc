@@ -1,0 +1,27 @@
+= Image Scraper =
+This tool is to collect images from result of Google Image Search with Scrapy.
+
+= Getting started
+
+== Installation ==
+Installation of Image Scraper requires tools follows.
+
+* Python3.x
+
+. Install scrapy. I recommend to use pip with virtualenv to install it
++
+[source]
+----
+$ pip install scrapy
+----
+
+== Start scraping ==
+Completed installation, you can run image scraper via command follows.
+
+[source]
+----
+$ scrapy crawl image_scraper
+----
+
+
+
