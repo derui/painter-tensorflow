@@ -21,11 +21,9 @@ if img is None:
 
 canny = cv.Canny(img, 50.0, 200.0, None, 3, True)
 
-canny_img = canny.reshape((-1, 3))
-bitwise = np.copy(canny_img)
+bitwise = np.copy(canny)
 
-np.bitwise_not(canny_img, bitwise)
-res = bitwise.reshape((canny.shape))
+np.bitwise_not(canny, bitwise)
 
 dirname, fname = os.path.split(os.path.abspath(args.image))
 fname, ext = os.path.splitext(fname)
@@ -37,5 +35,5 @@ if args.out_dir is not None:
 else:
     writefname = "%s/%s_converted%s" % (dirname, fname, ext)
 
-cv.imwrite(writefname, res)
+cv.imwrite(writefname, bitwise)
 print("Wrote image at %s" % (writefname))
