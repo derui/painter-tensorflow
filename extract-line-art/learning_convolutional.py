@@ -8,7 +8,7 @@ import auto_encoder as ae
 
 import image_dataset as ds
 
-BATCH_SIZE = 50
+BATCH_SIZE = 20
 
 reader = ds.DataSetReader()
 reader.prepare('./datasets')
