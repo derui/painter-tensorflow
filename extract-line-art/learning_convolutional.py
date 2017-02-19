@@ -1,5 +1,6 @@
 # coding: utf-8
 
+from datetime import datetime
 import numpy as np
 import tensorflow as tf
 import auto_encoder as ae
@@ -34,6 +35,8 @@ with tf.Session() as sess:
         }
         sess.run(training_op, feed_dict=feed)
         if i % 200 == 0:
+            print('learned count/epoch: {}/{} {}'.format(
+                i, i / 200, datetime.utcnow().isoformat()))
             summary_str = sess.run(summary, feed_dict=feed)
             writer.add_summary(summary_str, i)
             saver.save(sess, 'model.ckpt', global_step=200)
