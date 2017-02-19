@@ -26,7 +26,7 @@ with tf.Session() as sess:
     writer = tf.summary.FileWriter("./log", graph=sess.graph)
     summary = tf.summary.merge_all()
 
-    ckpt = tf.train.get_checkpoint_state('./')
+    ckpt = tf.train.get_checkpoint_state('./log')
     if ckpt:
         last_model = ckpt.model_checkpoint_path  # 最後に保存したmodelへのパス
         print("load {}".format(last_model))
@@ -51,16 +51,20 @@ with tf.Session() as sess:
             run_metadata=run_metadata,
             options=run_options)
 
-        if i % 10 == 0:
-            print('step {}, time:{}'.format(i, datetime.utcnow().isoformat()))
+        if (i + 1) % 10 == 0:
+            print('step {}, time:{}'.format(i + 1, datetime.utcnow().isoformat()))
 
-        if i % 100 == 0:
+        if (i + 1) % 100 == 0:
             summary_str = sess.run(summary, feed_dict=feed)
             writer.add_summary(summary_str, i)
-            saver.save(sess, 'model.ckpt', i)
+            saver.save(sess, './log/model.ckpt', i)
 
             # write train
             tl = timeline.Timeline(run_metadata.step_stats)
             ctf = tl.generate_chrome_trace_format()
-            with open('timeline{}.json'.format(i), 'w') as f:
+            with open('./log/timeline{}.json'.format(i), 'w') as f:
                 f.write(ctf)
+
+    embeddding_var = tf.Variable('float', [None, None])
+    sess.run(tf.variables_initializer([embeddding_var]))
+    tf.train.Saver([embeddding_var]).save(sess, './log/model.ckpt')

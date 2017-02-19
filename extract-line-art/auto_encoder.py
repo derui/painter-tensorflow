@@ -28,10 +28,9 @@ class Encoder(object):
         self.out_ch = out_ch
         self.activation = activation
 
-    def encode(self, tensor):
-        shape = tensor.get_shape()
+    def encode(self, tensor, input_shape):
         weight = weight_variable(
-            [self.patch_w, self.patch_h, shape[3].value, self.out_ch],
+            [self.patch_w, self.patch_h, input_shape[2], self.out_ch],
             name="weight")
         bias = bias_variable([self.out_ch], name='bias')
         conv = self.activation(
@@ -56,20 +55,23 @@ class Decoder(object):
         self.out_ch = out_ch
         self.activation = activation
 
-    def decode(self, tensor):
-        shape = tf.shape(tensor)
+    def decode(self, tensor, input_shape):
         weight = weight_variable(
-            [self.patch_w, self.patch_h, self.out_ch, self.out_ch * 4],
+            [self.patch_w, self.patch_h, self.out_ch, input_shape[2]],
             name='weight')
+
         bias = bias_variable([self.out_ch], name="bias")
+
         tf.summary.histogram('decode_weight', weight)
         tf.summary.histogram('decode_bias', weight)
 
         return self.activation(
             tf.nn.conv2d_transpose(
                 tensor,
-                weight,
-                [tf.shape(tensor)[0], shape[1] * 2, shape[2] * 2, self.out_ch],
+                weight, [
+                    tf.shape(tensor)[0], input_shape[0] * 2, input_shape[1] *
+                    2, self.out_ch
+                ],
                 strides=[1, 2, 2, 1],
                 padding='SAME') + bias)
 
@@ -78,17 +80,28 @@ def construction(image, width, height, channels):
     """Make construction layer.
     """
 
-    with tf.name_scope('encoder1'):
-        conv1 = Encoder(channels * 4, 5, 5).encode(image)
-    with tf.name_scope('encoder2'):
-        conv2 = Encoder(channels * 16, 5, 5).encode(conv1)
-    with tf.name_scope('decoder1'):
-        deconv1 = Decoder(channels * 4, 5, 5).decode(conv2)
-    with tf.name_scope('decoder2'):
-        deconv2 = Decoder(
-            channels, 5, 5, activation=tf.nn.sigmoid).decode(deconv1)
+    input_shape = (width, height, channels)
 
-    return deconv2
+    with tf.name_scope('encoder1'):
+        conv1 = Encoder(channels * 4, 5, 5).encode(image, input_shape)
+    with tf.name_scope('encoder2'):
+        conv2 = Encoder(channels * 64, 5, 5).encode(
+            conv1, [width // 2, height // 2, channels * 4])
+    with tf.name_scope('encoder3'):
+        conv3 = Encoder(channels * 256, 5, 5).encode(
+            conv2, [width // 4, height // 4, channels * 64])
+    with tf.name_scope('decoder1'):
+        deconv1 = Decoder(channels * 64, 5, 5).decode(
+            conv3, [width // 8, height // 8, channels * 256])
+    with tf.name_scope('decoder2'):
+        deconv2 = Decoder(channels * 4, 5, 5).decode(
+            deconv1, [width // 4, height // 4, channels * 64])
+    with tf.name_scope('decoder3'):
+        deconv3 = Decoder(
+            channels, 5, 5, activation=tf.nn.sigmoid).decode(
+                deconv2, [width // 2, height // 2, channels * 4])
+
+    return deconv3
 
 
 def loss(original_image, output_image):
