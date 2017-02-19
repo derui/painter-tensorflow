@@ -94,3 +94,6 @@ FILES_STORE = "../images"
 FEED_FORMAT = 'jsonlines'
 
 HTTPERROR_ALLOWED_CODES = [403, 404]
+DEPTH_PRIORITY = 1
+SCHEDULER_DISK_QUEUE = 'scrapy.squeues.PickleFifoDiskQueue'
+SCHEDULER_MEMORY_QUEUE = 'scrapy.squeues.FifoMemoryQueue'
