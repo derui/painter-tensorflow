@@ -16,7 +16,7 @@ args = argparser.parse_args()
 
 def extract_edge(path, out_dir):
 
-    img = cv.imread(path, cv.IMREAD_GRAYSCALE)
+    img = cv.imread(path, cv.IMREAD_COLOR)
     if img is None:
         raise Exception("OpenCV can not load %s" % (path))
 

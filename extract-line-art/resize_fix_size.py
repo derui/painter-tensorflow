@@ -13,9 +13,10 @@ argparser.add_argument('-s', '--size', dest='size', type=int)
 
 args = argparser.parse_args()
 
+
 def resize_image(path, out_dir):
 
-    img = cv.imread(path)
+    img = cv.imread(path, cv.IMREAD_COLOR)
     if img is None:
         raise Exception("OpenCV can not load %s" % (path))
 
@@ -38,11 +39,11 @@ def get_corrected_size(fixed_size, width, height):
     """Detect the edge of an image is less than other side"""
 
     def correct_size(w, h):
-        if w >= fixed_size and h >= fixed_size:
+        if w >= fixed_size:
             return (w, h)
         else:
             ratio = fixed_size / w
-            return (w * ratio, h * ratio)
+            return (max(w * ratio, fixed_size), h * ratio)
 
     size = correct_size(width, height)
     size = correct_size(size[1], size[0])
@@ -55,7 +56,8 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
     futures = {}
     for (r, _, files) in os.walk(args.input_dir):
         for f in files:
-            futures[executor.submit(resize_image, os.path.join(r, f), args.out_dir)] = f
+            futures[executor.submit(resize_image,
+                                    os.path.join(r, f), args.out_dir)] = f
 
     print('Number of resizing images {}'.format(len(futures.items())))
 
