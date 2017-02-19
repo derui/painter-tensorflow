@@ -2,34 +2,52 @@ import os
 import argparse
 import numpy as np
 import cv2 as cv
+import concurrent.futures
 
 argparser = argparse.ArgumentParser(
     description='Extract edge layer of a color image')
 argparser.add_argument(
-    'image',
+    'input_dir',
     type=str,
-    help='the file name of image to extract edge layer')
+    help='the directory included images to extract edge layer')
 argparser.add_argument('-d', dest='out_dir', type=str, required=True)
 
 args = argparser.parse_args()
 
-img = cv.imread(args.image, cv.IMREAD_GRAYSCALE)
-if img is None:
-    print("OpenCV can not load %s" % (args.image))
-    exit(2)
+def extract_edge(path, out_dir):
 
-canny = cv.Canny(img, 50.0, 200.0, None, 3, True)
+    img = cv.imread(path, cv.IMREAD_GRAYSCALE)
+    if img is None:
+        raise Exception("OpenCV can not load %s" % (path))
 
-bitwise = np.copy(canny)
+    canny = cv.Canny(img, 50.0, 200.0, None, 3, True)
 
-np.bitwise_not(canny, bitwise)
+    bitwise = np.copy(canny)
 
-dirname, fname = os.path.split(os.path.abspath(args.image))
-fname, ext = os.path.splitext(fname)
-if not os.path.exists(args.out_dir):
-    os.mkdir(args.out_dir, 0o755)
+    np.bitwise_not(canny, bitwise)
 
-writefname = "%s/%s%s" % (args.out_dir, fname, ext)
+    dirname, fname = os.path.split(os.path.abspath(path))
+    fname, ext = os.path.splitext(fname)
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir, 0o755)
 
-cv.imwrite(writefname, bitwise)
-print("Wrote image at %s" % (writefname))
+    writefname = "%s/%s%s" % (out_dir, fname, ext)
+
+    cv.imwrite(writefname, bitwise)
+
+with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+    futures = {}
+    for (r, _, files) in os.walk(args.input_dir):
+        for f in files:
+            futures[executor.submit(extract_edge, os.path.join(r, f), args.out_dir)] = f
+
+    print('Number of resizing images {}'.format(len(futures.items())))
+
+    for future in concurrent.futures.as_completed(futures):
+        path = futures[future]
+        try:
+            future.result()
+        except Exception as exc:
+            print('%s generated as exception: %s' % (path, exc))
+        else:
+            print('%s is completed extraction of edge' % path)
