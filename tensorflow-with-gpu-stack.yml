@@ -1,0 +1,269 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: |
+  A template to create stack for tensorflow with GPU
+Parameters:
+  ServiceName:
+    Type: String
+    Description: The name of service
+  SSHAllowedIp:
+    Type: String
+    Description: A IP cidr block to be enabled to access instance via ssh
+  KeyName:
+    Type: String
+    Description: The name of key to access instance via ssh
+
+Resources:
+  # Create VPC
+  MainVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/24
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      InstanceTenancy: default
+      Tags:
+      - Key: Name
+        Value: !Ref ServiceName
+      - Key: System
+        Value: !Ref ServiceName
+
+# Create Public RouteTable
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+      - Key: Name
+        Value: !Sub
+          - ${Service}-public-route
+          - { Service: !Ref ServiceName}
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+      - Key: Name
+        Value: !Sub
+          - ${Service}-private-route
+          - { Service: !Ref ServiceName}
+
+# Create Public Subnet A
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MainVPC
+      CidrBlock: 10.1.0.0/27
+      AvailabilityZone: "us-west-2a"
+      Tags:
+      - Key: Name
+        Value: !Sub
+          - ${Service}-public-subnet
+          - { Service: !Ref ServiceName}
+  PubSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # create public subnet C
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MainVPC
+      CidrBlock: 10.1.0.32/27
+      AvailabilityZone: "us-west-2a"
+      Tags:
+      - Key: Name
+        Value: !Sub
+          - ${Service}-private-subnet
+          - { Service: !Ref ServiceName}
+  PriSubnetCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  # create security group
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref MainVPC
+      GroupDescription: "The sample security group for VPN "
+      SecurityGroupIngress: 
+        - IpProtocol: "tcp"
+          FromPort: "22"
+          ToPort: "22"
+          CidrIp: !Ref SSHAllowedIp
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref MainVPC
+      GroupDescription: "The sample security group for VPN client on AWS"
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: "22"
+          ToPort: "22"
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
+
+  # A bucket stored all data of learning and samples
+  Bucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      AccessControl: BucketOwnerFullControl
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        -
+          PolicyName: !Sub
+            - ${Service}-instance-role
+            - { Service: !Ref ServiceName}
+
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "s3:*"
+                Resource:
+                  -
+                    !Sub
+                    - "arn:aws:s3:::${Bucket}"
+                    - {Bucket: !Ref Bucket}
+                  -
+                    !Sub
+                    - "arn:aws:s3:::${Bucket}/*"
+                    - {Bucket: !Ref Bucket}
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: '/'
+      Roles:
+        - !Ref InstanceRole
+
+  # create instance
+  Bastion:
+    Type: AWS::EC2::Instance
+    DependsOn: PublicSubnet
+    Properties:
+      ImageId: ami-f173cc91
+      KeyName: !Ref KeyName
+      SourceDestCheck: "false"
+      SubnetId: !Ref PublicSubnet
+      InstanceType: t2.micro
+      IamInstanceProfile: !Ref InstanceProfile
+      Tags:
+        - Key: Name
+          Value: !Sub
+            - ${Service}-bastion
+            - { Service: !Ref ServiceName}
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroup
+
+  BastionIp:
+    Type: "AWS::EC2::EIP"
+    Properties:
+      InstanceId: !Ref Bastion
+      Domain: vpc
+
+  # A spot fleet for GPU Instance
+  GPUSpotFleet:
+    Type: 'AWS::EC2::SpotFleet'
+    Properties:
+      SpotFleetRequestConfigData:
+        IamFleetRole: arn:aws:iam::568235847281:role/aws-ec2-spot-fleet-role
+        TargetCapacity: 8
+        SpotPrice: '0.9'
+        LaunchSpecifications:
+          - EbsOptimized: 'false'
+            KeyName: !Ref KeyName
+            InstanceType: p2.xlarge
+            ImageId: ami-7c803d1c
+            SecurityGroups:
+              - GroupId: !GetAtt InstanceSecurityGroup.GroupId
+            SubnetId: !Ref PrivateSubnet
+            IamInstanceProfile:
+              Arn: !GetAtt InstanceProfile.Arn
+            BlockDeviceMappings:
+              - DeviceName: '/dev/sda1'
+                Ebs:
+                  DeleteOnTermination: true
+                  VolumeSize: 200
+                  VolumeType: 'gp2'
+            WeightedCapacity: 8
+
+# Create InternetGateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: !Sub
+          - ${Service}-igw
+          - { Service: !Ref ServiceName}
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MainVPC
+      InternetGatewayId: !Ref InternetGateway
+  myRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # Enable NAT Gateway
+  NatGatewayEip:
+    Type: "AWS::EC2::EIP"
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: "AWS::EC2::NatGateway"
+    Properties: 
+      AllocationId: !GetAtt NatGatewayEip.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+Outputs:
+  StackVPC:
+    Description: The ID of the VPC
+    Value: !Ref MainVPC
+    Export:
+      Name: !Sub "${AWS::StackName}-VPCID"
+
+  EIP:
+    Description: The ip address of the bastion
+    Value: !Ref BastionIp
+    Export:
+      Name: !Sub "${AWS::StackName}-EIP"
+
+  Bucket:
+    Description: The name of the bucket to store data
+    Value: !Ref Bucket
