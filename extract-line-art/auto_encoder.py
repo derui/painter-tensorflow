@@ -22,11 +22,17 @@ class Encoder(object):
     this class that are defined convolutional layer.
     """
 
-    def __init__(self, out_ch, patch_w, patch_h, activation=tf.nn.relu):
+    def __init__(self,
+                 out_ch,
+                 patch_w,
+                 patch_h,
+                 activation=tf.nn.relu,
+                 pooling=2):
         self.patch_w = patch_w
         self.patch_h = patch_h
         self.out_ch = out_ch
         self.activation = activation
+        self.pooling = pooling
 
     def encode(self, tensor, input_shape):
         weight = weight_variable(
@@ -39,7 +45,10 @@ class Encoder(object):
 
         tf.summary.histogram('encode_conv', conv)
         return tf.nn.max_pool(
-            conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
+            conv,
+            ksize=[1, self.pooling, self.pooling, 1],
+            strides=[1, self.pooling, self.pooling, 1],
+            padding='SAME')
 
 
 class Decoder(object):
@@ -47,11 +56,17 @@ class Decoder(object):
     this class that are defined convolutional layer.
     """
 
-    def __init__(self, out_ch, patch_w, patch_h, activation=tf.nn.relu):
+    def __init__(self,
+                 out_ch,
+                 patch_w,
+                 patch_h,
+                 activation=tf.nn.relu,
+                 pooling=2):
         self.patch_w = patch_w
         self.patch_h = patch_h
         self.out_ch = out_ch
         self.activation = activation
+        self.pooling = pooling
 
     def decode(self, tensor, input_shape):
         weight = weight_variable(
@@ -64,10 +79,10 @@ class Decoder(object):
             tf.nn.conv2d_transpose(
                 tensor,
                 weight, [
-                    tf.shape(tensor)[0], input_shape[0] * 2, input_shape[1] *
-                    2, self.out_ch
+                    tf.shape(tensor)[0], input_shape[0] * self.pooling,
+                    input_shape[1] * self.pooling, self.out_ch
                 ],
-                strides=[1, 2, 2, 1],
+                strides=[1, self.pooling, self.pooling, 1],
                 padding='SAME') + bias)
 
         tf.summary.histogram('decode_conv', conv)
@@ -81,21 +96,24 @@ def construction(image, width, height, channels):
     input_shape = (width, height, channels)
 
     with tf.name_scope('encoder1'):
-        conv1 = Encoder(12, 5, 5).encode(image, input_shape)
+        conv1 = Encoder(12, 5, 5, pooling=4).encode(image, input_shape)
     with tf.name_scope('encoder2'):
-        conv2 = Encoder(64, 5, 5).encode(conv1, [width // 2, height // 2, 12])
+        conv2 = Encoder(
+            64, 5, 5, pooling=4).encode(conv1, [width // 4, height // 4, 12])
     with tf.name_scope('encoder3'):
-        conv3 = Encoder(256, 5, 5).encode(conv2, [width // 4, height // 4, 64])
+        conv3 = Encoder(256, 5, 5).encode(conv2,
+                                          [width // 16, height // 16, 64])
     with tf.name_scope('decoder1'):
         deconv1 = Decoder(64, 5, 5).decode(conv3,
-                                           [width // 8, height // 8, 256])
+                                           [width // 32, height // 32, 256])
     with tf.name_scope('decoder2'):
-        deconv2 = Decoder(12, 5, 5).decode(deconv1,
-                                           [width // 4, height // 4, 64])
+        deconv2 = Decoder(
+            12, 5, 5, pooling=4).decode(deconv1,
+                                        [width // 16, height // 16, 64])
     with tf.name_scope('decoder3'):
         deconv3 = Decoder(
-            channels, 5, 5, activation=tf.nn.sigmoid).decode(
-                deconv2, [width // 2, height // 2, 12])
+            channels, 5, 5, activation=tf.nn.sigmoid,
+            pooling=4).decode(deconv2, [width // 4, height // 4, 12])
 
     return deconv3
 
