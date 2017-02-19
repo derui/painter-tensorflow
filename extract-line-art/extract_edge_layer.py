@@ -8,8 +8,7 @@ argparser = argparse.ArgumentParser(
 argparser.add_argument(
     'image',
     type=str,
-    help='the file name of image to extract edge layer',
-    required=True)
+    help='the file name of image to extract edge layer')
 argparser.add_argument('-d', dest='out_dir', type=str, required=True)
 
 args = argparser.parse_args()
