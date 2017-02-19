@@ -38,6 +38,9 @@ class Encoder(object):
             tf.nn.conv2d(tensor, weight, strides=[1, 1, 1, 1], padding='SAME')
             + bias)
 
+        tf.summary.histogram('encode_weight', weight)
+        tf.summary.histogram('encode_bias', weight)
+
         return tf.nn.max_pool(
             conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
@@ -59,6 +62,8 @@ class Decoder(object):
             [self.patch_w, self.patch_h, self.out_ch, self.out_ch * 4],
             name='weight')
         bias = bias_variable([self.out_ch], name="bias")
+        tf.summary.histogram('decode_weight', weight)
+        tf.summary.histogram('decode_bias', weight)
 
         return self.activation(
             tf.nn.conv2d_transpose(
