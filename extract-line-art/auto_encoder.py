@@ -38,7 +38,7 @@ class Encoder(object):
             + bias)
 
         tf.summary.histogram('encode_weight', weight)
-        tf.summary.histogram('encode_bias', weight)
+        tf.summary.histogram('encode_bias', bias)
 
         return tf.nn.max_pool(
             conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
@@ -63,7 +63,7 @@ class Decoder(object):
         bias = bias_variable([self.out_ch], name="bias")
 
         tf.summary.histogram('decode_weight', weight)
-        tf.summary.histogram('decode_bias', weight)
+        tf.summary.histogram('decode_bias', bias)
 
         return self.activation(
             tf.nn.conv2d_transpose(
@@ -83,23 +83,23 @@ def construction(image, width, height, channels):
     input_shape = (width, height, channels)
 
     with tf.name_scope('encoder1'):
-        conv1 = Encoder(channels * 4, 5, 5).encode(image, input_shape)
+        conv1 = Encoder(12, 5, 5).encode(image, input_shape)
     with tf.name_scope('encoder2'):
-        conv2 = Encoder(channels * 64, 5, 5).encode(
-            conv1, [width // 2, height // 2, channels * 4])
+        conv2 = Encoder(64, 5, 5).encode(
+            conv1, [width // 2, height // 2, 12])
     with tf.name_scope('encoder3'):
-        conv3 = Encoder(channels * 256, 5, 5).encode(
-            conv2, [width // 4, height // 4, channels * 64])
+        conv3 = Encoder(256, 5, 5).encode(
+            conv2, [width // 4, height // 4, 64])
     with tf.name_scope('decoder1'):
-        deconv1 = Decoder(channels * 64, 5, 5).decode(
-            conv3, [width // 8, height // 8, channels * 256])
+        deconv1 = Decoder(64, 5, 5).decode(
+            conv3, [width // 8, height // 8, 256])
     with tf.name_scope('decoder2'):
-        deconv2 = Decoder(channels * 4, 5, 5).decode(
-            deconv1, [width // 4, height // 4, channels * 64])
+        deconv2 = Decoder(12, 5, 5).decode(
+            deconv1, [width // 4, height // 4, 64])
     with tf.name_scope('decoder3'):
         deconv3 = Decoder(
             channels, 5, 5, activation=tf.nn.sigmoid).decode(
-                deconv2, [width // 2, height // 2, channels * 4])
+                deconv2, [width // 2, height // 2, 12])
 
     return deconv3
 

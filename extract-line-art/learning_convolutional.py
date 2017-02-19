@@ -20,7 +20,7 @@ with tf.Session() as sess:
 
     construction_op = ae.construction(x, 512, 512, 3)
     loss_op = ae.loss(y_, construction_op)
-    training_op = ae.training(loss_op, 0.05)
+    training_op = ae.training(loss_op, 0.002)
 
     saver = tf.train.Saver()
     writer = tf.summary.FileWriter("./log", graph=sess.graph)
