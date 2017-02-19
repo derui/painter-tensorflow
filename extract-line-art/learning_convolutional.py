@@ -3,6 +3,7 @@
 from datetime import datetime
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.client import timeline
 import auto_encoder as ae
 
 import image_dataset as ds
@@ -33,6 +34,9 @@ with tf.Session() as sess:
     else:
         sess.run(tf.global_variables_initializer())
 
+    run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+    run_metadata = tf.RunMetadata()
+
     for i in range(20000):
         batch = reader.read_batch(BATCH_SIZE)
         shape = [BATCH_SIZE, 512, 512, 3]
@@ -41,10 +45,22 @@ with tf.Session() as sess:
             x: np.reshape(batch[1], shape),
             y_: np.reshape(batch[0], shape)
         }
-        sess.run(training_op, feed_dict=feed)
-        if i % 200 == 0:
-            print('learned count/epoch: {}/{} {}'.format(
-                i, i // 200, datetime.utcnow().isoformat()))
+        sess.run(
+            training_op,
+            feed_dict=feed,
+            run_metadata=run_metadata,
+            run_options=run_options)
+
+        if i % 10 == 0:
+            print('step {}, time:{}'.format(i, datetime.utcnow().isoformat()))
+
+        if i % 100 == 0:
             summary_str = sess.run(summary, feed_dict=feed)
             writer.add_summary(summary_str, i)
             saver.save(sess, 'model.ckpt')
+
+            # write train
+            tl = timeline.Timeline(run_metadata.step_stats)
+            ctf = tl.generate_chrome_trace_format()
+            with open('timeline{}.json'.format(i), 'w') as f:
+                f.write(ctf)
