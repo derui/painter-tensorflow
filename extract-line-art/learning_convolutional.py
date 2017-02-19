@@ -13,6 +13,7 @@ reader = ds.DataSetReader()
 reader.prepare('./datasets')
 
 with tf.Session() as sess:
+
     x = tf.placeholder("float", [None, 512, 512, 3])
     y_ = tf.placeholder("float", [None, 512, 512, 3])
 
@@ -23,7 +24,14 @@ with tf.Session() as sess:
     saver = tf.train.Saver()
     writer = tf.summary.FileWriter("./log", graph=sess.graph)
     summary = tf.summary.merge_all()
-    sess.run(tf.global_variables_initializer())
+
+    ckpt = tf.train.get_checkpoint_state('./')
+    if ckpt:
+        last_model = ckpt.model_checkpoint_path  # 最後に保存したmodelへのパス
+        print("load {}".format(last_model))
+        saver.restore(sess, last_model)  # 変数データの読み込み
+    else:
+        sess.run(tf.global_variables_initializer())
 
     for i in range(20000):
         batch = reader.read_batch(BATCH_SIZE)
@@ -39,4 +47,4 @@ with tf.Session() as sess:
                 i, i / 200, datetime.utcnow().isoformat()))
             summary_str = sess.run(summary, feed_dict=feed)
             writer.add_summary(summary_str, i)
-            saver.save(sess, 'model.ckpt', global_step=200)
+            saver.save(sess, 'model.ckpt')
