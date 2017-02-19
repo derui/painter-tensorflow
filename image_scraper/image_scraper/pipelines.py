@@ -10,7 +10,6 @@ from scrapy.pipelines.files import FilesPipeline
 
 class ImageScraperPipeline(FilesPipeline):
     def get_media_requests(self, item, info):
-        for file_url in item['file_urls']:
-            headers = item['response'].headers.copy()
-            headers['referer'] = item['response'].url
-            yield scrapy.Request(file_url, headers=headers)
+        headers = item['response'].headers.copy()
+        headers['referer'] = item['response'].url
+        yield scrapy.Request(item.get('file_urls')[0], headers=headers)

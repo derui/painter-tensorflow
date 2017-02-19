@@ -3,6 +3,8 @@ from image_scraper.items import ImageScraperItem
 import scrapy
 import urllib
 
+import logging
+
 
 class PixivIllustsSpider(scrapy.Spider):
     name = "pixiv_illusts"
@@ -10,12 +12,37 @@ class PixivIllustsSpider(scrapy.Spider):
     start_urls = [
         'http://www.pixiv.net/search.php?word=%E8%89%A6%E3%81%93%E3%82%8C&type=illust',
         'http://www.pixiv.net/search.php?word=%E6%9D%B1%E6%96%B9&type=illust',
+        'http://www.pixiv.net/search.php?s_mode=s_tag&word=%E3%82%AA%E3%83%AA%E3%82%B8%E3%83%8A%E3%83%AB&type=illust',
+        'http://www.pixiv.net/search.php?word=%E5%89%B5%E4%BD%9C&type=illust',
+        'http://www.pixiv.net/search.php?word=%E9%AD%94%E6%B3%95%E5%B0%91%E5%A5%B3%E3%81%BE%E3%81%A9%E3%81%8B%E2%98%86%E3%83%9E%E3%82%AE%E3%82%AB&type=illust',
+        'http://www.pixiv.net/search.php?word=%E3%83%98%E3%82%BF%E3%83%AA%E3%82%A2&type=illust',
+        'http://www.pixiv.net/search.php?word=%E5%A5%B3%E3%81%AE%E5%AD%90&type=illust',
+        'http://www.pixiv.net/search.php?word=%E3%82%AA%E3%83%AA%E3%82%AD%E3%83%A3%E3%83%A9&type=illust',
+        'http://www.pixiv.net/search.php?s_mode=s_tag&word=VOCALOID&type=illust',
+        'http://www.pixiv.net/search.php?s_mode=s_tag&word=%E3%81%AA%E3%81%AB%E3%81%93%E3%82%8C%E3%81%8B%E3%82%8F%E3%81%84%E3%81%84&type=illust',
+        'http://www.pixiv.net/search.php?s_mode=s_tag&word=%E3%83%9D%E3%82%B1%E3%83%A2%E3%83%B3&type=illust',
+        'http://www.pixiv.net/search.php?s_mode=s_tag&word=%E5%88%9D%E9%9F%B3%E3%83%9F%E3%82%AF&type=illust',
+        'http://www.pixiv.net/search.php?s_mode=s_tag&word=%E3%82%A2%E3%82%A4%E3%83%89%E3%83%AB%E3%83%9E%E3%82%B9%E3%82%BF%E3%83%BC%E3%82%B7%E3%83%B3%E3%83%87%E3%83%AC%E3%83%A9%E3%82%AC%E3%83%BC%E3%83%AB%E3%82%BA&type=illust',
     ]
+
+    searched_words = []
+
+    def __merge_search_word(self, url):
+        url = urllib.parse.urlparse(url)
+        qs = urllib.parse.parse_qs(url.query)
+
+        if 'word' in qs and qs['word'] not in self.searched_words:
+            self.searched_words.append(qs['word'])
+            return True
+
+        return False
 
     def parse(self, response):
         """Parse pixiv's search page for illusts.
         """
+        self.__merge_search_word(response.url)
 
+        # parse next page if it exists.
         member_pages = response.css(
             "ul._image-items.autopagerize_page_element"
         ).xpath(
@@ -28,19 +55,42 @@ class PixivIllustsSpider(scrapy.Spider):
                 callback=self.parse_page,
                 headers={'referer': response.url})
 
-        # parse next page if it exists.
+        for tag in self.__related_tags(response):
+            yield scrapy.Request(
+                '{}&type=illust'.format(
+                    urllib.parse.urljoin(response.url, tag)),
+                callback=self.parse)
 
         next_page = response.css('span.next').xpath('./a[@rel="next"]')
         next_page_url = next_page.xpath('@href').extract_first()
-        yield scrapy.Request(
-            urllib.parse.urljoin(response.url, next_page_url),
-            callback=self.parse)
+
+        if next_page_url is not None:
+            yield scrapy.Request(
+                urllib.parse.urljoin(response.url, next_page_url),
+                callback=self.parse)
 
     def parse_page(self, response):
         img = response.css('div.img-container').xpath('.//img')
         img_url = img.xpath('@src').extract_first()
 
-        item = ImageScraperItem(
-            file_urls=[img_url], files=[], response=response)
+        if img_url is not None:
+            item = ImageScraperItem(
+                file_urls=[img_url], files=[], response=response)
 
-        yield item
+            yield item
+
+    def __related_tags(self, response):
+        related_tag = response.xpath('//ul[@class="tags"]/li/a[2]')
+        tags = []
+        for tag in related_tag:
+            url = tag.xpath('@href').extract_first()
+            parsed_url = urllib.parse.urlparse(url)
+            qs = urllib.parse.parse_qs(parsed_url.query)
+
+            if qs['word'] in self.searched_words:
+                continue
+
+            if url is not None and url not in tags:
+                tags.append(url)
+
+        return tags
