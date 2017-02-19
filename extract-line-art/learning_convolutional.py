@@ -57,7 +57,7 @@ with tf.Session() as sess:
         if i % 100 == 0:
             summary_str = sess.run(summary, feed_dict=feed)
             writer.add_summary(summary_str, i)
-            saver.save(sess, 'model.ckpt')
+            saver.save(sess, 'model.ckpt', i)
 
             # write train
             tl = timeline.Timeline(run_metadata.step_stats)
