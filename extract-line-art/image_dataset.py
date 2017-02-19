@@ -144,8 +144,10 @@ class DataSetReader(object):
 
     The format of image read from this class is follows.
 
-    - shape of array is [read_size, 2, IMAGE_SIZE]
-      IMAGE_SIZE = 512 * 512 * 3
+    - shape of array is [2, read_size, IMAGE_SIZE]
+      IMAGE_SIZE = 512 * 512 * 3,
+      first dimension of array contains original as index 0, and
+      wire as index 1
     - the data type of all elements of array is 'float32'
       That mean of 1.0 in batch of images is 255 as byte,
       and mean of 0.0 in batch of imagesis 0 as byte.
@@ -170,7 +172,7 @@ class DataSetReader(object):
     def read_batch(self, size):
         assert size > 0
 
-        result = np.zeros([size, 2, IMAGE_SIZE], float)
+        result = np.zeros([2, size, IMAGE_SIZE], float)
         for i in range(size):
             file_index = random.randint(1, self.file_list_size)
             record_index = random.randint(1, self.dataset_size)
@@ -178,6 +180,7 @@ class DataSetReader(object):
 
             with open(target_file, 'rb') as fp:
                 original, wire = ImagePack(fp).unpack(record_index)
-                result[i] = [original / 255.0, wire / 255.0]
+                result[0, i] = original / 255.0
+                result[1, i] = wire / 255.0
 
         return result
