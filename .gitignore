@@ -3,3 +3,5 @@
 .direnv
 .envrc
 images
+
+__pycache__

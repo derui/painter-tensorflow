@@ -8,7 +8,7 @@
 from scrapy import signals
 import logging
 import random
-import scrapy.downloadermiddlewares as mw
+from scrapy.downloadermiddlewares.useragent import UserAgentMiddleware
 
 
 class ImageScraperSpiderMiddleware(object):
@@ -59,7 +59,7 @@ class ImageScraperSpiderMiddleware(object):
         spider.logger.info('Spider opened: %s' % spider.name)
 
 
-class RandomizedUserAgentMiddleware(mw.useragent.UserAgentMiddleware):
+class RandomizedUserAgentMiddleware(UserAgentMiddleware):
     def __init__(self, user_agent=''):
         self.user_agent = user_agent
 

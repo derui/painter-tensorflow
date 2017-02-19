@@ -2,7 +2,6 @@
 from image_scraper.items import ImageScraperItem
 import scrapy
 import urllib
-import logging
 
 
 class PixivIllustsSpider(scrapy.Spider):
