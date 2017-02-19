@@ -14,6 +14,7 @@ argparser.add_argument('-d', dest='out_dir', type=str, required=True)
 
 args = argparser.parse_args()
 
+
 def extract_edge(path, out_dir):
 
     img = cv.imread(path, cv.IMREAD_COLOR)
@@ -29,17 +30,19 @@ def extract_edge(path, out_dir):
     dirname, fname = os.path.split(os.path.abspath(path))
     fname, ext = os.path.splitext(fname)
     if not os.path.exists(out_dir):
-        os.mkdir(out_dir, 0o755)
+        os.makedirs(out_dir, 0o755, exist_ok=True)
 
     writefname = "%s/%s%s" % (out_dir, fname, ext)
 
     cv.imwrite(writefname, bitwise)
 
+
 with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
     futures = {}
     for (r, _, files) in os.walk(args.input_dir):
         for f in files:
-            futures[executor.submit(extract_edge, os.path.join(r, f), args.out_dir)] = f
+            futures[executor.submit(extract_edge,
+                                    os.path.join(r, f), args.out_dir)] = f
 
     print('Number of resizing images {}'.format(len(futures.items())))
 

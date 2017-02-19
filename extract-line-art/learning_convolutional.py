@@ -9,7 +9,7 @@ import image_dataset as ds
 BATCH_SIZE = 20
 
 reader = ds.DataSetReader()
-reader.prepare('./dataset')
+reader.prepare('./datasets')
 
 with tf.Session() as sess:
     x = tf.placeholder("float", [None, 512, 512, 3])

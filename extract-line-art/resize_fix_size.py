@@ -28,7 +28,7 @@ def resize_image(path, out_dir):
     dirname, fname = os.path.split(os.path.abspath(path))
     fname, ext = os.path.splitext(fname)
     if not os.path.exists(out_dir):
-        os.mkdir(out_dir, 0o755)
+        os.makedirs(out_dir, 0o755, exist_ok=True)
 
     writefname = "%s/%s%s" % (out_dir, fname, ext)
 

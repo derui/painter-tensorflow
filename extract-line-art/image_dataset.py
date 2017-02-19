@@ -61,6 +61,7 @@ class ImagePack(object):
 
         return array
 
+
 class DataSetBuilder(object):
     """
     DataSetBuilder builds image dataset from given image directory.
@@ -164,7 +165,9 @@ class DataSetReader(object):
         """
         for (root, _, files) in os.walk(dataset_dir):
             for f in files:
-                self.dataset_files.append(os.path.join(root, f))
+                abpath = os.path.join(root, f)
+                fsize = os.stat(abpath).st_size
+                self.dataset_files.append((abpath, fsize / RECORD_SIZE))
 
         self.file_list_size = len(self.dataset_files)
         random.seed()
@@ -175,11 +178,14 @@ class DataSetReader(object):
         result = np.zeros([2, size, IMAGE_SIZE], float)
         for i in range(size):
             file_index = random.randint(1, self.file_list_size)
-            record_index = random.randint(1, self.dataset_size)
-            target_file = self.dataset_files[file_index - 1]
+            record_index = random.randint(
+                1,
+                min([self.dataset_size, self.dataset_files[file_index - 1][1]
+                     ]))
+            target_file = self.dataset_files[file_index - 1][0]
 
             with open(target_file, 'rb') as fp:
-                original, wire = ImagePack(fp).unpack(record_index)
+                original, wire = ImagePack(fp).unpack(record_index - 1)
                 result[0, i] = original / 255.0
                 result[1, i] = wire / 255.0
 
