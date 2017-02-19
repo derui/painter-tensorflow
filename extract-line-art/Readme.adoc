@@ -78,4 +78,15 @@ Tensorflowが1.0になったが、GPU版の要求CUDAが8.0（最新）になり
 Tokyoリージョンで利用できるg2インスタンスだと、K520というインスタンスで、367.\*系のドライバでしか動かない・・・。そのため、tensorflowのバージョンを下げるか、USリージョンでp2インスタンスを利用する必要がある。
 ====
 
+そして、LD_LIBRARY_PATHを設定する。これを忘れるとライブラリの読み込みでエラーになる。
+
+..bash_profile
+[source,shell]
+----
+if [[ -z $LD_LIBRARY_PATH ]]; then
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64
+else
+    export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+fi
+----
 

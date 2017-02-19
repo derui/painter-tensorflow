@@ -6,6 +6,9 @@
 # http://doc.scrapy.org/en/latest/topics/spider-middleware.html
 
 from scrapy import signals
+import logging
+import random
+import scrapy.downloadermiddlewares as mw
 
 
 class ImageScraperSpiderMiddleware(object):
@@ -54,3 +57,28 @@ class ImageScraperSpiderMiddleware(object):
 
     def spider_opened(self, spider):
         spider.logger.info('Spider opened: %s' % spider.name)
+
+
+class RandomizedUserAgentMiddleware(mw.useragent.UserAgentMiddleware):
+    def __init__(self, user_agent=''):
+        self.user_agent = user_agent
+
+    def process_request(self, request, spider):
+        ua = random.choice(self.user_agent_list)
+        if ua:
+            request.headers.setdefault('User-Agent', ua)
+
+            # Add desired logging message here.
+            spider.log(
+                u'User-Agent: {} {}'.format(request.headers.get('User-Agent'), request),
+                level=logging.DEBUG
+            )
+
+
+    #for more user agent strings,you can find it in http://www.useragentstring.com/pages/useragentstring.php
+    user_agent_list = [
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36',
+        'Mozilla/5.0 (X11; Linux x86_64; rv:51.0) Gecko/20100101 Firefox/51.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/51.0.2704.79 Safari/537.36 Edge/14.14393',
+    ]

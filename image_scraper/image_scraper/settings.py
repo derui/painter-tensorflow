@@ -52,8 +52,10 @@ RANDOMIZE_DOWNLOAD_DELAY = True
 
 # Enable or disable downloader middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
-#DOWNLOADER_MIDDLEWARES = {
-#}
+DOWNLOADER_MIDDLEWARES = {
+  'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
+  'image_scraper.middlewares.RandomizedUserAgentMiddleware': 400,
+}
 
 # Enable or disable extensions
 # See http://scrapy.readthedocs.org/en/latest/topics/extensions.html
@@ -94,6 +96,3 @@ FILES_STORE = "../images"
 FEED_FORMAT = 'jsonlines'
 
 HTTPERROR_ALLOWED_CODES = [403, 404]
-DEPTH_PRIORITY = 1
-SCHEDULER_DISK_QUEUE = 'scrapy.squeues.PickleFifoDiskQueue'
-SCHEDULER_MEMORY_QUEUE = 'scrapy.squeues.FifoMemoryQueue'
