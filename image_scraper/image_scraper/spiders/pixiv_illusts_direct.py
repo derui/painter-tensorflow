@@ -8,9 +8,16 @@ class PixivIllustsSpider(scrapy.Spider):
     name = "pixiv_illusts"
     allowed_domains = ["www.pixiv.net"]
 
+    downloaded_id = []
+
     def start_requests(self):
         for i in range(500000):
             illust_id = random.randint(10000000, 70000000)
+            while True:
+                if illust_id not in self.downloaded_id:
+                    break
+                illust_id = random.randint(10000000, 70000000)
+            
             yield self.make_requests_from_url(
                 'http://www.pixiv.net/member_illust.php?mode=medium&illust_id={}'.
                 format(illust_id))
