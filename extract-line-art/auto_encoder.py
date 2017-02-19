@@ -85,17 +85,15 @@ def construction(image, width, height, channels):
     with tf.name_scope('encoder1'):
         conv1 = Encoder(12, 5, 5).encode(image, input_shape)
     with tf.name_scope('encoder2'):
-        conv2 = Encoder(64, 5, 5).encode(
-            conv1, [width // 2, height // 2, 12])
+        conv2 = Encoder(64, 5, 5).encode(conv1, [width // 2, height // 2, 12])
     with tf.name_scope('encoder3'):
-        conv3 = Encoder(256, 5, 5).encode(
-            conv2, [width // 4, height // 4, 64])
+        conv3 = Encoder(256, 5, 5).encode(conv2, [width // 4, height // 4, 64])
     with tf.name_scope('decoder1'):
-        deconv1 = Decoder(64, 5, 5).decode(
-            conv3, [width // 8, height // 8, 256])
+        deconv1 = Decoder(64, 5, 5).decode(conv3,
+                                           [width // 8, height // 8, 256])
     with tf.name_scope('decoder2'):
-        deconv2 = Decoder(12, 5, 5).decode(
-            deconv1, [width // 4, height // 4, 64])
+        deconv2 = Decoder(12, 5, 5).decode(deconv1,
+                                           [width // 4, height // 4, 64])
     with tf.name_scope('decoder3'):
         deconv3 = Decoder(
             channels, 5, 5, activation=tf.nn.sigmoid).decode(
@@ -109,7 +107,9 @@ def loss(original_image, output_image):
         _, width, height, channels = original_image.get_shape()
         shape = [-1, int(width * height * channels)]
         l_orig = tf.reshape(original_image, shape)
+
         l_out = tf.reshape(output_image, shape)
+        l_out = tf.clip_by_value(l_out, 1e-10, 1.0)
 
         logloss = l_orig * tf.log(l_out) + (tf.subtract(
             1.0, l_orig)) * tf.log(tf.subtract(1.0, l_out))
