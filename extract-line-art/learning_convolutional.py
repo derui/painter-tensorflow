@@ -49,7 +49,7 @@ with tf.Session() as sess:
             training_op,
             feed_dict=feed,
             run_metadata=run_metadata,
-            run_options=run_options)
+            options=run_options)
 
         if i % 10 == 0:
             print('step {}, time:{}'.format(i, datetime.utcnow().isoformat()))
