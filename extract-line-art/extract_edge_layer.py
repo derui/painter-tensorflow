@@ -14,18 +14,18 @@ argparser.add_argument('-d', dest='out_dir', type=str, required=True)
 
 args = argparser.parse_args()
 
+neiborhood8 = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], np.uint8)
+
 
 def extract_edge(path, out_dir):
 
-    img = cv.imread(path, cv.IMREAD_COLOR)
+    img = cv.imread(path, cv.IMREAD_GRAYSCALE)
     if img is None:
         raise Exception("OpenCV can not load %s" % (path))
 
-    canny = cv.Canny(img, 50.0, 200.0, None, 3, True)
-
-    bitwise = np.copy(canny)
-
-    np.bitwise_not(canny, bitwise)
+    img_dilate = cv.dilate(img, neiborhood8, iterations=1)
+    img_diff = cv.absdiff(img, img_dilate)
+    img_diff_not = cv.bitwise_not(img_diff)
 
     dirname, fname = os.path.split(os.path.abspath(path))
     fname, ext = os.path.splitext(fname)
@@ -34,7 +34,7 @@ def extract_edge(path, out_dir):
 
     writefname = "%s/%s%s" % (out_dir, fname, ext)
 
-    cv.imwrite(writefname, bitwise)
+    cv.imwrite(writefname, img_diff_not)
 
 
 with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
