@@ -117,12 +117,11 @@ def construction(image, width, height, channels):
     return deconv3
 
 
-def loss(original_image, output_image):
+def loss(original_image, output_image, x):
     with tf.name_scope('optimizer'):
 
-        # logloss = l_orig * tf.log(l_out) + (tf.subtract(
-        #     1.0, l_orig)) * tf.log(tf.subtract(1.0, l_out))
         sqrt = tf.square(original_image - output_image)
+        tf.summary.image('input', x)
         tf.summary.image('output', output_image)
         tf.summary.image('origin', original_image)
         cross_entropy = tf.reduce_mean(sqrt)

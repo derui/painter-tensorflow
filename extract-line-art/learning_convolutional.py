@@ -19,7 +19,7 @@ with tf.Session() as sess:
     y_ = tf.placeholder("float", [None, 512, 512, 3])
 
     construction_op = ae.construction(x, 512, 512, 3)
-    loss_op = ae.loss(y_, construction_op)
+    loss_op = ae.loss(y_, construction_op, x)
     training_op = ae.training(loss_op, 0.002)
 
     saver = tf.train.Saver()
