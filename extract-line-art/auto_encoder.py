@@ -96,39 +96,33 @@ def construction(image, width, height, channels):
     input_shape = (width, height, channels)
 
     with tf.name_scope('encoder1'):
-        conv1 = Encoder(32, 5, 5, pooling=4).encode(image, input_shape)
+        conv1 = Encoder(32, 5, 5).encode(image, input_shape)
     with tf.name_scope('encoder2'):
         conv2 = Encoder(
-            32, 5, 5, pooling=4).encode(conv1, [width // 4, height // 4, 32])
+            32, 5, 5, pooling=4).encode(conv1, [width // 2, height // 2, 32])
     with tf.name_scope('encoder3'):
-        conv3 = Encoder(64, 5, 5).encode(conv2,
-                                           [width // 16, height // 16, 32])
+        conv3 = Encoder(64, 5, 5, pooling=4).encode(conv2,
+                                           [width // 8, height // 8, 32])
     with tf.name_scope('decoder1'):
-        deconv1 = Decoder(32, 5, 5).decode(conv3,
+        deconv1 = Decoder(32, 5, 5, pooling=4).decode(conv3,
                                            [width // 32, height // 32, 64])
     with tf.name_scope('decoder2'):
         deconv2 = Decoder(
             32, 5, 5, pooling=4).decode(deconv1,
-                                        [width // 16, height // 16, 32])
+                                        [width // 8, height // 8, 32])
     with tf.name_scope('decoder3'):
         deconv3 = Decoder(
-            channels, 5, 5, activation=tf.nn.sigmoid,
-            pooling=4).decode(deconv2, [width // 4, height // 4, 32])
+            channels, 5, 5, activation=tf.nn.sigmoid).decode(deconv2, [width // 2, height // 2, 32])
 
     return deconv3
 
 
 def loss(original_image, output_image):
     with tf.name_scope('optimizer'):
-        _, width, height, channels = original_image.get_shape()
-        shape = [-1, int(width * height * channels)]
-        l_orig = tf.reshape(original_image, shape)
-
-        l_out = tf.reshape(output_image, shape)
 
         # logloss = l_orig * tf.log(l_out) + (tf.subtract(
         #     1.0, l_orig)) * tf.log(tf.subtract(1.0, l_out))
-        sqrt = tf.square(l_orig - l_out)
+        sqrt = tf.square(original_image - output_image)
         tf.summary.image('output', output_image)
         tf.summary.image('origin', original_image)
         cross_entropy = tf.reduce_mean(sqrt)
