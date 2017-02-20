@@ -96,23 +96,23 @@ def construction(image, width, height, channels):
     input_shape = (width, height, channels)
 
     with tf.name_scope('encoder1'):
-        conv1 = Encoder(32, 3,3, pooling=4).encode(image, input_shape)
+        conv1 = Encoder(32, 5, 5, pooling=4).encode(image, input_shape)
     with tf.name_scope('encoder2'):
         conv2 = Encoder(
-            32, 3,3, pooling=4).encode(conv1, [width // 4, height // 4, 32])
+            32, 5, 5, pooling=4).encode(conv1, [width // 4, height // 4, 32])
     with tf.name_scope('encoder3'):
-        conv3 = Encoder(256, 3,3).encode(conv2,
+        conv3 = Encoder(64, 5, 5).encode(conv2,
                                            [width // 16, height // 16, 32])
     with tf.name_scope('decoder1'):
-        deconv1 = Decoder(32, 3,3).decode(conv3,
-                                           [width // 32, height // 32, 256])
+        deconv1 = Decoder(32, 5, 5).decode(conv3,
+                                           [width // 32, height // 32, 64])
     with tf.name_scope('decoder2'):
         deconv2 = Decoder(
-            32, 3,3, pooling=4).decode(deconv1,
+            32, 5, 5, pooling=4).decode(deconv1,
                                         [width // 16, height // 16, 32])
     with tf.name_scope('decoder3'):
         deconv3 = Decoder(
-            channels, 3,3, activation=tf.nn.sigmoid,
+            channels, 5, 5, activation=tf.nn.sigmoid,
             pooling=4).decode(deconv2, [width // 4, height // 4, 32])
 
     return deconv3
@@ -131,8 +131,7 @@ def loss(original_image, output_image):
         sqrt = tf.square(l_orig - l_out)
         tf.summary.image('output', output_image)
         tf.summary.image('origin', original_image)
-        tf.summary.image('diff', tf.reshape(sqrt, [-1, width.value, height.value, channels.value]))
-        cross_entropy = tf.reduce_max(sqrt)
+        cross_entropy = tf.reduce_mean(sqrt)
         tf.summary.scalar('entropy', cross_entropy)
     return cross_entropy
 
