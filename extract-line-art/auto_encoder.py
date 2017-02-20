@@ -104,12 +104,12 @@ def construction(image, width, height, channels):
         conv3 = Encoder(256, 5, 5).encode(conv2,
                                            [width // 16, height // 16, 32])
     with tf.name_scope('decoder1'):
-        deconv1 = Decoder(64, 5, 5).decode(conv3,
+        deconv1 = Decoder(32, 5, 5).decode(conv3,
                                            [width // 32, height // 32, 256])
     with tf.name_scope('decoder2'):
         deconv2 = Decoder(
             32, 5, 5, pooling=4).decode(deconv1,
-                                        [width // 16, height // 16, 64])
+                                        [width // 16, height // 16, 32])
     with tf.name_scope('decoder3'):
         deconv3 = Decoder(
             channels, 5, 5, activation=tf.nn.sigmoid,
@@ -126,13 +126,12 @@ def loss(original_image, output_image):
 
         l_out = tf.reshape(output_image, shape)
 
-        logloss = l_orig * tf.log(l_out) + (tf.subtract(
-            1.0, l_orig)) * tf.log(tf.subtract(1.0, l_out))
+        # logloss = l_orig * tf.log(l_out) + (tf.subtract(
+        #     1.0, l_orig)) * tf.log(tf.subtract(1.0, l_out))
+        sqrt = tf.square(l_orig - l_out)
         tf.summary.image('output', output_image)
         tf.summary.image('origin', original_image)
-        tf.summary.image('entropy',
-                         tf.reshape(logloss, tf.shape(original_image)))
-        cross_entropy = -tf.reduce_mean(logloss)
+        cross_entropy = tf.reduce_max(sqrt)
         tf.summary.scalar('entropy', cross_entropy)
     return cross_entropy
 
