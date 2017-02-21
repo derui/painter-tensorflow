@@ -38,6 +38,11 @@ class Encoder(object):
             + bias)
 
         tf.summary.histogram('encode_conv', conv)
+        return conv
+
+
+class MaxPool(object):
+    def __call__(self, conv):
         return tf.nn.max_pool(
             conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
@@ -104,48 +109,50 @@ def construction(image, width, height, channels):
     input_shape = (width, height, channels)
 
     with tf.name_scope('encoder1'):
-        conv1 = Encoder(64, 5, 5).encode(image, input_shape)
+        conv1 = Encoder(64, 3, 3).encode(image, input_shape)
+        pool1 = MaxPool()(conv1)
     with tf.name_scope('encoder2'):
-        conv2 = Encoder(128, 5, 5).encode(conv1, [width // 2, height // 2, 64])
+        conv2 = Encoder(128, 3, 3).encode(pool1, [width // 2, height // 2, 64])
+        pool2 = MaxPool()(conv2)
     with tf.name_scope('encoder3'):
-        conv3 = Encoder(256, 5, 5).encode(conv2,
+        conv3 = Encoder(256, 3, 3).encode(pool2,
                                           [width // 4, height // 4, 128])
+        pool3 = MaxPool()(conv3)
     with tf.name_scope('encoder4'):
-        conv4 = Encoder(512, 5, 5).encode(conv3,
+        conv4 = Encoder(512, 3, 3).encode(pool3,
                                           [width // 8, height // 8, 256])
 
+        pool4 = MaxPool()(conv4)
     with tf.name_scope('encoder5'):
-        conv5 = Encoder(1024, 5, 5).encode(conv4,
+        conv5 = Encoder(1024, 3, 3).encode(pool4,
                                            [width // 16, height // 16, 512])
 
     with tf.name_scope('decoder1'):
-        deconv1 = Decoder(512, 5, 5).decode(conv5,
-                                            [width // 32, height // 32, 1024])
-        merged1 = FeatureMerger(5, 5).merge(conv4, deconv1,
-                                            [width // 16, height // 16, 512])
+        deconv1 = Decoder(512, 3, 3).decode(conv5,
+                                            [width // 16, height // 16, 1024])
+        merged1 = FeatureMerger(3, 3).merge(conv4, deconv1,
+                                            [width // 8, height // 8, 512])
     with tf.name_scope('decoder2'):
-        deconv2 = Decoder(256, 5, 5).decode(merged1,
-                                            [width // 16, height // 16, 512])
-        merged2 = FeatureMerger(5, 5).merge(conv3, deconv2,
-                                            [width // 8, height // 8, 256])
+        deconv2 = Decoder(256, 3, 3).decode(merged1,
+                                            [width // 8, height // 8, 512])
+        merged2 = FeatureMerger(3, 3).merge(conv3, deconv2,
+                                            [width // 4, height // 4, 256])
     with tf.name_scope('decoder3'):
-        deconv3 = Decoder(128, 5, 5).decode(merged2,
-                                            [width // 8, height // 8, 256])
-        merged3 = FeatureMerger(5, 5).merge(conv2, deconv3,
-                                            [width // 4, height // 4, 128])
+        deconv3 = Decoder(128, 3, 3).decode(merged2,
+                                            [width // 4, height // 4, 256])
+        merged3 = FeatureMerger(3, 3).merge(conv2, deconv3,
+                                            [width // 2, height // 2, 128])
 
     with tf.name_scope('decoder4'):
-        deconv4 = Decoder(64, 5, 5).decode(merged3,
-                                           [width // 4, height // 4, 128])
-        merged4 = FeatureMerger(5, 5).merge(conv1, deconv4,
-                                            [width // 2, height // 2, 64])
+        deconv4 = Decoder(
+            64, 3, 3, activation=tf.nn.sigmoid).decode(
+                merged3, [width // 2, height // 2, 128])
+        merged4 = FeatureMerger(3, 3).merge(conv1, deconv4,
+                                            [width, height, 64])
 
-    with tf.name_scope('decoder4'):
-        deconv5 = Decoder(
-            channels, 5, 5, activation=tf.nn.sigmoid).decode(
-                merged4, [width // 2, height // 2, 64])
-
-    return deconv5
+    return Encoder(
+        channels, 3, 3,
+        activation=tf.nn.sigmoid).encode(merged4, [width, height, 64])
 
 
 def loss(original_image, output_image, x):
