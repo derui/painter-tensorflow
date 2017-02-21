@@ -22,9 +22,10 @@ def extract_edge(path, out_dir):
     img = cv.imread(path, cv.IMREAD_GRAYSCALE)
     if img is None:
         raise Exception("OpenCV can not load %s" % (path))
-
-    img_dilate = cv.dilate(img, neiborhood8, iterations=1)
-    img_diff = cv.absdiff(img, img_dilate)
+    at = cv.adaptiveThreshold(img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+                              cv.THRESH_BINARY, 7, 8)
+    img_dilate = cv.dilate(at, neiborhood8, iterations=1)
+    img_diff = cv.absdiff(at, img_dilate)
     img_diff_not = cv.bitwise_not(img_diff)
 
     dirname, fname = os.path.split(os.path.abspath(path))
