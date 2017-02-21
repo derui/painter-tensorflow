@@ -144,8 +144,7 @@ def construction(image, width, height, channels):
                                             [width // 2, height // 2, 128])
 
     with tf.name_scope('decoder4'):
-        deconv4 = Decoder(
-            64, 3, 3, activation=tf.nn.sigmoid).decode(
+        deconv4 = Decoder(64, 3, 3).decode(
                 merged3, [width // 2, height // 2, 128])
         merged4 = FeatureMerger(3, 3).merge(conv1, deconv4,
                                             [width, height, 64])
