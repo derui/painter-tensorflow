@@ -83,7 +83,7 @@ class Decoder(object):
 
         conv = tf.nn.conv2d_transpose(
             tensor,
-            weight, [1, input_shape[0] * 2, input_shape[1] * 2, self.out_ch],
+            weight, [tf.shape(tensor)[0], input_shape[0] * 2, input_shape[1] * 2, self.out_ch],
             [1, 2, 2, 1],
             padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
