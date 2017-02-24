@@ -4,11 +4,11 @@ from datetime import datetime
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.client import timeline
-import auto_encoder as ae
+import model
 
 import image_dataset as ds
 
-BATCH_SIZE = 20
+BATCH_SIZE = 5
 
 reader = ds.DataSetReader()
 reader.prepare('./datasets')
@@ -18,9 +18,9 @@ with tf.Session() as sess:
     x = tf.placeholder("float", [None, 512, 512, 3])
     y_ = tf.placeholder("float", [None, 512, 512, 3])
 
-    construction_op = ae.construction(x, 512, 512, 3)
-    loss_op = ae.loss(y_, construction_op, x)
-    training_op = ae.training(loss_op, 0.002)
+    construction_op = model.generator(x, 512, 512, 3)
+    loss_op = model.loss(y_, construction_op, x)
+    training_op = model.training(loss_op, 0.05)
 
     saver = tf.train.Saver()
     writer = tf.summary.FileWriter("./log", graph=sess.graph)

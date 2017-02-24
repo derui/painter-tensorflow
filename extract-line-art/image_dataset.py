@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 import logging
 import random
+import concurrent.futures
 
 IMAGE_SIZE = 512 * 512 * 3
 RECORD_SIZE = IMAGE_SIZE * 2
@@ -110,10 +111,25 @@ class DataSetBuilder(object):
 
         file_num = len(target_files)
         (all_pack_num, reminder_pack) = divmod(file_num, self.pack_size)
-        for pack_num in range(all_pack_num):
-            self.__build_pack(pack_num + 1,
-                              target_files[pack_num * self.pack_size:pack_num *
-                                           self.pack_size + self.pack_size])
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+            futures = {}
+            for pack_num in range(all_pack_num):
+                futures[executor.submit(
+                    self.__build_pack, pack_num + 1, target_files[
+                        pack_num * self.pack_size:pack_num * self.pack_size +
+                        self.pack_size])] = pack_num
+
+            print('Number of packs {}'.format(len(futures.items())))
+
+            for future in concurrent.futures.as_completed(futures):
+                num = futures[future]
+                try:
+                    future.result()
+                except Exception as exc:
+                    print('%d packing as exception: %s' % (num, exc))
+                else:
+                    print('completed packing %d' % num)
 
         # build pack if do not just divide size of target_files with pack_size.
         if reminder_pack != 0:
@@ -180,8 +196,8 @@ class DataSetReader(object):
             file_index = random.randint(1, self.file_list_size)
             record_index = random.randint(
                 1,
-                min([self.dataset_size, self.dataset_files[file_index - 1][1]
-                     ]))
+                min([self.dataset_size,
+                     self.dataset_files[file_index - 1][1]]))
             target_file = self.dataset_files[file_index - 1][0]
 
             with open(target_file, 'rb') as fp:
