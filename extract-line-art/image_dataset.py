@@ -11,6 +11,10 @@ IMAGE_SIZE = 512 * 512 * 3
 RECORD_SIZE = IMAGE_SIZE * 2
 
 
+def image_shape():
+    return [512, 512, 3]
+
+
 class ImagePack(object):
     """
     Provide ability to manage image pair, packing image pair to byte array,

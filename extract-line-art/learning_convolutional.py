@@ -1,99 +1,79 @@
 # coding: utf-8
 
 import argparse
+import time
 from datetime import datetime
-import numpy as np
 import tensorflow as tf
-from tensorflow.python.client import timeline
 import model
 
-import image_dataset as ds
+import tf_dataset_input
 
-BATCH_SIZE = 5
-
-reader = ds.DataSetReader()
-reader.prepare('./datasets')
-
-argparser = argparse.ArgumentParser(
-    description='Learning painter model')
+argparser = argparse.ArgumentParser(description='Learning painter model')
+argparser.add_argument('--batch_size', default=5, type=int, help='Batch size')
 argparser.add_argument(
-    '--trace_enable',
-    dest='trace_enable',
-    default=False,
-    type=bool,
-    help='Enable or disable tracing')
+    '--train_dir',
+    default='./log',
+    type=str,
+    help='Directory will have been saving checkpoint')
 argparser.add_argument(
-    '--trace_per_step',
-    dest='trace_per_step',
-    default=100,
-    type=int,
-    help='Per step to get trace. If trace_enable is not set or set false, this option is ignore')
+    '--dataset_dir',
+    default='./datasets',
+    type=str,
+    help='Directory contained datasets')
+argparser.add_argument(
+    '--max_steps', default=20000, type=int, help='number of maximum steps')
 
-args = argparser.parse_args()
+ARGS = argparser.parse_args()
 
 
-with tf.Session() as sess:
+def train():
 
-    x = tf.placeholder("float", [None, 512, 512, 3])
-    y_ = tf.placeholder("float", [None, 512, 512, 3])
+    with tf.Graph().as_default():
+        global_step_tensor = tf.Variable(10, trainable=False, name='global_step')
 
-    construction_op = model.generator(x, 512, 512, 3)
-    loss_op = model.loss(y_, construction_op, x)
-    training_op = model.training(loss_op, 0.05)
+        original, x = tf_dataset_input.inputs(ARGS.dataset_dir,
+                                              ARGS.batch_size)
 
-    saver = tf.train.Saver()
-    writer = tf.summary.FileWriter("./log", graph=sess.graph)
-    summary = tf.summary.merge_all()
+        construction_op = model.generator(x, 512, 512, 3)
+        loss_op = model.loss(original, construction_op, x)
+        training_op = model.training(loss_op, 0.05)
 
-    ckpt = tf.train.get_checkpoint_state('./log')
-    if ckpt:
-        last_model = ckpt.model_checkpoint_path  # 最後に保存したmodelへのパス
-        print("load {}".format(last_model))
-        saver.restore(sess, last_model)  # 変数データの読み込み
-    else:
-        sess.run(tf.global_variables_initializer())
+        class _LoggerHook(tf.train.SessionRunHook):
+            """Logs loss and runtime """
 
-    run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
-    run_metadata = tf.RunMetadata()
+            def begin(self):
+                self._step = -1
 
-    for i in range(20001):
-        batch = reader.read_batch(BATCH_SIZE)
-        shape = [BATCH_SIZE, 512, 512, 3]
+            def before_run(self, run_context):
+                self._step += 1
+                self._start_time = time.time()
+                return tf.train.SessionRunArgs(loss_op)
 
-        feed = {
-            x: np.reshape(batch[1], shape),
-            y_: np.reshape(batch[0], shape)
-        }
+            def after_run(self, run_context, run_values):
+                duration = time.time() - self._start_time
+                loss_value = run_values.results
 
-        if args.trace_enable and i > 0 and i % int(args.trace_per_step) == 0:
-            sess.run(
-                training_op,
-                feed_dict=feed,
-                run_metadata=run_metadata,
-                options=run_options)
-        else:
-            sess.run(
-                training_op,
-                feed_dict=feed)
+                if self._step % 10 == 0:
+                    examples_per_step = ARGS.batch_size / duration
+                    loss_value = run_values.results
+                    sec_per_batch = float(duration)
 
-        if i == 0:
-            continue
+                    format_str = '{}: step {}, loss = {:.2} ({:.1} examples/sec; {:.3} sec/batch)'
+                    print(
+                        format_str.format(datetime.now(), self._step,
+                                          loss_value, examples_per_step,
+                                          sec_per_batch))
 
-        if i % 10 == 0:
-            print('step {}, time:{}'.format(i, datetime.utcnow().isoformat()))
+        with tf.train.MonitoredTrainingSession(
+                checkpoint_dir=ARGS.train_dir,
+                hooks=[
+                    tf.train.StopAtStepHook(num_steps=ARGS.max_steps),
+                    tf.train.NanTensorHook(loss_op), _LoggerHook()
+                ]) as sess:
+            tf.train.global_step(sess, global_step_tensor)
+            while not sess.should_stop():
+                sess.run(training_op)
 
-        if i % 100 == 0:
-            summary_str = sess.run(summary, feed_dict=feed)
-            writer.add_summary(summary_str, i)
-            saver.save(sess, './log/model.ckpt', i)
 
-        if args.trace_enable and i % int(args.trace_per_step) == 0:
-            # write train
-            tl = timeline.Timeline(run_metadata.step_stats)
-            ctf = tl.generate_chrome_trace_format()
-            with open('./log/timeline{}.json'.format(i), 'w') as f:
-                f.write(ctf)
-
-    embeddding_var = tf.Variable('float', [None, None])
-    sess.run(tf.variables_initializer([embeddding_var]))
-    tf.train.Saver([embeddding_var]).save(sess, './log/model.ckpt')
+if __name__ == '__main__':
+    train()
