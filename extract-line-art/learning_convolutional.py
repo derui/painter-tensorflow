@@ -43,7 +43,7 @@ def train():
 
         construction_op = model.generator(x, 512, 512, 3)
         loss_op = model.loss(original, construction_op, x)
-        training_op = model.training(loss_op, 0.05)
+        training_op = model.training(loss_op, learning_rate=0.05, global_step=global_step_tensor)
 
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime """

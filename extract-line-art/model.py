@@ -144,9 +144,9 @@ def loss(original_image, output_image, x):
     return cross_entropy
 
 
-def training(loss, learning_rate):
+def training(loss, learning_rate, global_step):
     with tf.name_scope('optimizer'):
         optimizer = tf.train.AdamOptimizer(learning_rate)
-        train_step = optimizer.minimize(loss)
+        train_step = optimizer.minimize(loss, global_step=global_step)
 
     return train_step
