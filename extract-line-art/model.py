@@ -9,13 +9,11 @@ def weight_variable(shape, name=None):
     # stddevは標準偏差。truncated_normalは、指定した平均（デフォルト０）
     # と、渡した標準偏差（デフォルト１）から、標準偏差の二倍以上の値
     # をtruncateして再度取得するようにする
-    initial = tf.truncated_normal(shape, stddev=0.1)
-    return tf.Variable(initial, name=name)
+    return tf.get_variable(name, shape, initializer=tf.truncated_normal_initializer(stddev=0.1))
 
 
 def bias_variable(shape, name=None):
-    initial = tf.constant(0.1, shape=shape)
-    return tf.Variable(initial, name=name)
+    return tf.get_variable(name, shape, initializer=tf.constant_initializer(0.1))
 
 
 class Encoder(object):
@@ -104,15 +102,15 @@ def generator(image, width, height, channels):
 
     input_shape = (width, height, channels)
 
-    with tf.name_scope('encoder1'):
+    with tf.variable_scope('encoder1'):
         conv1 = Encoder(64, 5, 5, name='encoder1').encode(image, input_shape)
         pool1 = MaxPool()(conv1)
-    with tf.name_scope('encoder2'):
+    with tf.variable_scope('encoder2'):
         conv2 = Encoder(
             128, 5, 5, name='encoder2').encode(pool1,
                                                [width // 2, height // 2, 64])
         pool2 = MaxPool()(conv2)
-    with tf.name_scope('encoder3'):
+    with tf.variable_scope('encoder3'):
         conv3 = Encoder(
             256, 5, 5, name='encoder3').encode(pool2,
                                                [width // 4, height // 4, 128])
