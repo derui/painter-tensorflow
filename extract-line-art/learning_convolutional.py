@@ -44,10 +44,17 @@ def train():
             original, x = tf_dataset_input.inputs(ARGS.dataset_dir,
                                                   ARGS.batch_size)
 
-        construction_op = model.generator(x, 512, 512, 3)
-        loss_op = model.loss(original, construction_op, x)
+        with tf.variable_scope('trainable'):
+            construction_op = model.generator(x, 512, 512, 3)
+            loss_op = model.loss(original, construction_op, x)
+
+        var_list = tf.get_collection(
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope='trainable')
         training_op = model.training(
-            loss_op, learning_rate=0.05, global_step=global_step_tensor)
+            loss_op,
+            learning_rate=0.05,
+            global_step=global_step_tensor,
+            var_list=var_list)
 
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime """

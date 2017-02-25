@@ -9,11 +9,13 @@ def weight_variable(shape, name=None):
     # stddevは標準偏差。truncated_normalは、指定した平均（デフォルト０）
     # と、渡した標準偏差（デフォルト１）から、標準偏差の二倍以上の値
     # をtruncateして再度取得するようにする
-    return tf.get_variable(name, shape, initializer=tf.truncated_normal_initializer(stddev=0.1))
+    return tf.get_variable(
+        name, shape, initializer=tf.truncated_normal_initializer(stddev=0.1))
 
 
 def bias_variable(shape, name=None):
-    return tf.get_variable(name, shape, initializer=tf.constant_initializer(0.1))
+    return tf.get_variable(
+        name, shape, initializer=tf.constant_initializer(0.1))
 
 
 class Encoder(object):
@@ -31,13 +33,14 @@ class Encoder(object):
         self.patch_h = patch_h
         self.out_ch = out_ch
         self.activation = activation
-        self.batch_norm = op.BatchNormalization(name=name)
+        self.name = name
+        self.batch_norm = op.BatchNormalization(name='{}_batch_norm'.format(name))
 
     def encode(self, tensor, input_shape):
         weight = weight_variable(
             [self.patch_w, self.patch_h, input_shape[2], self.out_ch],
-            name="weight")
-        bias = bias_variable([self.out_ch], name='bias')
+            name="{}_weight".format(self.name))
+        bias = bias_variable([self.out_ch], name='{}_bias'.format(self.name))
         conv = tf.nn.conv2d(
             tensor, weight, strides=[1, 1, 1, 1], padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
@@ -70,19 +73,22 @@ class Decoder(object):
         self.out_ch = out_ch
         self.activation = activation
         self.padding = padding
-        self.batch_norm = op.BatchNormalization(name=name)
+        self.name = name
+        self.batch_norm = op.BatchNormalization(name='{}_norm'.format(name))
 
     def decode(self, tensor, input_shape):
         weight = weight_variable(
             [self.patch_w, self.patch_h, self.out_ch, input_shape[2]],
-            name='weight')
+            name='{}_weight'.format(self.name))
 
-        bias = bias_variable([self.out_ch], name="bias")
+        bias = bias_variable([self.out_ch], name="{}_bias".format(self.name))
 
         conv = tf.nn.conv2d_transpose(
             tensor,
-            weight, [tf.shape(tensor)[0], input_shape[0] * 2, input_shape[1] * 2, self.out_ch],
-            [1, 2, 2, 1],
+            weight, [
+                tf.shape(tensor)[0], input_shape[0] * 2, input_shape[1] * 2,
+                self.out_ch
+            ], [1, 2, 2, 1],
             padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
         conv = self.activation(self.batch_norm.batch_normalization(conv))
@@ -102,32 +108,28 @@ def generator(image, width, height, channels):
 
     input_shape = (width, height, channels)
 
-    with tf.variable_scope('encoder1'):
-        conv1 = Encoder(64, 5, 5, name='encoder1').encode(image, input_shape)
-        pool1 = MaxPool()(conv1)
-    with tf.variable_scope('encoder2'):
-        conv2 = Encoder(
-            128, 5, 5, name='encoder2').encode(pool1,
-                                               [width // 2, height // 2, 64])
-        pool2 = MaxPool()(conv2)
-    with tf.variable_scope('encoder3'):
-        conv3 = Encoder(
-            256, 5, 5, name='encoder3').encode(pool2,
-                                               [width // 4, height // 4, 128])
-        pool3 = MaxPool()(conv3)
+    conv1 = Encoder(64, 5, 5, name='encoder1').encode(image, input_shape)
+    pool1 = MaxPool()(conv1)
 
-    with tf.variable_scope('decoder1'):
-        deconv1 = Decoder(
-            128, 5, 5, name='decoder1').decode(pool3,
-                                               [width // 8, height // 8, 256])
-    with tf.variable_scope('decoder2'):
-        deconv2 = Decoder(
-            64, 5, 5, name='decoder2').decode(deconv1,
-                                              [width // 4, height // 4, 128])
-    with tf.variable_scope('decoder3'):
-        deconv3 = Decoder(
-            channels, 5, 5, name='decoder3', activation=tf.nn.tanh).decode(
-                deconv2, [width // 2, height // 2, 64])
+    conv2 = Encoder(
+        128, 5, 5, name='encoder2').encode(pool1,
+                                           [width // 2, height // 2, 64])
+    pool2 = MaxPool()(conv2)
+
+    conv3 = Encoder(
+        256, 5, 5, name='encoder3').encode(pool2,
+                                           [width // 4, height // 4, 128])
+    pool3 = MaxPool()(conv3)
+
+    deconv1 = Decoder(
+        128, 5, 5, name='decoder1').decode(pool3,
+                                           [width // 8, height // 8, 256])
+    deconv2 = Decoder(
+        64, 5, 5, name='decoder2').decode(deconv1,
+                                          [width // 4, height // 4, 128])
+    deconv3 = Decoder(
+        channels, 5, 5, name='decoder3',
+        activation=tf.nn.tanh).decode(deconv2, [width // 2, height // 2, 64])
 
     return deconv3
 
@@ -144,9 +146,10 @@ def loss(original_image, output_image, x):
     return cross_entropy
 
 
-def training(loss, learning_rate, global_step):
+def training(loss, learning_rate, global_step, var_list):
     with tf.name_scope('optimizer'):
         optimizer = tf.train.AdamOptimizer(learning_rate)
-        train_step = optimizer.minimize(loss, global_step=global_step)
+        train_step = optimizer.minimize(
+            loss, global_step=global_step, var_list=var_list)
 
     return train_step

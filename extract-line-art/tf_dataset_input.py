@@ -72,9 +72,9 @@ def inputs(data_dir, batch_size):
 
     read_input = read_pair(filename_queue)
     reshapeed_o_image = tf.cast(read_input.original_image, tf.float32)
-    reshapeed_o_image = tf.div(reshapeed_o_image, 255.0)
+    reshapeed_o_image = tf.multiply(reshapeed_o_image, 1 / 255.0)
     reshapeed_w_image = tf.cast(read_input.wire_frame_image, tf.float32)
-    reshapeed_w_image = tf.div(reshapeed_w_image, 255.0)
+    reshapeed_w_image = tf.multiply(reshapeed_w_image, 1 / 255.0)
 
     min_fraction_of_examples_in_queue = 0.4
     min_queue_examples = int(num_examples_per_epoch *
