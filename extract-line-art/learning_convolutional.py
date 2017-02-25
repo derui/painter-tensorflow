@@ -65,7 +65,7 @@ def train():
                     loss_value = run_values.results
                     sec_per_batch = float(duration)
 
-                    format_str = '{}: step {}, loss = {:.2} ({:.1} examples/sec; {:.3} sec/batch)'
+                    format_str = '{}: step {}, loss = {:.2f} ({:.1f} examples/sec; {:.3f} sec/batch)'
                     print(
                         format_str.format(datetime.now(), self._step,
                                           loss_value, examples_per_step,

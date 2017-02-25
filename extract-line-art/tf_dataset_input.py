@@ -54,7 +54,6 @@ def _generate_pair_batch(pair, min_queue_examples, batch_size, shuffle):
             num_threads=num_preprocess_threads,
             capacity=min_queue_examples + 3 * batch_size)
 
-    tf.summary.image('input', images[0])
     return images
 
 
