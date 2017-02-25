@@ -22,6 +22,11 @@ argparser.add_argument(
     help='Directory contained datasets')
 argparser.add_argument(
     '--max_steps', default=20000, type=int, help='number of maximum steps')
+argparser.add_argument(
+    '--log_device_placement',
+    default=False,
+    type=bool,
+    help='manage logging log_device_placement')
 
 ARGS = argparser.parse_args()
 
@@ -29,10 +34,12 @@ ARGS = argparser.parse_args()
 def train():
 
     with tf.Graph().as_default():
-        global_step_tensor = tf.Variable(10, trainable=False, name='global_step')
+        global_step_tensor = tf.Variable(
+            10, trainable=False, name='global_step')
 
-        original, x = tf_dataset_input.inputs(ARGS.dataset_dir,
-                                              ARGS.batch_size)
+        with tf.device('/cpu:0'):
+            original, x = tf_dataset_input.inputs(ARGS.dataset_dir,
+                                                  ARGS.batch_size)
 
         construction_op = model.generator(x, 512, 512, 3)
         loss_op = model.loss(original, construction_op, x)
@@ -69,7 +76,9 @@ def train():
                 hooks=[
                     tf.train.StopAtStepHook(num_steps=ARGS.max_steps),
                     tf.train.NanTensorHook(loss_op), _LoggerHook()
-                ]) as sess:
+                ],
+                config=tf.ConfigProto(
+                    log_device_placement=ARGS.log_device_placement)) as sess:
             tf.train.global_step(sess, global_step_tensor)
             while not sess.should_stop():
                 sess.run(training_op)
