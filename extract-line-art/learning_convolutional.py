@@ -35,7 +35,7 @@ def train():
 
     with tf.Graph().as_default():
         global_step_tensor = tf.Variable(
-            10, trainable=False, name='global_step')
+            0, trainable=False, name='global_step')
 
         with tf.device('/cpu:0'):
             original, x = tf_dataset_input.inputs(ARGS.dataset_dir,
