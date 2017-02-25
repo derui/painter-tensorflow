@@ -19,14 +19,11 @@ class BatchNormalization(object):
                 "gamma", [shape[-1]],
                 initializer=tf.random_normal_initializer(1.0, 0.1))
 
-            mean, variance = tf.nn.moments(x, [0, 1, 2], name='momentam')
-
-            y = tf.nn.batch_normalization(
+            y, _, _ = tf.nn.fused_batch_norm(
                 x,
-                mean,
-                variance,
-                self.beta,
                 self.gamma,
-                self.epsilon)
+                self.beta,
+                epsilon=self.epsilon)
+            print(y.get_shape())
 
         return y
