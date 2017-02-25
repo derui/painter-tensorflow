@@ -9,7 +9,6 @@ import model
 import tf_dataset_input
 
 argparser = argparse.ArgumentParser(description='Learning painter model')
-argparser.add_argument('--use_gpu_train', default=False, type=bool, help='Use gpu in training or not')
 argparser.add_argument('--batch_size', default=5, type=int, help='Batch size')
 argparser.add_argument(
     '--train_dir',
@@ -42,13 +41,9 @@ def train():
             original, x = tf_dataset_input.inputs(ARGS.dataset_dir,
                                                   ARGS.batch_size)
 
-        device_name = 'gpu'
-        if not ARGS.use_gpu_train:
-            device_name = 'cpu'
-        with tf.device('/{}:0'.format(device_name)):
-            construction_op = model.generator(x, 512, 512, 3)
-            loss_op = model.loss(original, construction_op, x)
-            training_op = model.training(loss_op, 0.05)
+        construction_op = model.generator(x, 512, 512, 3)
+        loss_op = model.loss(original, construction_op, x)
+        training_op = model.training(loss_op, 0.05)
 
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime """
