@@ -3,6 +3,7 @@
 import argparse
 import time
 from datetime import datetime
+from tensorflow.python.client import timeline
 import tensorflow as tf
 import model
 
@@ -22,6 +23,8 @@ argparser.add_argument(
     help='Directory contained datasets')
 argparser.add_argument(
     '--max_steps', default=20000, type=int, help='number of maximum steps')
+argparser.add_argument(
+    '--full_trace', default=False, type=bool, help='Enable full trace of gpu')
 argparser.add_argument(
     '--log_device_placement',
     default=False,
@@ -43,7 +46,8 @@ def train():
 
         construction_op = model.generator(x, 512, 512, 3)
         loss_op = model.loss(original, construction_op, x)
-        training_op = model.training(loss_op, learning_rate=0.05, global_step=global_step_tensor)
+        training_op = model.training(
+            loss_op, learning_rate=0.05, global_step=global_step_tensor)
 
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime """
@@ -60,6 +64,13 @@ def train():
                 duration = time.time() - self._start_time
                 loss_value = run_values.results
 
+                if self._step % 10 == 0 and ARGS.full_trace:
+                    # write train
+                    tl = timeline.Timeline(run_metadata.step_stats)
+                    ctf = tl.generate_chrome_trace_format()
+                    with open('timeline.json', 'w') as f:
+                        f.write(ctf)
+
                 if self._step % 10 == 0:
                     examples_per_step = ARGS.batch_size / duration
                     loss_value = run_values.results
@@ -71,6 +82,11 @@ def train():
                                           loss_value, examples_per_step,
                                           sec_per_batch))
 
+        run_options = tf.RunOptions()
+        if ARGS.full_trace:
+            run_options.trace_level = tf.RunOptions.FULL_TRACE
+        run_metadata = tf.RunMetadata()
+
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
                 hooks=[
@@ -81,7 +97,10 @@ def train():
                     log_device_placement=ARGS.log_device_placement)) as sess:
             tf.train.global_step(sess, global_step_tensor)
             while not sess.should_stop():
-                sess.run(training_op)
+                sess.run(
+                    training_op,
+                    options=run_options,
+                    run_metadata=run_metadata)
 
 
 if __name__ == '__main__':
