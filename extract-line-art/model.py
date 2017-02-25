@@ -93,12 +93,6 @@ class Decoder(object):
         conv = tf.nn.bias_add(conv, bias)
         conv = self.activation(self.batch_norm.batch_normalization(conv))
 
-        tf.summary.image('conv', tf.slice(conv, [0, 0, 0, 0], [-1, -1, -1, 1]))
-        tf.summary.image('conv2', tf.slice(conv, [0, 0, 0, 1],
-                                           [-1, -1, -1, 1]))
-        tf.summary.image('conv3', tf.slice(conv, [0, 0, 0, 2],
-                                           [-1, -1, -1, 1]))
-
         return conv
 
 
