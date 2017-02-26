@@ -8,7 +8,7 @@ class BatchNormalization(object):
         self.momentam = momentam
         self.name = name
 
-    def batch_normalization(self, x, train=True):
+    def __call__(self, x, train=True):
         """Implementation batch_normalization """
 
         shape = x.get_shape().as_list()
@@ -24,6 +24,5 @@ class BatchNormalization(object):
                 self.gamma,
                 self.beta,
                 epsilon=self.epsilon)
-            print(y.get_shape())
 
         return y

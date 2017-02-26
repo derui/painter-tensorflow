@@ -24,28 +24,27 @@ class Encoder(object):
     """
 
     def __init__(self,
+                 in_ch,
                  out_ch,
                  patch_w,
                  patch_h,
-                 activation=tf.nn.relu,
                  name='encoder'):
         self.patch_w = patch_w
         self.patch_h = patch_h
+        self.in_ch = in_ch
         self.out_ch = out_ch
-        self.activation = activation
         self.name = name
-        self.batch_norm = op.BatchNormalization(name='{}_batch_norm'.format(name))
 
-    def encode(self, tensor, input_shape):
+    def __call__(self, tensor, input_shape):
         weight = weight_variable(
-            [self.patch_w, self.patch_h, input_shape[2], self.out_ch],
+            [self.patch_w, self.patch_h, self.in_ch, self.out_ch],
             name="{}_weight".format(self.name))
         bias = bias_variable([self.out_ch], name='{}_bias'.format(self.name))
         conv = tf.nn.conv2d(
             tensor, weight, strides=[1, 1, 1, 1], padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
-        conv = self.activation(self.batch_norm.batch_normalization(conv))
 
+        tf.summary.image('conv1', tf.slice(conv, [0,0,0,0], [-1,-1,-1,1]))
         return conv
 
 
@@ -62,23 +61,22 @@ class Decoder(object):
     """
 
     def __init__(self,
+                 in_ch,
                  out_ch,
                  patch_w,
                  patch_h,
-                 activation=tf.nn.relu,
                  padding='SAME',
                  name='decoder'):
         self.patch_w = patch_w
         self.patch_h = patch_h
+        self.in_ch = in_ch
         self.out_ch = out_ch
-        self.activation = activation
         self.padding = padding
         self.name = name
-        self.batch_norm = op.BatchNormalization(name='{}_norm'.format(name))
 
-    def decode(self, tensor, input_shape):
+    def __call__(self, tensor, input_shape):
         weight = weight_variable(
-            [self.patch_w, self.patch_h, self.out_ch, input_shape[2]],
+            [self.patch_w, self.patch_h, self.out_ch, self.in_ch],
             name='{}_weight'.format(self.name))
 
         bias = bias_variable([self.out_ch], name="{}_bias".format(self.name))
@@ -91,41 +89,76 @@ class Decoder(object):
             ], [1, 2, 2, 1],
             padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
-        conv = self.activation(self.batch_norm.batch_normalization(conv))
+
+        tf.summary.image('deconv', tf.slice(conv, [0,0,0,0], [-1,-1,-1,1]))
 
         return conv
+
+
+class Generator(object):
+    def __init__(self):
+        self.bnc1 = op.BatchNormalization(name='bnc1')
+        self.bnc2 = op.BatchNormalization(name='bnc2')
+        self.bnc3 = op.BatchNormalization(name='bnc3')
+        self.bnc4 = op.BatchNormalization(name='bnc4')
+        self.bnc5 = op.BatchNormalization(name='bnc5')
+        self.bnc6 = op.BatchNormalization(name='bnc6')
+        self.bnc7 = op.BatchNormalization(name='bnc7')
+
+        self.bnd1 = op.BatchNormalization(name='bnd1')
+        self.bnd2 = op.BatchNormalization(name='bnd2')
+        self.bnd3 = op.BatchNormalization(name='bnd3')
+        self.bnd4 = op.BatchNormalization(name='bnd4')
+        self.bnd5 = op.BatchNormalization(name='bnd5')
+        self.bnd6 = op.BatchNormalization(name='bnd6')
+        
+        self.conv1 = Encoder(3, 12, 5, 5, name='encoder1')
+        self.conv2 = Encoder(12, 32, 5, 5, name='encoder2')
+        self.conv3 = Encoder(32, 64, 5, 5, name='encoder3')
+        self.conv4 = Encoder(64, 128, 5, 5, name='encoder4')
+        self.conv5 = Encoder(128, 256, 5, 5, name='encoder5')
+        self.conv6 = Encoder(256, 512, 5, 5, name='encoder6')
+        self.conv7 = Encoder(512, 512, 5, 5, name='encoder7')
+
+        self.pool1 = MaxPool()
+        self.pool2 = MaxPool()
+        self.pool3 = MaxPool()
+        self.pool4 = MaxPool()
+        self.pool5 = MaxPool()
+        self.pool6 = MaxPool()
+
+        self.deconv1 = Decoder(512, 256, 5, 5, name='decoder1')
+        self.deconv2 = Decoder(512, 128, 5, 5, name='decoder2')
+        self.deconv3 = Decoder(256, 64, 5, 5, name='decoder3')
+        self.deconv4 = Decoder(128, 32, 5, 5, name='decoder4')
+        self.deconv5 = Decoder(64, 12, 5, 5, name='decoder5')
+        self.deconv6 = Encoder(24, 3, 5, 5, name='decoder6')
 
 
 def generator(image, width, height, channels):
     """Make construction layer.
     """
 
-    input_shape = (width, height, channels)
+    gen = Generator()
 
-    conv1 = Encoder(64, 5, 5, name='encoder1').encode(image, input_shape)
-    pool1 = MaxPool()(conv1)
+    relu = tf.nn.relu
+    tanh = tf.nn.tanh
 
-    conv2 = Encoder(
-        128, 5, 5, name='encoder2').encode(pool1,
-                                           [width // 2, height // 2, 64])
-    pool2 = MaxPool()(conv2)
+    conv1 = relu(gen.bnc1(gen.conv1(image, [width, height])))
+    conv2 = relu(gen.bnc2(gen.conv2(gen.pool1(conv1), [width // 2, height // 2])))
+    conv3 = relu(gen.bnc3(gen.conv3(gen.pool2(conv2), [width // 4, height // 4])))
+    conv4 = relu(gen.bnc4(gen.conv4(gen.pool3(conv3), [width // 8, height // 8])))
+    conv5 = relu(gen.bnc5(gen.conv5(gen.pool4(conv4), [width // 16, height // 16])))
+    conv6 = relu(gen.bnc6(gen.conv6(gen.pool5(conv5), [width // 32, height // 32])))
 
-    conv3 = Encoder(
-        256, 5, 5, name='encoder3').encode(pool2,
-                                           [width // 4, height // 4, 128])
-    pool3 = MaxPool()(conv3)
+    deconv1 = relu(gen.bnd1(gen.deconv1(conv6, [width // 32, height // 32])))
+    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv1, conv5], 3), [width // 16, height // 16])))
+    deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv2, conv4], 3), [width // 8, height // 8])))
+    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv3, conv3], 3), [width // 4, height // 4])))
+    deconv5 = relu(gen.bnd5(gen.deconv5(tf.concat([deconv4, conv2], 3), [width // 2, height // 2])))
+    deconv6 = tanh(gen.bnd6(gen.deconv6(tf.concat([deconv5, conv1], 3), [width, height])))
 
-    deconv1 = Decoder(
-        128, 5, 5, name='decoder1').decode(pool3,
-                                           [width // 8, height // 8, 256])
-    deconv2 = Decoder(
-        64, 5, 5, name='decoder2').decode(deconv1,
-                                          [width // 4, height // 4, 128])
-    deconv3 = Decoder(
-        channels, 5, 5, name='decoder3',
-        activation=tf.nn.tanh).decode(deconv2, [width // 2, height // 2, 64])
-
-    return deconv3
+    return deconv6
 
 
 def loss(original_image, output_image, x):
