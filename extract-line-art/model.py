@@ -44,7 +44,6 @@ class Encoder(object):
             tensor, weight, strides=[1, 1, 1, 1], padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
 
-        tf.summary.image('conv1', tf.slice(conv, [0,0,0,0], [-1,-1,-1,1]))
         return conv
 
 
@@ -89,8 +88,6 @@ class Decoder(object):
             ], [1, 2, 2, 1],
             padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
-
-        tf.summary.image('deconv', tf.slice(conv, [0,0,0,0], [-1,-1,-1,1]))
 
         return conv
 
