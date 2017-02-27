@@ -5,7 +5,6 @@ Parameters:
   Bucket:
     Type: String
     Description: Bucket name
-    Default: gpu-stack-bucket-1oxi0evn4n6pm
   ServiceName:
     Type: String
     Description: The name of service
