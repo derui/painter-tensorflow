@@ -2,6 +2,10 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: |
   A template to create stack for tensorflow with GPU
 Parameters:
+  Bucket:
+    Type: String
+    Description: Bucket name
+    Default: gpu-stack-bucket-1oxi0evn4n6pm
   ServiceName:
     Type: String
     Description: The name of service
@@ -107,12 +111,6 @@ Resources:
           ToPort: "22"
           SourceSecurityGroupId: !Ref BastionSecurityGroup
 
-  # A bucket stored all data of learning and samples
-  Bucket:
-    Type: "AWS::S3::Bucket"
-    Properties:
-      AccessControl: BucketOwnerFullControl
-
   InstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -141,14 +139,8 @@ Resources:
                 Action:
                   - "s3:*"
                 Resource:
-                  -
-                    !Sub
-                    - "arn:aws:s3:::${Bucket}"
-                    - {Bucket: !Ref Bucket}
-                  -
-                    !Sub
-                    - "arn:aws:s3:::${Bucket}/*"
-                    - {Bucket: !Ref Bucket}
+                  - !Sub "arn:aws:s3:::${Bucket}"
+                  - !Sub "arn:aws:s3:::${Bucket}/*"
 
   InstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -189,7 +181,7 @@ Resources:
       SpotFleetRequestConfigData:
         IamFleetRole: arn:aws:iam::568235847281:role/aws-ec2-spot-fleet-role
         TargetCapacity: 8
-        SpotPrice: '0.9'
+        SpotPrice: '0.1'
         LaunchSpecifications:
           - EbsOptimized: 'false'
             KeyName: !Ref KeyName
@@ -263,7 +255,3 @@ Outputs:
     Value: !Ref BastionIp
     Export:
       Name: !Sub "${AWS::StackName}-EIP"
-
-  Bucket:
-    Description: The name of the bucket to store data
-    Value: !Ref Bucket

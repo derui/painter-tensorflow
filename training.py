@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 from tensorflow.python.client import timeline
 import tensorflow as tf
-import model
+from line_painter import model
 
 import tf_dataset_input
 
