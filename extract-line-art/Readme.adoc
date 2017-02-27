@@ -4,7 +4,7 @@
 == 着色処理を説明してみる ==
 着色処理の学習と着色処理について、DeepLearning部分とTensorflowの使い方を合わせて説明を試みる。
 
-=== 着色の学習 ===
+=== 着色の学習（最初のアプローチ） ===
 着色の学習を行うとして大事なのは、 *何を特徴変数とするか* である。着色を行う場合、最終的に出力されるデータは、入力された線画と同一のサイズでなければならない。
 
 基本路線としては、AutoEncoderと呼ばれるものを作成することになる。AutoEncoderの定義は探す。
@@ -19,7 +19,7 @@ loglossは最尤推定関数の一種。定義上、それぞれの種類ラベ�
 推定した確率のlogを取っているのは、推定した確率をそのまま利用した場合、陽であると判定した確率が実際には偽であった場合、エラースコアが無限大になってしまい、他の確率が全て意味を成さなくなってしまう。
 これを避けるため、わざとlogを取ることで、オーバーシュートを防ぐことを目的としている。
 
-loglossとはこれ。
+loglossとはこれ。バイナリエントロピーとも呼ばれるらしい。
 https://www.kaggle.com/wiki/LogarithmicLoss
 
 
@@ -44,6 +44,57 @@ predict: 0.69,0.31
 
 kerasを利用したautoencoderの実装。kerasでは損失関数の一つとして、loglossが用意されている。
 https://blog.keras.io/building-autoencoders-in-keras.html
+
+これの他に、AutoEncoderでは最小二乗誤差を最小化する、という方法も利用される。
+
+=== GANを知る ===
+https://arxiv.org/abs/1505.04597
+AutoEncoderを調べるうちに、U-Netに到達。ただし、これをそのまま実装してみたところで、これはsegmentationのためのネットワークだということに気づいた。
+
+更に色々見ていくと、AutoEncoderの発展形？でGeneratorという形式があることを知る。
+そんな中、DCGANというネットワークがあることを知る。これがどうも求めているものっぽいため、内容を確認してみる。
+
+https://bamos.github.io/2016/08/09/deep-completion/
+https://arxiv.org/abs/1511.06434
+
+batch_normalizationという単語が頻出。どうも重要そうであるためこれも調べる。どうも勾配消失などを避けるための工夫ということのよう。丁度この辺りで、deconvolutionすると明らかに発散している感じがあったため、導入してみる。
+
+https://deepage.net/deep_learning/2016/10/26/batch_normalization.html
+
+これを入れてから、AutoEncoder系列のうち、Image Segmentationで有名なU-NETというものを知り、内容を見てみる。Convolution＋DownsamplingとUpsampling＋Convolutionを組み合わせていることが特徴。
+
+さらに、Downsamplingした特徴量を、同じ層のUpsamplingした層に加算する、ということをアーキテクチャとして行っている。これは、ある程度特徴量の次元を減らして行くと、そこからカラーを復元する際に、元の特徴量が速やかに失われていってしまう。
+（512x512の画像を、64x64くらいまで落とす程度であれば、ギリギリ元の特徴量が残った状態にできる。32x32だとほとんど失われる）
+元々の特徴を、 upsamplingのタイミングで再度追加することで、特徴量が薄まり過ぎないようにでき、元々の画像を保持できる、ということのよう。
+
+これをやるとやらないでは、AutoEncoder/GANにおけるGenerator部分の精度が全く違う。最初は線部分にも色んな色がついてくるが、学習が進むにつれ、徐々にSegmentationの効果なのか、部分ごとに色がつくようになっていく。
+
+
+=== 学習速度が遅い問題 ===
+batch_normalizationの導入、ADAM Optimizerの導入で、Generatorの学習はスムーズになったが、その分画像一枚あたりの学習時間が伸びてしまった。
+
+特に問題なのが、GPU/CPUでの性能比として、3倍程度にしかならない点。
+
+3倍速いとは言え、GPUを利用しているのにこの性能差だと、更にデータセットが大きくなった時や、ネットワークが複雑になった時に太刀打ち出来無いので、色々とパフォーマンスについて調べてみた。
+
+公式が提供しているパフォーマンス tipsとして、次のようなものがあった。
+
+* ReaderをTensorflow内になるように構築する
+** GPUの処理よりもデータ読み込みが遅いため、preloadなどを駆使することで、常にGPUを働かせる
+** しかし、実際に実装してみて動かしてみると、データの読み込み速度は影響していなかった
+* Batch Normalizationをfusedバージョンで利用する
+** fusedバージョンとは、一つの処理単位にまとまるように変更されたバージョン
+** 元々Batch normalizationだけはCPUで処理されている部分もあったが、これにすることでGPUを利用するようになった
+** *10%* の速度改善。
+
+しかし、実際にtimelineまで取ってみてみると、CPUがボトルネックになっているような様子はない。（全体がCUDAで処理されている）
+となると、ネットワークの構成そのものか、処理自体の問題ではないか？という疑問になる。
+
+この時点では、timeline上で一番時間がかかっているのは、Conv2DとDeconv2D。特に、Deconv2D自体と、その後のBackPropagationに時間の大半が割かれている形となっていた。
+
+要因を探ってみると、浅い層における特徴量が多すぎることが要因らしかった。というよりも、全体的に特徴量が多すぎたことで、計算量が全体的に多くなってしまっていた模様。
+
+
 
 == Amazon LinuxでGPU利用する ==
 CPUだけでやると時間がかかってしょうがない＋学習用データが大きすぎて洒落にならないため、クラウド環境で実施したい。
@@ -127,4 +178,34 @@ I tensorflow/core/common_runtime/gpu/gpu_device.cc:916] 0:   Y
 I tensorflow/core/common_runtime/gpu/gpu_device.cc:975] Creating TensorFlow device (/gpu:0) -> (device: 0, name: Tesla K80, pci bus id: 0000:00:1e.0
 ----
 
-11GiBとかメモリがある・・・。
+11GiBとかメモリがある。
+
+== Tensorflowのプロファイルを取りたい ==
+GPUを利用していても、実際に早くなったのかどうか、は計測してみないとわからない。（明らかなケースも多いけど）
+
+この場合、gperfとかそういったもので取得することも出来るようだが、軟弱な我々としては、やはりChromeとかFirefoxで慣れたタイムライン表示とかがいい。TensorflowはGoogle主導で開発しているためかどうかはわからないけれど、これを行うための機能がすでにある。
+
+[source,python]
+----
+from tensorflow.python.client import timeline
+
+with tf.Session() as sess:
+    run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+    run_metadata = tf.RunMetadata()
+
+    sess.run(
+        training_op,
+        feed_dict=feed,
+        run_metadata=run_metadata,
+        options=run_options)
+
+    # write train
+    tl = timeline.Timeline(run_metadata.step_stats)
+    ctf = tl.generate_chrome_trace_format()
+    with open('timeline.json', 'w') as f:
+        f.write(ctf)
+----
+
+こうやると、timeline.jsonというのが出来る。これを、Chromeのアドレスバーで `chrome://tracing` といれて出るページで読み込ませてやると、見慣れた？タイムライン表示が行える。
+
+ただし、事前にLD_LIBRARY_PATHに/usr/local/cuda-8.0/extras/CUPTI/lib64を追加しておく必要がある。この中にあるlibcuptiが読み込めないとエラーになる。
