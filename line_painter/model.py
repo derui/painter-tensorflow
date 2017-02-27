@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import tensorflow as tf
-import operations as op
+from . import operations as op
 
 
 # 指定したShapeでWeight Variableを作成する。

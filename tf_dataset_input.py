@@ -8,7 +8,7 @@ without overhead coping data.
 
 import os
 import tensorflow as tf
-from datasets import image_dataset as ds
+from datasets import dataset as ds
 
 
 def read_pair(filename_queue):
