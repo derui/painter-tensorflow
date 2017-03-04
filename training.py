@@ -58,13 +58,12 @@ def train():
         d_loss = model.d_loss(D, D_G)
         g_loss = model.g_loss(D_G)
 
-        var_list = tf.get_collection(
-            tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminater')
         d_training = model.training(
             d_loss,
             learning_rate=0.05,
             global_step=global_step_tensor,
-            var_list=var_list)
+            var_list=tf.get_collection(
+                tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminater'))
 
         g_training = model.training(
             g_loss,
@@ -118,18 +117,22 @@ def train():
                     tf.train.NanTensorHook(g_loss),
                     _LoggerHook()
                 ],
-                save_summaries_steps=1,
                 config=tf.ConfigProto(
                     log_device_placement=ARGS.log_device_placement)) as sess:
             tf.train.global_step(sess, global_step_tensor)
             while not sess.should_stop():
+                sess.run(
+                    [d_training],
+                    options=run_options,
+                    run_metadata=run_metadata)
+
                 sess.run(
                     [g_training],
                     options=run_options,
                     run_metadata=run_metadata)
 
                 sess.run(
-                    [d_training],
+                    [g_training],
                     options=run_options,
                     run_metadata=run_metadata)
 

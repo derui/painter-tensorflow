@@ -196,6 +196,22 @@ class Discriminator(object):
         self.pool5 = MaxPool()
 
 
+class LinearEncoder(object):
+    """Encoder for Linear Operation."""
+
+    def __init__(self,  name='linear_encoder'):
+        self.name = name
+
+    def __call__(self, tensor, in_ch, out_ch,):
+        weight = weight_variable(
+            [in_ch, out_ch],
+            name="{}_weight".format(self.name))
+        bias = bias_variable([out_ch], name='{}_bias'.format(self.name))
+        conv = tf.matmul(tensor, weight)
+        conv = tf.nn.bias_add(conv, bias)
+
+        return conv
+
 def discriminator(original, height, width, chan):
     """make discriminator network"""
 
@@ -207,11 +223,12 @@ def discriminator(original, height, width, chan):
     conv3 = relu(D.bnc3(D.conv3(D.pool2(conv2), [width // 4, height // 4])))
     conv4 = relu(D.bnc4(D.conv4(D.pool3(conv3), [width // 8, height // 8])))
     conv5 = relu(D.bnc5(D.conv5(D.pool4(conv4), [width // 16, height // 16])))
-    conv6 = D.bnc6(D.conv6(D.pool5(conv5), [width // 32, height // 32]))
+    conv6 = relu(D.bnc6(D.conv6(D.pool5(conv5), [width // 32, height // 32])))
 
     w = width // 64
     h = height // 64
-    logit = tf.reshape(conv6, [-1, w * h * 512])
+    conv6 = tf.reshape(conv6, [-1, w * h * 512])
+    logit = LinearEncoder()(conv6, w * h * 512, 1)
     return tf.nn.sigmoid(logit), logit
 
 
