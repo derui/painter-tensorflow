@@ -5,7 +5,6 @@ import numpy as np
 import cv2
 import logging
 import random
-import concurrent.futures
 
 IMAGE_SIZE = 512 * 512 * 3
 RECORD_SIZE = IMAGE_SIZE * 2
@@ -48,9 +47,8 @@ class ImagePack(object):
             raise Exception('can not read image {},{}'.format(original_file,
                                                               wire_frame_file))
 
-        self.pack_file.write(np.ndarray.tobytes(original_image.reshape([-1])))
-        self.pack_file.write(
-            np.ndarray.tobytes(wire_frame_image.reshape([-1])))
+        ndary = np.concatenate((original_image.reshape([-1]), wire_frame_image.reshape([-1])))
+        self.pack_file.write(np.ndarray.tobytes(ndary))
 
     def unpack(self, record_index):
         """
@@ -116,24 +114,10 @@ class DataSetBuilder(object):
         file_num = len(target_files)
         (all_pack_num, reminder_pack) = divmod(file_num, self.pack_size)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-            futures = {}
-            for pack_num in range(all_pack_num):
-                futures[executor.submit(
-                    self.__build_pack, pack_num + 1, target_files[
-                        pack_num * self.pack_size:pack_num * self.pack_size +
-                        self.pack_size])] = pack_num
-
-            print('Number of packs {}'.format(len(futures.items())))
-
-            for future in concurrent.futures.as_completed(futures):
-                num = futures[future]
-                try:
-                    future.result()
-                except Exception as exc:
-                    print('%d packing as exception: %s' % (num, exc))
-                else:
-                    print('completed packing %d' % num)
+        for pack_num in range(all_pack_num):
+            self.__build_pack(pack_num + 1,
+                              target_files[pack_num * self.pack_size:pack_num *
+                                           self.pack_size + self.pack_size])
 
         # build pack if do not just divide size of target_files with pack_size.
         if reminder_pack != 0:
