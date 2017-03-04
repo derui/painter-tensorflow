@@ -23,12 +23,7 @@ class Encoder(object):
     this class that are defined convolutional layer.
     """
 
-    def __init__(self,
-                 in_ch,
-                 out_ch,
-                 patch_w,
-                 patch_h,
-                 name='encoder'):
+    def __init__(self, in_ch, out_ch, patch_w, patch_h, name='encoder'):
         self.patch_w = patch_w
         self.patch_h = patch_h
         self.in_ch = in_ch
@@ -108,7 +103,7 @@ class Generator(object):
         self.bnd4 = op.BatchNormalization(name='bnd4')
         self.bnd5 = op.BatchNormalization(name='bnd5')
         self.bnd6 = op.BatchNormalization(name='bnd6')
-        
+
         self.conv1 = Encoder(3, 12, 5, 5, name='encoder1')
         self.conv2 = Encoder(12, 32, 5, 5, name='encoder2')
         self.conv3 = Encoder(32, 64, 5, 5, name='encoder3')
@@ -142,20 +137,106 @@ def generator(image, width, height, channels):
     tanh = tf.nn.tanh
 
     conv1 = relu(gen.bnc1(gen.conv1(image, [width, height])))
-    conv2 = relu(gen.bnc2(gen.conv2(gen.pool1(conv1), [width // 2, height // 2])))
-    conv3 = relu(gen.bnc3(gen.conv3(gen.pool2(conv2), [width // 4, height // 4])))
-    conv4 = relu(gen.bnc4(gen.conv4(gen.pool3(conv3), [width // 8, height // 8])))
-    conv5 = relu(gen.bnc5(gen.conv5(gen.pool4(conv4), [width // 16, height // 16])))
-    conv6 = relu(gen.bnc6(gen.conv6(gen.pool5(conv5), [width // 32, height // 32])))
+    conv2 = relu(
+        gen.bnc2(gen.conv2(gen.pool1(conv1), [width // 2, height // 2])))
+    conv3 = relu(
+        gen.bnc3(gen.conv3(gen.pool2(conv2), [width // 4, height // 4])))
+    conv4 = relu(
+        gen.bnc4(gen.conv4(gen.pool3(conv3), [width // 8, height // 8])))
+    conv5 = relu(
+        gen.bnc5(gen.conv5(gen.pool4(conv4), [width // 16, height // 16])))
+    conv6 = relu(
+        gen.bnc6(gen.conv6(gen.pool5(conv5), [width // 32, height // 32])))
 
     deconv1 = relu(gen.bnd1(gen.deconv1(conv6, [width // 32, height // 32])))
-    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv1, conv5], 3), [width // 16, height // 16])))
-    deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv2, conv4], 3), [width // 8, height // 8])))
-    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv3, conv3], 3), [width // 4, height // 4])))
-    deconv5 = relu(gen.bnd5(gen.deconv5(tf.concat([deconv4, conv2], 3), [width // 2, height // 2])))
-    deconv6 = tanh(gen.bnd6(gen.deconv6(tf.concat([deconv5, conv1], 3), [width, height])))
+    deconv2 = relu(
+        gen.bnd2(
+            gen.deconv2(
+                tf.concat([deconv1, conv5], 3), [width // 16, height // 16])))
+    deconv3 = relu(
+        gen.bnd3(
+            gen.deconv3(
+                tf.concat([deconv2, conv4], 3), [width // 8, height // 8])))
+    deconv4 = relu(
+        gen.bnd4(
+            gen.deconv4(
+                tf.concat([deconv3, conv3], 3), [width // 4, height // 4])))
+    deconv5 = relu(
+        gen.bnd5(
+            gen.deconv5(
+                tf.concat([deconv4, conv2], 3), [width // 2, height // 2])))
+    deconv6 = tanh(
+        gen.bnd6(gen.deconv6(tf.concat([deconv5, conv1], 3), [width, height])))
 
     return deconv6
+
+
+class Discriminator(object):
+    """Define discriminator"""
+
+    def __init__(self):
+        self.conv1 = Encoder(3, 12, 5, 5, name='encoder1')
+        self.conv2 = Encoder(12, 32, 5, 5, name='encoder2')
+        self.conv3 = Encoder(32, 64, 5, 5, name='encoder3')
+        self.conv4 = Encoder(64, 128, 5, 5, name='encoder4')
+        self.conv5 = Encoder(128, 256, 5, 5, name='encoder5')
+        self.conv6 = Encoder(256, 512, 5, 5, name='encoder6')
+
+        self.bnc1 = op.BatchNormalization(name='bnc1')
+        self.bnc2 = op.BatchNormalization(name='bnc2')
+        self.bnc3 = op.BatchNormalization(name='bnc3')
+        self.bnc4 = op.BatchNormalization(name='bnc4')
+        self.bnc5 = op.BatchNormalization(name='bnc5')
+        self.bnc6 = op.BatchNormalization(name='bnc6')
+
+        self.pool1 = MaxPool()
+        self.pool2 = MaxPool()
+        self.pool3 = MaxPool()
+        self.pool4 = MaxPool()
+        self.pool5 = MaxPool()
+
+
+def discriminator(original, height, width, chan):
+    """make discriminator network"""
+
+    D = Discriminator()
+
+    relu = tf.nn.relu
+    conv1 = relu(D.bnc1(D.conv1(original, [width, height])))
+    conv2 = relu(D.bnc2(D.conv2(D.pool1(conv1), [width // 2, height // 2])))
+    conv3 = relu(D.bnc3(D.conv3(D.pool2(conv2), [width // 4, height // 4])))
+    conv4 = relu(D.bnc4(D.conv4(D.pool3(conv3), [width // 8, height // 8])))
+    conv5 = relu(D.bnc5(D.conv5(D.pool4(conv4), [width // 16, height // 16])))
+    conv6 = D.bnc6(D.conv6(D.pool5(conv5), [width // 32, height // 32]))
+
+    w = width // 64
+    h = height // 64
+    logit = tf.reshape(conv6, [-1, w * h * 512])
+    return tf.nn.sigmoid(logit), logit
+
+
+def d_loss(reals, fakes):
+    with tf.name_scope('d_loss'):
+        real, real_ = reals
+        fake, fake_ = fakes
+        real_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=real_, labels=tf.ones_like(real))
+        fake_loss = tf.nn.sigmoid_cross_entropy_with_logits(
+            logits=fake_, labels=tf.zeros_like(fake))
+
+        cross_entropy = tf.reduce_mean(real_loss + fake_loss)
+        tf.summary.scalar('d_entropy', cross_entropy)
+    return cross_entropy
+
+
+def g_loss(fakes):
+    with tf.name_scope('g_loss'):
+        fake, fake_ = fakes
+        cross_entropy = tf.reduce_mean(
+            tf.nn.sigmoid_cross_entropy_with_logits(
+                logits=fake_, labels=tf.ones_like(fake)))
+        tf.summary.scalar('g_entropy', cross_entropy)
+    return cross_entropy
 
 
 def loss(original_image, output_image, x):

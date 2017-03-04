@@ -44,17 +44,34 @@ def train():
             original, x = tf_dataset_input.inputs(ARGS.dataset_dir,
                                                   ARGS.batch_size)
 
-        with tf.variable_scope('trainable'):
-            construction_op = model.generator(x, 512, 512, 3)
-            loss_op = model.loss(original, construction_op, x)
+        with tf.variable_scope('generator'):
+            G = model.generator(x, 512, 512, 3)
+            tf.summary.image('output', G)
+            tf.summary.image('origin', original)
+
+        with tf.variable_scope('discriminater'):
+            D = model.discriminator(original, 512, 512, 3)
+
+        with tf.variable_scope('discriminater', reuse=True):
+            D_G = model.discriminator(G, 512, 512, 3)
+
+        d_loss = model.d_loss(D, D_G)
+        g_loss = model.g_loss(D_G)
 
         var_list = tf.get_collection(
-            tf.GraphKeys.TRAINABLE_VARIABLES, scope='trainable')
-        training_op = model.training(
-            loss_op,
+            tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminater')
+        d_training = model.training(
+            d_loss,
             learning_rate=0.05,
             global_step=global_step_tensor,
             var_list=var_list)
+
+        g_training = model.training(
+            g_loss,
+            learning_rate=0.05,
+            global_step=global_step_tensor,
+            var_list=tf.get_collection(
+                tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
 
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime """
@@ -65,11 +82,10 @@ def train():
             def before_run(self, run_context):
                 self._step += 1
                 self._start_time = time.time()
-                return tf.train.SessionRunArgs(loss_op)
+                return tf.train.SessionRunArgs([d_loss, g_loss])
 
             def after_run(self, run_context, run_values):
                 duration = time.time() - self._start_time
-                loss_value = run_values.results
 
                 if self._step % 10 == 0 and ARGS.full_trace:
                     # write train
@@ -80,13 +96,13 @@ def train():
 
                 if self._step % 10 == 0:
                     examples_per_step = ARGS.batch_size / duration
-                    loss_value = run_values.results
+                    d_loss_value, g_loss_value = run_values.results
                     sec_per_batch = float(duration)
 
-                    format_str = '{}: step {}, loss = {:.2f} ({:.1f} examples/sec; {:.3f} sec/batch)'
+                    format_str = '{}: step {}, loss = {:.2f},{:.2f} ({:.1f} examples/sec; {:.3f} sec/batch)'
                     print(
                         format_str.format(datetime.now(), self._step,
-                                          loss_value, examples_per_step,
+                                          d_loss_value, g_loss_value, examples_per_step,
                                           sec_per_batch))
 
         run_options = tf.RunOptions()
@@ -98,14 +114,22 @@ def train():
                 checkpoint_dir=ARGS.train_dir,
                 hooks=[
                     tf.train.StopAtStepHook(num_steps=ARGS.max_steps),
-                    tf.train.NanTensorHook(loss_op), _LoggerHook()
+                    tf.train.NanTensorHook(d_loss),
+                    tf.train.NanTensorHook(g_loss),
+                    _LoggerHook()
                 ],
+                save_summaries_steps=1,
                 config=tf.ConfigProto(
                     log_device_placement=ARGS.log_device_placement)) as sess:
             tf.train.global_step(sess, global_step_tensor)
             while not sess.should_stop():
                 sess.run(
-                    training_op,
+                    [g_training],
+                    options=run_options,
+                    run_metadata=run_metadata)
+
+                sess.run(
+                    [d_training],
                     options=run_options,
                     run_metadata=run_metadata)
 
