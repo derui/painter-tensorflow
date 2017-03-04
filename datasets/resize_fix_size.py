@@ -1,6 +1,5 @@
 import os
 import argparse
-import numpy as np
 import cv2 as cv
 import concurrent.futures
 
@@ -15,32 +14,11 @@ argparser.add_argument('-s', '--size', dest='size', type=int)
 args = argparser.parse_args()
 
 
-def is_color_image(img):
-    """Detect color image"""
-    grayed = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
-
-    grayed_mean = np.mean(grayed)
-
-    r_mean = np.mean(img[::-1, ::-1, 2])
-    g_mean = np.mean(img[::-1, ::-1, 1])
-    b_mean = np.mean(img[::-1, ::-1, 0])
-
-    thresholds = 0.95
-    means = np.array(
-        [r_mean / grayed_mean, g_mean / grayed_mean, b_mean / grayed_mean])
-
-    return not np.alltrue(means > thresholds)
-
-
 def resize_image(path, out_dir):
 
     img = cv.imread(path, cv.IMREAD_COLOR)
     if img is None:
         raise Exception("OpenCV can not load %s" % (path))
-
-    if not is_color_image(img):
-        print('Ignore {}'.format(path))
-        return
 
     correct_size = get_corrected_size(FIXED_SIZE, img.shape[1], img.shape[0])
     img_resized = cv.resize(img, correct_size, interpolation=cv.INTER_CUBIC)
