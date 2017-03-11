@@ -10,12 +10,12 @@ def weight_variable(shape, name=None):
     # と、渡した標準偏差（デフォルト１）から、標準偏差の二倍以上の値
     # をtruncateして再度取得するようにする
     return tf.get_variable(
-        name, shape, initializer=tf.truncated_normal_initializer(stddev=0.1))
+        name, shape, initializer=tf.truncated_normal_initializer(stddev=0.02))
 
 
 def bias_variable(shape, name=None):
     return tf.get_variable(
-        name, shape, initializer=tf.constant_initializer(0.1))
+        name, shape, initializer=tf.constant_initializer(0.0))
 
 
 class Encoder(object):
@@ -23,12 +23,13 @@ class Encoder(object):
     this class that are defined convolutional layer.
     """
 
-    def __init__(self, in_ch, out_ch, patch_w, patch_h, name='encoder'):
+    def __init__(self, in_ch, out_ch, patch_w, patch_h, strides=[1,1,1,1],name='encoder'):
         self.patch_w = patch_w
         self.patch_h = patch_h
         self.in_ch = in_ch
         self.out_ch = out_ch
         self.name = name
+        self.strides = strides
 
     def __call__(self, tensor, input_shape):
         weight = weight_variable(
@@ -36,7 +37,7 @@ class Encoder(object):
             name="{}_weight".format(self.name))
         bias = bias_variable([self.out_ch], name='{}_bias'.format(self.name))
         conv = tf.nn.conv2d(
-            tensor, weight, strides=[1, 1, 1, 1], padding='SAME')
+            tensor, weight, strides=self.strides, padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
 
         return conv
@@ -124,7 +125,8 @@ class Generator(object):
         self.deconv3 = Decoder(256, 64, 5, 5, name='decoder3')
         self.deconv4 = Decoder(128, 32, 5, 5, name='decoder4')
         self.deconv5 = Decoder(64, 12, 5, 5, name='decoder5')
-        self.deconv6 = Encoder(24, 3, 5, 5, name='decoder6')
+        self.deconv6 = Encoder(24, 12, 5, 5, name='decoder6')
+        self.deconv7 = Encoder(12, 3, 1, 1, name='decoder7')
 
 
 def generator(image, width, height, channels):
@@ -165,22 +167,23 @@ def generator(image, width, height, channels):
         gen.bnd5(
             gen.deconv5(
                 tf.concat([deconv4, conv2], 3), [width // 2, height // 2])))
-    deconv6 = tanh(
+    deconv6 = relu(
         gen.bnd6(gen.deconv6(tf.concat([deconv5, conv1], 3), [width, height])))
+    deconv7 = tanh(gen.deconv7(deconv6, [width, height]))
 
-    return deconv6
+    return deconv7
 
 
 class Discriminator(object):
     """Define discriminator"""
 
     def __init__(self):
-        self.conv1 = Encoder(3, 12, 5, 5, name='encoder1')
-        self.conv2 = Encoder(12, 32, 5, 5, name='encoder2')
-        self.conv3 = Encoder(32, 64, 5, 5, name='encoder3')
-        self.conv4 = Encoder(64, 128, 5, 5, name='encoder4')
-        self.conv5 = Encoder(128, 256, 5, 5, name='encoder5')
-        self.conv6 = Encoder(256, 512, 5, 5, name='encoder6')
+        self.conv1 = Encoder(3, 12, 5, 5, name='encoder1', strides=[1,2,2,1])
+        self.conv2 = Encoder(12, 32, 5, 5, name='encoder2', strides=[1,2,2,1])
+        self.conv3 = Encoder(32, 64, 5, 5, name='encoder3', strides=[1,2,2,1])
+        self.conv4 = Encoder(64, 128, 5, 5, name='encoder4', strides=[1,2,2,1])
+        self.conv5 = Encoder(128, 256, 5, 5, name='encoder5', strides=[1,2,2,1])
+        self.conv6 = Encoder(256, 512, 5, 5, name='encoder6', strides=[1,2,2,1])
 
         self.bnc1 = op.BatchNormalization(name='bnc1')
         self.bnc2 = op.BatchNormalization(name='bnc2')
@@ -189,46 +192,42 @@ class Discriminator(object):
         self.bnc5 = op.BatchNormalization(name='bnc5')
         self.bnc6 = op.BatchNormalization(name='bnc6')
 
-        self.pool1 = MaxPool()
-        self.pool2 = MaxPool()
-        self.pool3 = MaxPool()
-        self.pool4 = MaxPool()
-        self.pool5 = MaxPool()
-
 
 class LinearEncoder(object):
     """Encoder for Linear Operation."""
 
-    def __init__(self,  name='linear_encoder'):
+    def __init__(self, name='linear_encoder'):
         self.name = name
 
-    def __call__(self, tensor, in_ch, out_ch,):
+    def __call__(self, tensor, in_ch, out_ch):
         weight = weight_variable(
-            [in_ch, out_ch],
-            name="{}_weight".format(self.name))
+            [in_ch, out_ch], name="{}_weight".format(self.name))
         bias = bias_variable([out_ch], name='{}_bias'.format(self.name))
         conv = tf.matmul(tensor, weight)
         conv = tf.nn.bias_add(conv, bias)
 
         return conv
 
-def discriminator(original, height, width, chan):
+
+def discriminator(images, height, width, chan):
     """make discriminator network"""
 
     D = Discriminator()
 
     relu = tf.nn.relu
-    conv1 = relu(D.bnc1(D.conv1(original, [width, height])))
-    conv2 = relu(D.bnc2(D.conv2(D.pool1(conv1), [width // 2, height // 2])))
-    conv3 = relu(D.bnc3(D.conv3(D.pool2(conv2), [width // 4, height // 4])))
-    conv4 = relu(D.bnc4(D.conv4(D.pool3(conv3), [width // 8, height // 8])))
-    conv5 = relu(D.bnc5(D.conv5(D.pool4(conv4), [width // 16, height // 16])))
-    conv6 = relu(D.bnc6(D.conv6(D.pool5(conv5), [width // 32, height // 32])))
+    conv1 = relu(D.bnc1(D.conv1(images, [width, height])))
+    conv2 = relu(D.bnc2(D.conv2(conv1, [width // 2, height // 2])))
+    conv3 = relu(D.bnc3(D.conv3(conv2, [width // 4, height // 4])))
+    conv4 = relu(D.bnc4(D.conv4(conv3, [width // 8, height // 8])))
+    conv5 = relu(D.bnc5(D.conv5(conv4, [width // 16, height // 16])))
+    conv6 = relu(D.bnc6(D.conv6(conv5, [width // 32, height // 32])))
 
     w = width // 64
     h = height // 64
     conv6 = tf.reshape(conv6, [-1, w * h * 512])
     logit = LinearEncoder()(conv6, w * h * 512, 1)
+    tf.summary.histogram('sigmoid', tf.nn.sigmoid(logit))
+    tf.summary.histogram('logit', logit)
     return tf.nn.sigmoid(logit), logit
 
 
@@ -236,12 +235,11 @@ def d_loss(reals, fakes):
     with tf.name_scope('d_loss'):
         real, real_ = reals
         fake, fake_ = fakes
-        real_loss = tf.nn.sigmoid_cross_entropy_with_logits(
-            logits=real_, labels=tf.ones_like(real))
-        fake_loss = tf.nn.sigmoid_cross_entropy_with_logits(
-            logits=fake_, labels=tf.zeros_like(fake))
+        real_loss = tf.reduce_mean(tf.nn.softplus(-real_))
+        fake_loss = tf.reduce_mean(tf.nn.softplus(fake_))
 
-        cross_entropy = tf.reduce_mean(real_loss + fake_loss)
+        cross_entropy = real_loss + fake_loss
+        tf.summary.scalar('real', real_loss)
         tf.summary.scalar('d_entropy', cross_entropy)
     return cross_entropy
 
@@ -249,9 +247,7 @@ def d_loss(reals, fakes):
 def g_loss(fakes):
     with tf.name_scope('g_loss'):
         fake, fake_ = fakes
-        cross_entropy = tf.reduce_mean(
-            tf.nn.sigmoid_cross_entropy_with_logits(
-                logits=fake_, labels=tf.ones_like(fake)))
+        cross_entropy = tf.reduce_mean(tf.nn.softplus(-fake_))
         tf.summary.scalar('g_entropy', cross_entropy)
     return cross_entropy
 
@@ -268,9 +264,9 @@ def loss(original_image, output_image, x):
     return cross_entropy
 
 
-def training(loss, learning_rate, global_step, var_list):
+def training(loss, learning_rate, beta1, global_step, var_list):
     with tf.name_scope('optimizer'):
-        optimizer = tf.train.AdamOptimizer(learning_rate)
+        optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta1)
         train_step = optimizer.minimize(
             loss, global_step=global_step, var_list=var_list)
 

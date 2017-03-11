@@ -12,6 +12,13 @@ import tf_dataset_input
 argparser = argparse.ArgumentParser(description='Learning painter model')
 argparser.add_argument('--batch_size', default=5, type=int, help='Batch size')
 argparser.add_argument(
+    '--learning_rate',
+    default=0.0002,
+    type=float,
+    help="learning rate[0.0002]")
+argparser.add_argument(
+    '--beta1', default=0.5, type=float, help="beta1 value for optimizer [0.5]")
+argparser.add_argument(
     '--train_dir',
     default='./log',
     type=str,
@@ -46,13 +53,15 @@ def train():
 
         with tf.variable_scope('generator'):
             G = model.generator(x, 512, 512, 3)
+            tf.summary.image('input', x)
             tf.summary.image('output', G)
             tf.summary.image('origin', original)
 
-        with tf.variable_scope('discriminater'):
+        with tf.variable_scope('discriminator'):
             D = model.discriminator(original, 512, 512, 3)
 
-        with tf.variable_scope('discriminater', reuse=True):
+        with tf.variable_scope('discriminator') as scope:
+            scope.reuse_variables()
             D_G = model.discriminator(G, 512, 512, 3)
 
         d_loss = model.d_loss(D, D_G)
@@ -60,14 +69,16 @@ def train():
 
         d_training = model.training(
             d_loss,
-            learning_rate=0.05,
+            learning_rate=ARGS.learning_rate,
+            beta1=ARGS.beta1,
             global_step=global_step_tensor,
             var_list=tf.get_collection(
-                tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminater'))
+                tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator'))
 
         g_training = model.training(
             g_loss,
-            learning_rate=0.05,
+            learning_rate=ARGS.learning_rate,
+            beta1=ARGS.beta1,
             global_step=global_step_tensor,
             var_list=tf.get_collection(
                 tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
@@ -101,8 +112,8 @@ def train():
                     format_str = '{}: step {}, loss = {:.2f},{:.2f} ({:.1f} examples/sec; {:.3f} sec/batch)'
                     print(
                         format_str.format(datetime.now(), self._step,
-                                          d_loss_value, g_loss_value, examples_per_step,
-                                          sec_per_batch))
+                                          d_loss_value, g_loss_value,
+                                          examples_per_step, sec_per_batch))
 
         run_options = tf.RunOptions()
         if ARGS.full_trace:
@@ -114,27 +125,16 @@ def train():
                 hooks=[
                     tf.train.StopAtStepHook(num_steps=ARGS.max_steps),
                     tf.train.NanTensorHook(d_loss),
-                    tf.train.NanTensorHook(g_loss),
-                    _LoggerHook()
+                    tf.train.NanTensorHook(g_loss), _LoggerHook()
                 ],
                 config=tf.ConfigProto(
                     log_device_placement=ARGS.log_device_placement)) as sess:
             tf.train.global_step(sess, global_step_tensor)
             while not sess.should_stop():
                 sess.run(
-                    [d_training],
-                    options=run_options,
-                    run_metadata=run_metadata)
-
+                    d_training, options=run_options, run_metadata=run_metadata)
                 sess.run(
-                    [g_training],
-                    options=run_options,
-                    run_metadata=run_metadata)
-
-                sess.run(
-                    [g_training],
-                    options=run_options,
-                    run_metadata=run_metadata)
+                    g_training, options=run_options, run_metadata=run_metadata)
 
 
 if __name__ == '__main__':
