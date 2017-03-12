@@ -6,29 +6,26 @@ import concurrent.futures
 
 argparser = argparse.ArgumentParser(description='Drop images are line-art ')
 argparser.add_argument(
-    'input_dir',
-    type=str,
-    help='the directory images included')
+    'input_dir', type=str, help='the directory images included')
 argparser.add_argument('-d', dest='out_dir', type=str, required=True)
 
 args = argparser.parse_args()
 
 
-def is_color_image(img):
+def is_line_art(img):
     """Detect color image"""
     grayed = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
 
-    grayed_mean = np.mean(grayed)
+    r_diff = np.abs(img[::, ::, 2] - grayed)
+    g_diff = np.abs(img[::, ::, 1] - grayed)
+    b_diff = np.abs(img[::, ::, 0] - grayed)
 
-    r_mean = np.mean(img[::-1, ::-1, 2])
-    g_mean = np.mean(img[::-1, ::-1, 1])
-    b_mean = np.mean(img[::-1, ::-1, 0])
+    thresholds = 25
+    likelihood = 0.8
+    diffs = np.array(
+        [r_diff < thresholds, g_diff < thresholds, b_diff < thresholds])
 
-    thresholds = 0.95
-    means = np.array(
-        [r_mean / grayed_mean, g_mean / grayed_mean, b_mean / grayed_mean])
-
-    return not np.alltrue(means > thresholds)
+    return np.alltrue(diffs > likelihood)
 
 
 def drop_line_art(path, out_dir):
@@ -37,7 +34,7 @@ def drop_line_art(path, out_dir):
     if img is None:
         raise Exception("OpenCV can not load %s" % (path))
 
-    if not is_color_image(img):
+    if is_line_art(img):
         print('Ignore {}'.format(path))
         return
 
