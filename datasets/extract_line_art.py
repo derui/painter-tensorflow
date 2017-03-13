@@ -31,10 +31,11 @@ def extract_edge(path, out_dir):
 
     dirname, fname = os.path.split(os.path.abspath(path))
     fname, ext = os.path.splitext(fname)
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir, 0o755, exist_ok=True)
+    d = os.path.join(out_dir, fname[0:2])
+    if not os.path.exists(d):
+        os.makedirs(d, 0o755, exist_ok=True)
 
-    writefname = "%s/%s%s" % (out_dir, fname, ext)
+    writefname = os.path.join(d, "{}{}".format(fname, ext))
 
     cv.imwrite(writefname, img_diff_not)
 

@@ -26,11 +26,13 @@ def resize_image(path, out_dir):
     img_cropped = img_resized[0:FIXED_SIZE, 0:FIXED_SIZE]
 
     dirname, fname = os.path.split(os.path.abspath(path))
+    prefix = fname[0:2]
     fname, ext = os.path.splitext(fname)
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir, 0o755, exist_ok=True)
+    d = os.path.join(out_dir, prefix)
+    if not os.path.exists(d):
+        os.makedirs(d, 0o755, exist_ok=True)
 
-    writefname = "%s/%s%s" % (out_dir, fname, ext)
+    writefname = os.path.join(d, "{}{}".format(fname, ext))
 
     cv.imwrite(writefname, img_cropped)
 

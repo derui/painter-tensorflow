@@ -96,3 +96,5 @@ FILES_STORE = "../images"
 FEED_FORMAT = 'jsonlines'
 
 HTTPERROR_ALLOWED_CODES = [403, 404]
+
+DUPEFILTER_CLASS = 'scraper.dupefilters.RFPDupeFilter'
