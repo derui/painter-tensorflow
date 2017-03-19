@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from image_scraper.items import ImageScraperItem
+from imagescraper.items import ImageScraperItem
 import scrapy
 import urllib
 

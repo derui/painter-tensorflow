@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-from image_scraper.items import ImageScraperItem
+from imagescraper.items import ImageScraperItem
 import scrapy
 import random
 
 
-class PixivIllustsSpider(scrapy.Spider):
+class PixivIllustsDirectSpider(scrapy.Spider):
     name = "pixiv_illusts"
     allowed_domains = ["www.pixiv.net"]
 

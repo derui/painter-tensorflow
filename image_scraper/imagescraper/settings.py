@@ -11,8 +11,8 @@
 
 BOT_NAME = 'image_scraper'
 
-SPIDER_MODULES = ['image_scraper.spiders']
-NEWSPIDER_MODULE = 'image_scraper.spiders'
+SPIDER_MODULES = ['imagescraper.spiders']
+NEWSPIDER_MODULE = 'imagescraper.spiders'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
@@ -54,7 +54,7 @@ RANDOMIZE_DOWNLOAD_DELAY = True
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
   'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
-  'image_scraper.middlewares.RandomizedUserAgentMiddleware': 400,
+  'imagescraper.middlewares.RandomizedUserAgentMiddleware': 400,
 }
 
 # Enable or disable extensions
@@ -66,7 +66,7 @@ DOWNLOADER_MIDDLEWARES = {
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    'image_scraper.pipelines.ImageScraperPipeline': 300,
+    'imagescraper.pipelines.ImageScraperPipeline': 300,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
@@ -97,4 +97,4 @@ FEED_FORMAT = 'jsonlines'
 
 HTTPERROR_ALLOWED_CODES = [403, 404]
 
-DUPEFILTER_CLASS = 'scraper.dupefilters.RFPDupeFilter'
+DUPEFILTER_CLASS = 'scrapy.dupefilters.RFPDupeFilter'
