@@ -60,8 +60,10 @@ class Decoder(object):
                  out_ch,
                  patch_w,
                  patch_h,
+                 batch_size,
                  padding='SAME',
                  name='decoder'):
+        self.batch_size = batch_size
         self.patch_w = patch_w
         self.patch_h = patch_h
         self.in_ch = in_ch
@@ -79,7 +81,7 @@ class Decoder(object):
         conv = tf.nn.conv2d_transpose(
             tensor,
             weight, [
-                tf.shape(tensor)[0], input_shape[0] * 2, input_shape[1] * 2,
+                self.batch_size, input_shape[0] * 2, input_shape[1] * 2,
                 self.out_ch
             ], [1, 2, 2, 1],
             padding='SAME')
@@ -89,14 +91,13 @@ class Decoder(object):
 
 
 class Generator(object):
-    def __init__(self):
+    def __init__(self, batch_size):
         self.bnc1 = op.BatchNormalization(name='bnc1')
         self.bnc2 = op.BatchNormalization(name='bnc2')
         self.bnc3 = op.BatchNormalization(name='bnc3')
         self.bnc4 = op.BatchNormalization(name='bnc4')
         self.bnc5 = op.BatchNormalization(name='bnc5')
         self.bnc6 = op.BatchNormalization(name='bnc6')
-        self.bnc7 = op.BatchNormalization(name='bnc7')
 
         self.bnd1 = op.BatchNormalization(name='bnd1')
         self.bnd2 = op.BatchNormalization(name='bnd2')
@@ -105,13 +106,12 @@ class Generator(object):
         self.bnd5 = op.BatchNormalization(name='bnd5')
         self.bnd6 = op.BatchNormalization(name='bnd6')
 
-        self.conv1 = Encoder(3, 12, 5, 5, name='encoder1')
-        self.conv2 = Encoder(12, 32, 5, 5, name='encoder2')
+        self.conv1 = Encoder(1, 24, 5, 5, name='encoder1')
+        self.conv2 = Encoder(24, 32, 5, 5, name='encoder2')
         self.conv3 = Encoder(32, 64, 5, 5, name='encoder3')
         self.conv4 = Encoder(64, 128, 5, 5, name='encoder4')
         self.conv5 = Encoder(128, 256, 5, 5, name='encoder5')
         self.conv6 = Encoder(256, 512, 5, 5, name='encoder6')
-        self.conv7 = Encoder(512, 512, 5, 5, name='encoder7')
 
         self.pool1 = MaxPool()
         self.pool2 = MaxPool()
@@ -120,20 +120,19 @@ class Generator(object):
         self.pool5 = MaxPool()
         self.pool6 = MaxPool()
 
-        self.deconv1 = Decoder(512, 256, 5, 5, name='decoder1')
-        self.deconv2 = Decoder(512, 128, 5, 5, name='decoder2')
-        self.deconv3 = Decoder(256, 64, 5, 5, name='decoder3')
-        self.deconv4 = Decoder(128, 32, 5, 5, name='decoder4')
-        self.deconv5 = Decoder(64, 12, 5, 5, name='decoder5')
-        self.deconv6 = Encoder(24, 12, 5, 5, name='decoder6')
-        self.deconv7 = Encoder(12, 3, 1, 1, name='decoder7')
+        self.deconv1 = Decoder(512, 256, 5, 5, batch_size=batch_size, name='decoder1')
+        self.deconv2 = Decoder(512, 128, 5, 5, batch_size=batch_size, name='decoder2')
+        self.deconv3 = Decoder(256, 64, 5, 5, batch_size=batch_size, name='decoder3')
+        self.deconv4 = Decoder(128, 32, 5, 5, batch_size=batch_size, name='decoder4')
+        self.deconv5 = Decoder(64, 24, 5, 5, batch_size=batch_size, name='decoder5')
+        self.deconv6 = Encoder(24, 3, 1, 1, name='decoder6')
 
 
-def generator(image, width, height, channels):
+def generator(image, width, height, channels, batch_size):
     """Make construction layer.
     """
 
-    gen = Generator()
+    gen = Generator(batch_size)
 
     relu = tf.nn.relu
     tanh = tf.nn.tanh
@@ -167,11 +166,9 @@ def generator(image, width, height, channels):
         gen.bnd5(
             gen.deconv5(
                 tf.concat([deconv4, conv2], 3), [width // 2, height // 2])))
-    deconv6 = relu(
-        gen.bnd6(gen.deconv6(tf.concat([deconv5, conv1], 3), [width, height])))
-    deconv7 = tanh(gen.deconv7(deconv6, [width, height]))
+    deconv6 = tanh(gen.deconv6(deconv5, [width, height]))
 
-    return deconv7
+    return deconv6
 
 
 class Discriminator(object):
@@ -226,28 +223,31 @@ def discriminator(images, height, width, chan):
     h = height // 64
     conv6 = tf.reshape(conv6, [-1, w * h * 512])
     logit = LinearEncoder()(conv6, w * h * 512, 1)
-    tf.summary.histogram('sigmoid', tf.nn.sigmoid(logit))
     tf.summary.histogram('logit', logit)
-    return tf.nn.sigmoid(logit), logit
+    return logit
 
 
-def d_loss(reals, fakes):
+def d_loss(real, fake):
     with tf.name_scope('d_loss'):
-        real, real_ = reals
-        fake, fake_ = fakes
-        real_loss = tf.reduce_mean(tf.nn.softplus(-real_))
-        fake_loss = tf.reduce_mean(tf.nn.softplus(fake_))
+        real_loss = tf.reduce_mean(tf.nn.softplus(-real))
+        fake_loss = tf.reduce_mean(tf.nn.softplus(fake))
 
-        cross_entropy = real_loss + fake_loss
+        loss = real_loss + fake_loss
         tf.summary.scalar('real', real_loss)
-        tf.summary.scalar('d_entropy', cross_entropy)
-    return cross_entropy
+        tf.summary.scalar('fake', fake_loss)
+        tf.summary.scalar('d_entropy', loss)
+    return loss
 
 
 def g_loss(fakes):
     with tf.name_scope('g_loss'):
         fake, fake_ = fakes
-        cross_entropy = tf.reduce_mean(tf.nn.softplus(-fake_))
+        prob_fake = tf.reduce_mean(tf.nn.softplus(-fake_))
+        not_prob_fake = tf.reduce_mean(tf.nn.softplus(fake_))
+
+        cross_entropy = (prob_fake - not_prob_fake)
+        tf.summary.scalar('fake', prob_fake)
+        tf.summary.scalar('non_fake', not_prob_fake)
         tf.summary.scalar('g_entropy', cross_entropy)
     return cross_entropy
 
@@ -255,11 +255,12 @@ def g_loss(fakes):
 def loss(original_image, output_image, x):
     with tf.name_scope('optimizer'):
 
-        sqrt = tf.square(original_image - output_image)
+        delta = 0.0001
+        sqrt = tf.abs(original_image - output_image)
         tf.summary.image('input', x)
         tf.summary.image('output', output_image)
         tf.summary.image('origin', original_image)
-        cross_entropy = tf.reduce_mean(sqrt)
+        cross_entropy = tf.multiply(delta, tf.reduce_sum(sqrt))
         tf.summary.scalar('entropy', cross_entropy)
     return cross_entropy
 
