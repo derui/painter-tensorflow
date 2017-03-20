@@ -8,7 +8,7 @@ without overhead coping data.
 
 import os
 import tensorflow as tf
-from datasets import dataset as ds
+from tools import dataset as ds
 
 
 def read_pair(filename_queue):
@@ -24,10 +24,10 @@ def read_pair(filename_queue):
 
     record_bytes = tf.decode_raw(value, tf.uint8)
 
-    result.original_image = tf.reshape(record_bytes[0:ds.IMAGE_SIZE], ds.image_shape())
+    result.original_image = tf.reshape(record_bytes[0:ds.IMAGE_SIZE], ds.original_shape())
     result.wire_frame_image = tf.reshape(
         record_bytes[ds.IMAGE_SIZE:],
-        ds.image_shape())
+        ds.line_art_shape())
 
     return result
 

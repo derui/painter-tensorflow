@@ -41,13 +41,14 @@ def get_corrected_size(fixed_size, width, height):
     """Detect the edge of an image is less than other side"""
 
     def correct_size(w, h):
-        if w >= fixed_size:
-            return (w, h)
-        else:
-            ratio = fixed_size / w
-            return (max(w * ratio, fixed_size), h * ratio)
+        ratio = fixed_size / w
+        return (max(w * ratio, fixed_size), h * ratio)
 
     size = correct_size(width, height)
+
+    if size[0] >= fixed_size and size[1] >= fixed_size:
+        return int(size[0]), int(size[1])
+
     size = correct_size(size[1], size[0])
     return (int(size[1]), int(size[0]))
 
