@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 from tensorflow.python.client import timeline
 import tensorflow as tf
-from line_painter import model
+from model import model
 
 import tf_dataset_input
 
@@ -52,17 +52,17 @@ def train():
                                                   ARGS.batch_size)
 
         with tf.variable_scope('generator'):
-            G = model.generator(x, 512, 512, 3)
-            tf.summary.image('input', x)
-            tf.summary.image('output', G)
+            G = model.generator(x, 128, 128, 3, ARGS.batch_size)
+            tf.summary.image('gen', G)
             tf.summary.image('origin', original)
+            tf.summary.image('line', x)
 
         with tf.variable_scope('discriminator'):
-            D = model.discriminator(original, 512, 512, 3)
+            D = model.discriminator(original, 128, 128, 3)
 
         with tf.variable_scope('discriminator') as scope:
             scope.reuse_variables()
-            D_G = model.discriminator(G, 512, 512, 3)
+            D_G = model.discriminator(G, 128, 128, 3)
 
         d_loss = model.d_loss(D, D_G)
         g_loss = model.g_loss(D_G)
@@ -127,6 +127,7 @@ def train():
                     tf.train.NanTensorHook(d_loss),
                     tf.train.NanTensorHook(g_loss), _LoggerHook()
                 ],
+                save_summaries_steps=1,
                 config=tf.ConfigProto(
                     log_device_placement=ARGS.log_device_placement)) as sess:
             tf.train.global_step(sess, global_step_tensor)

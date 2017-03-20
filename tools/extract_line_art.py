@@ -29,10 +29,8 @@ def extract_edge(path, out_dir):
     img_diff = cv.absdiff(img, img_dilate)
     img_diff_not = cv.bitwise_not(img_diff)
     img_diff_not = cv.cvtColor(img_diff_not, cv.COLOR_RGB2GRAY)
-    img_diff_not = cv.adaptiveThreshold(img_diff_not, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                        cv.THRESH_BINARY, 7, 8)
-
-    img_diff_not = util.resize_image(img_diff_not, FIXED_SIZE)
+    # img_diff_not = cv.adaptiveThreshold(img_diff_not, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+    #                                     cv.THRESH_BINARY, 7, 8)
 
     dirname, fname = os.path.split(os.path.abspath(path))
     fname, ext = os.path.splitext(fname)

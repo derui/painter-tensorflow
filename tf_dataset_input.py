@@ -24,10 +24,10 @@ def read_pair(filename_queue):
 
     record_bytes = tf.decode_raw(value, tf.uint8)
 
-    result.original_image = tf.reshape(record_bytes[0:ds.IMAGE_SIZE], ds.original_shape())
-    result.wire_frame_image = tf.reshape(
-        record_bytes[ds.IMAGE_SIZE:],
-        ds.line_art_shape())
+    result.original_image = tf.reshape(record_bytes[0:ds.IMAGE_SIZE],
+                                       ds.original_shape())
+    result.wire_frame_image = tf.reshape(record_bytes[ds.IMAGE_SIZE:],
+                                         ds.line_art_shape())
 
     return result
 
