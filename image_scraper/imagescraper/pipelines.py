@@ -53,7 +53,7 @@ class ImageScraperPipeline(FilesPipeline):
         if _include_ignoreable_tags(tags):
             os.unlink(path)
             raise DropItem(
-                'Item is posted with ignoreable tags {}'.format(tags))
+                'Item is posted had any ignoreable tag')
 
         if not _valid_constraint(img):
             os.unlink(path)
