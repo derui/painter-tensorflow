@@ -3,6 +3,9 @@ import argparse
 import numpy as np
 import cv2 as cv
 import concurrent.futures
+from . import util
+
+FIXED_SIZE = 128
 
 argparser = argparse.ArgumentParser(
     description='Extract edge layer of a color image')
@@ -22,12 +25,14 @@ def extract_edge(path, out_dir):
     img = cv.imread(path)
     if img is None:
         raise Exception("OpenCV can not load %s" % (path))
-    # at = cv.adaptiveThreshold(img, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-    #                           cv.THRESH_BINARY, 7, 8)
     img_dilate = cv.dilate(img, neiborhood8, iterations=1)
     img_diff = cv.absdiff(img, img_dilate)
     img_diff_not = cv.bitwise_not(img_diff)
     img_diff_not = cv.cvtColor(img_diff_not, cv.COLOR_RGB2GRAY)
+    img_diff_not = cv.adaptiveThreshold(img_diff_not, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                        cv.THRESH_BINARY, 7, 8)
+
+    img_diff_not = util.resize_image(img_diff_not, FIXED_SIZE)
 
     dirname, fname = os.path.split(os.path.abspath(path))
     fname, ext = os.path.splitext(fname)
@@ -49,6 +54,7 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
 
     print('Number of resizing images {}'.format(len(futures.items())))
 
+    num = 0
     for future in concurrent.futures.as_completed(futures):
         path = futures[future]
         try:
@@ -56,4 +62,6 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
         except Exception as exc:
             print('%s generated as exception: %s' % (path, exc))
         else:
-            print('%s is completed extraction of edge' % path)
+            num += 1
+            if num % 100 == 0:
+                print('Completed {} items'.format(num))

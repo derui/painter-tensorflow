@@ -97,6 +97,6 @@ args = argparser.parse_args()
 # the directory to output
 out_dir = '.' if args.out_dir is None else args.out_dir
 
-builder = ip.DataSetBuilder(args.original_dir, args.wire_frame_dir, out_dir)
+builder = DataSetBuilder(args.original_dir, args.wire_frame_dir, out_dir)
 
 builder.build()
