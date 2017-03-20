@@ -19,6 +19,7 @@ class SafebooruSpider(scrapy.Spider):
         for post in posts:
             file_url = 'http://' + post.xpath('@file_url').extract_first()
             tags = post.xpath('@tags').extract_first().split(' ')
+            tags = list(filter(lambda x: x != '', tags))
 
             if file_url is not None:
                 item = ImageScraperItem(
