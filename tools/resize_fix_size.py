@@ -46,6 +46,7 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
 
     print('Number of resizing images {}'.format(len(futures.items())))
 
+    num = 0
     for future in concurrent.futures.as_completed(futures):
         path = futures[future]
         try:
@@ -53,4 +54,6 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
         except Exception as exc:
             print('%s generated as exception: %s' % (path, exc))
         else:
-            print('%s is resized' % path)
+            num += 1
+            if num % 100 == 0:
+                print('Completed {} files'.format(num))

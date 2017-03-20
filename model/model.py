@@ -244,10 +244,18 @@ def g_loss(logit):
     return cross_entropy
 
 
-def training(loss, learning_rate, beta1, global_step, var_list):
-    with tf.name_scope('optimizer'):
+class Trainer(object):
+    """
+    Wrap up training function in this model.
+
+    This class should create instance per training.
+    """
+    def __init__(self):
+        self.global_step = tf.Variable(0, trainable=False, name='global_step')
+
+    def __call__(self, loss, learning_rate, beta1, var_list):
         optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta1)
         train_step = optimizer.minimize(
-            loss, global_step=global_step, var_list=var_list)
-
-    return train_step
+            loss, global_step=self.global_step, var_list=var_list)
+ 
+        return train_step
