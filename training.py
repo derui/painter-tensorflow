@@ -127,7 +127,7 @@ def train():
                     tf.train.NanTensorHook(d_loss),
                     tf.train.NanTensorHook(g_loss), _LoggerHook()
                 ],
-                save_summaries_steps=1,
+                save_checkpoint_secs=60,
                 config=tf.ConfigProto(
                     log_device_placement=ARGS.log_device_placement)) as sess:
             tf.train.global_step(sess, global_step_tensor)
