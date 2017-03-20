@@ -114,10 +114,9 @@ def train():
                 os.path.join(self.train_dir, 'model.ckpt'),
                 global_step=steps)
 
-        def save_summary(self):
+        def save_summary(self, steps):
             summary = self.sess.run(self.merged_summaries)
-            self.summary_writer.add_summary(summary,
-                                            tf.train.get_global_step())
+            self.summary_writer.add_summary(summary, steps)
 
         def _restore_if_exists(self):
             ckpt = tf.train.get_checkpoint_state(self.train_dir)
@@ -139,11 +138,14 @@ def train():
                 self.sess.run(
                     g_training, options=run_options, run_metadata=run_metadata)
 
+                self.sess.run(
+                    g_training, options=run_options, run_metadata=run_metadata)
+
                 results = sess.run(args)
                 self.after_run(results)
 
                 if i >= step_wrote_summaries:
-                    self.save_summary()
+                    self.save_summary(i)
                     step_wrote_summaries = i + self._save_summary_per_step
 
                 duration = time.time() - self._checkpoint_time
