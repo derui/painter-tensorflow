@@ -43,11 +43,12 @@ class ImageScraperPipeline(FilesPipeline):
     def item_completed(self, results, item, info):
         ok, x = results[0]
 
+        tags = item.get('tags')
+        item['tags'] = []
+
         if not ok or not x['path']:
             raise DropItem('Item contains no images')
 
-        tags = item.get('tags')
-        item['tags'] = []
         path = os.path.join(self.store.basedir, x['path'])
         img = cv.imread(path, cv.IMREAD_GRAYSCALE)
 
