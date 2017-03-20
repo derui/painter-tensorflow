@@ -244,19 +244,6 @@ def g_loss(logit):
     return cross_entropy
 
 
-def loss(original_image, output_image, x):
-    with tf.name_scope('optimizer'):
-
-        delta = 0.0001
-        sqrt = tf.abs(original_image - output_image)
-        tf.summary.image('input', x)
-        tf.summary.image('output', output_image)
-        tf.summary.image('origin', original_image)
-        cross_entropy = tf.multiply(delta, tf.reduce_sum(sqrt))
-        tf.summary.scalar('entropy', cross_entropy)
-    return cross_entropy
-
-
 def training(loss, learning_rate, beta1, global_step, var_list):
     with tf.name_scope('optimizer'):
         optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta1)

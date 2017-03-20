@@ -53,9 +53,10 @@ def train():
 
         with tf.variable_scope('generator'):
             G = model.generator(x, 128, 128, 3, ARGS.batch_size)
-            tf.summary.image('gen', G)
-            tf.summary.image('origin', original)
-            tf.summary.image('line', x)
+
+        tf.summary.image('base', x, max_outputs=10)
+        tf.summary.image('gen', G, max_outputs=10)
+        tf.summary.image('origin', original, max_outputs=10)
 
         with tf.variable_scope('discriminator'):
             D = model.discriminator(original, 128, 128, 3)
@@ -134,6 +135,8 @@ def train():
             while not sess.should_stop():
                 sess.run(
                     d_training, options=run_options, run_metadata=run_metadata)
+                sess.run(
+                    g_training, options=run_options, run_metadata=run_metadata)
                 sess.run(
                     g_training, options=run_options, run_metadata=run_metadata)
 
