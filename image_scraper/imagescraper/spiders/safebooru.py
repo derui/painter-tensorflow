@@ -17,7 +17,7 @@ class SafebooruSpider(scrapy.Spider):
     def parse(self, response):
         posts = response.xpath('//post')
         for post in posts:
-            file_url = 'http://' + post.xpath('@file_url').extract_first()
+            file_url = 'http:' + post.xpath('@file_url').extract_first()
             tags = post.xpath('@tags').extract_first().split(' ')
             tags = list(filter(lambda x: x != '', tags))
 
