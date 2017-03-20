@@ -138,9 +138,6 @@ def train():
                 self.sess.run(
                     g_training, options=run_options, run_metadata=run_metadata)
 
-                self.sess.run(
-                    g_training, options=run_options, run_metadata=run_metadata)
-
                 results = sess.run(args)
                 self.after_run(results)
 
