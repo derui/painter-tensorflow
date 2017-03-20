@@ -47,17 +47,22 @@ class ImageScraperPipeline(FilesPipeline):
             raise DropItem('Item contains no images')
 
         tags = item.get('tags')
+        item['tags'] = []
         path = os.path.join(self.store.basedir, x['path'])
         img = cv.imread(path, cv.IMREAD_GRAYSCALE)
+
+        if img is None:
+            os.unlink(path)
+            raise DropItem('Item is not readable')
+
+        if not _valid_constraint(img):
+            os.unlink(path)
+            raise DropItem('Item is illegal size by image constraint')
 
         if _include_ignoreable_tags(tags):
             os.unlink(path)
             raise DropItem(
                 'Item is posted had any ignoreable tag')
-
-        if not _valid_constraint(img):
-            os.unlink(path)
-            raise DropItem('Item is illegal size by image constraint')
 
         self._save_tags(x['path'], tags)
 
