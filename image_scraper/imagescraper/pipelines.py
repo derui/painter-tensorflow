@@ -9,9 +9,9 @@ import scrapy
 from scrapy.pipelines.files import FilesPipeline
 from scrapy.exceptions import DropItem
 import cv2 as cv
-import numpy as np
 
 ITEM_MIN_SIZES = {'w': 300, 'h': 300}
+IGNORE_TAGS = ['comic', 'monochrome']
 
 
 def _valid_constraint(img):
@@ -26,20 +26,12 @@ def _valid_constraint(img):
     return True
 
 
-def _is_line_art(img):
-    """Detect color image"""
-    grayed = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
+def _include_ignoreable_tags(tags):
+    for tag in tags:
+        if tag in IGNORE_TAGS:
+            return True
 
-    r_diff = np.abs(img[::, ::, 2] - grayed)
-    g_diff = np.abs(img[::, ::, 1] - grayed)
-    b_diff = np.abs(img[::, ::, 0] - grayed)
-
-    thresholds = 25
-    likelihood = 0.8
-    diffs = np.array(
-        [r_diff < thresholds, g_diff < thresholds, b_diff < thresholds])
-
-    return np.alltrue(diffs > likelihood)
+    return False
 
 
 class ImageScraperPipeline(FilesPipeline):
@@ -54,17 +46,33 @@ class ImageScraperPipeline(FilesPipeline):
         if not ok or not x['path']:
             raise DropItem('Item contains no images')
 
+        tags = item.get('tags')
         path = os.path.join(self.store.basedir, x['path'])
-        img = cv.imread(path, cv.IMREAD_COLOR)
-
-        if img is None or _is_line_art(img):
-            os.unlink(path)
-            raise DropItem('Item is likely as line art')
-
         img = cv.imread(path, cv.IMREAD_GRAYSCALE)
+
+        if _include_ignoreable_tags(tags):
+            os.unlink(path)
+            raise DropItem(
+                'Item is posted with ignoreable tags {}'.format(tags))
+
         if not _valid_constraint(img):
             os.unlink(path)
             raise DropItem('Item is illegal size by image constraint')
 
+        self._save_tags(x['path'], tags)
+
         item['files'] = [x['path']]
         return item
+
+    def _save_tags(self, path, tags):
+        basedir = os.path.join(self.store.basedir, 'tags')
+        filename, _ = os.path.splitext(os.path.basename(path))
+
+        if not os.path.exists(basedir):
+            os.makedirs(basedir)
+
+        tagfile = os.path.join(basedir, filename + '.tsv')
+
+        with open(tagfile, "w") as f:
+            for tag in tags:
+                f.write(tag + "\n")

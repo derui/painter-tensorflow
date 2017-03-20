@@ -18,9 +18,13 @@ class SafebooruSpider(scrapy.Spider):
         posts = response.xpath('//post')
         for post in posts:
             file_url = 'http://' + post.xpath('@file_url').extract_first()
+            tags = post.xpath('@tags').extract_first().split(' ')
 
             if file_url is not None:
                 item = ImageScraperItem(
-                    file_urls=[file_url], files=[], response=response)
+                    tags=tags,
+                    file_urls=[file_url],
+                    files=[],
+                    response=response)
 
                 yield item
