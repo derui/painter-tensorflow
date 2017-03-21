@@ -105,7 +105,7 @@ def train():
             self._save_summary_per_step = save_summary_per_step
 
         def finish_session(self):
-            self.save_summary()
+            self.save_summary(self.max_steps)
             self.save_checkpoint(self.max_steps)
 
         def save_checkpoint(self, steps):
