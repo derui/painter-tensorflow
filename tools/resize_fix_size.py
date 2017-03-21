@@ -16,12 +16,15 @@ argparser.add_argument('-s', '--size', dest='size', type=int)
 args = argparser.parse_args()
 
 
+class Ignore(Exception):
+    pass
+
 def process(path, out_dir, excludes):
 
     filename, _ = os.path.splitext(os.path.basename(path))
 
     if filename in excludes:
-        raise Exception("Ignore {}".format(path))
+        raise Ignore("Ignore {}".format(path))
 
     img = cv.imread(path, cv.IMREAD_COLOR)
     if img is None:
@@ -57,13 +60,16 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
     print('Number of resizing images {}'.format(len(futures.items())))
 
     num = 0
+    ignored = 0
     for future in concurrent.futures.as_completed(futures):
         path = futures[future]
         try:
             future.result()
         except Exception as exc:
             print('%s generated as exception: %s' % (path, exc))
+        except Ignore:
+            ignored += 1
         else:
             num += 1
             if num % 100 == 0:
-                print('Completed {} files'.format(num))
+                print('Completed {} files, ignored {}'.format(num, ignored))
