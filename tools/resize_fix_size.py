@@ -10,12 +10,18 @@ argparser.add_argument(
     type=str,
     help='the directory of image to resize and crop to fixed size')
 argparser.add_argument('-d', dest='out_dir', type=str, required=True)
+argparser.add_argument('-e', dest='excludes_dir', type=str, required=True)
 argparser.add_argument('-s', '--size', dest='size', type=int)
 
 args = argparser.parse_args()
 
 
-def process(path, out_dir):
+def process(path, out_dir, excludes):
+
+    filename, _ = os.path.splitext(os.path.basename(path))
+
+    if filename in excludes:
+        raise Exception("Ignore {}".format(path))
 
     img = cv.imread(path, cv.IMREAD_COLOR)
     if img is None:
@@ -37,12 +43,16 @@ def process(path, out_dir):
 
 FIXED_SIZE = 512 if args.size is None else args.size
 
+excludes = []
+for r, _, files in os.walk(args.excludes_dir):
+    excludes.extend(files)
+
 with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
     futures = {}
     for (r, _, files) in os.walk(args.input_dir):
         for f in files:
-            futures[executor.submit(process, os.path.join(r, f),
-                                    args.out_dir)] = f
+            futures[executor.submit(
+                process, os.path.join(r, f), args.out_dir, excludes)] = f
 
     print('Number of resizing images {}'.format(len(futures.items())))
 
