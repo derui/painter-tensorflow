@@ -102,6 +102,9 @@ class Generator(object):
         self.bnc4 = op.BatchNormalization(name='bnc4')
         self.bnc5 = op.BatchNormalization(name='bnc5')
         self.bnc6 = op.BatchNormalization(name='bnc6')
+        self.bnc7 = op.BatchNormalization(name='bnc7')
+        self.bnc8 = op.BatchNormalization(name='bnc8')
+        self.bnc9 = op.BatchNormalization(name='bnc9')
 
         self.bnd1 = op.BatchNormalization(name='bnd1')
         self.bnd2 = op.BatchNormalization(name='bnd2')
@@ -111,11 +114,14 @@ class Generator(object):
         self.bnd6 = op.BatchNormalization(name='bnd6')
 
         self.conv1 = Encoder(3, 32, 3, 3, name='encoder1')
-        self.conv2 = Encoder(32, 64, 3, 3, name='encoder2')
-        self.conv3 = Encoder(64, 128, 3, 3, name='encoder3')
-        self.conv4 = Encoder(128, 256, 3, 3, name='encoder4')
-        self.conv5 = Encoder(256, 512, 3, 3, name='encoder5')
-        self.conv6 = Encoder(512, 1024, 3, 3, name='encoder6')
+        self.conv2 = Encoder(32, 32, 1, 1, name='encoder2')
+        self.conv3 = Encoder(32, 64, 3, 3, name='encoder3')
+        self.conv4 = Encoder(64, 64, 1, 1, name='encoder4')
+        self.conv5 = Encoder(64, 128, 3, 3, name='encoder5')
+        self.conv6 = Encoder(128, 128, 1, 1, name='encoder6')
+        self.conv7 = Encoder(128, 256, 3, 3, name='encoder7')
+        self.conv8 = Encoder(256, 512, 3, 3, name='encoder8')
+        self.conv9 = Encoder(512, 1024, 3, 3, name='encoder9')
 
         self.pool1 = MaxPool()
         self.pool2 = MaxPool()
@@ -142,18 +148,21 @@ def generator(image, width, height, channels, batch_size):
     tanh = tf.nn.tanh
 
     conv1 = relu(gen.bnc1(gen.conv1(image, [width, height])))
-    conv2 = relu(gen.bnc2(gen.conv2(gen.pool1(conv1), [width // 2, height // 2])))
-    conv3 = relu(gen.bnc3(gen.conv3(gen.pool2(conv2), [width // 4, height // 4])))
-    conv4 = relu(gen.bnc4(gen.conv4(gen.pool3(conv3), [width // 8, height // 8])))
-    conv5 = relu(gen.bnc5(gen.conv5(gen.pool4(conv4), [width // 16, height // 16])))
-    conv6 = relu(gen.bnc6(gen.conv6(gen.pool5(conv5), [width // 32, height // 32])))
+    conv2 = relu(gen.bnc2(gen.conv2(conv1, [width, height])))
+    conv3 = relu(gen.bnc3(gen.conv3(gen.pool1(conv2), [width // 2, height // 2])))
+    conv4 = relu(gen.bnc4(gen.conv4(conv3, [width // 2, height // 2])))
+    conv5 = relu(gen.bnc5(gen.conv5(gen.pool2(conv4), [width // 4, height // 4])))
+    conv6 = relu(gen.bnc6(gen.conv6(conv5, [width // 4, height // 4])))
+    conv7 = relu(gen.bnc7(gen.conv7(gen.pool3(conv6), [width // 8, height // 8])))
+    conv8 = relu(gen.bnc8(gen.conv8(gen.pool4(conv7), [width // 16, height // 16])))
+    conv9 = relu(gen.bnc9(gen.conv9(gen.pool5(conv8), [width // 32, height // 32])))
 
-    deconv1 = relu(gen.bnd1(gen.deconv1(conv6, [width // 32, height // 32])))
-    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv1, conv5], 3), [width // 16, height // 16])))
-    deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv2, conv4], 3), [width // 8, height // 8])))
-    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv3, conv3], 3), [width // 4, height // 4])))
-    deconv5 = relu(gen.bnd5(gen.deconv5(tf.concat([deconv4, conv2], 3), [width // 2, height // 2])))
-    deconv6 = gen.deconv6(tf.concat([deconv5, conv1], 3), [width, height])
+    deconv1 = relu(gen.bnd1(gen.deconv1(conv9, [width // 32, height // 32])))
+    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv1, conv8], 3), [width // 16, height // 16])))
+    deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv2, conv7], 3), [width // 8, height // 8])))
+    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv3, conv6], 3), [width // 4, height // 4])))
+    deconv5 = relu(gen.bnd5(gen.deconv5(tf.concat([deconv4, conv4], 3), [width // 2, height // 2])))
+    deconv6 = gen.deconv6(tf.concat([deconv5, conv2], 3), [width, height])
 
     return deconv6
 
