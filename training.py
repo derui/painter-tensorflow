@@ -103,6 +103,7 @@ def train():
             self.save_checkpoint_per_sec = 60
             self.merged_summaries = tf.summary.merge_all()
             self._save_summary_per_step = save_summary_per_step
+            self._checkpoint_step = 0
 
         def finish_session(self):
             self.save_summary(self.max_steps)
@@ -112,15 +113,19 @@ def train():
             self.saver.save(
                 self.sess,
                 os.path.join(self.train_dir, 'model.ckpt'),
-                global_step=steps)
+                global_step=steps + self._checkpoint_step)
 
         def save_summary(self, steps):
             summary = self.sess.run(self.merged_summaries)
-            self.summary_writer.add_summary(summary, steps)
+            self.summary_writer.add_summary(summary,
+                                            steps + self._checkpoint_step)
 
         def _restore_if_exists(self):
             ckpt = tf.train.get_checkpoint_state(self.train_dir)
             if ckpt and ckpt.model_checkpoint_path:
+                path = ckpt.model_checkpoint_path.split('-')
+                if path and path[-1]:
+                    self._checkpoint_step = int(path[-1])
                 self.saver.restore(self.sess, ckpt.model_checkpoint_path)
 
         def run(self):
@@ -178,7 +183,7 @@ def train():
 
     init_op = tf.global_variables_initializer()
     with tf.Session(config=tf.ConfigProto(
-                log_device_placement=ARGS.log_device_placement)) as sess:
+            log_device_placement=ARGS.log_device_placement)) as sess:
 
         run_options = tf.RunOptions()
         if ARGS.full_trace:
