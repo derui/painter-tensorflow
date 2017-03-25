@@ -4,6 +4,7 @@
 #
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
+import numpy as np
 import os
 import scrapy
 from scrapy.pipelines.files import FilesPipeline
@@ -12,6 +13,17 @@ import cv2 as cv
 
 ITEM_MIN_SIZES = {'w': 300, 'h': 300}
 IGNORE_TAGS = ['comic', 'monochrome']
+
+
+def _inference_line_art(img):
+    neiborhood8 = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], np.uint8)
+    img_dilate = cv.dilate(img, neiborhood8, iterations=1)
+    img_diff = cv.absdiff(img, img_dilate)
+    img_diff_not = cv.bitwise_not(img_diff)
+    img_diff = cv.absdiff(img, img_diff_not)
+    accuracy = np.mean(img_diff < 10)
+
+    return accuracy > 0.95
 
 
 def _valid_constraint(img):
@@ -52,8 +64,7 @@ class ImageScraperPipeline(FilesPipeline):
 
         if _include_ignoreable_tags(tags):
             self._ignore_file(path)
-            raise DropItem(
-                'Item is posted had any ignoreable tag')
+            raise DropItem('Item is posted had any ignoreable tag')
 
         img = cv.imread(path, cv.IMREAD_GRAYSCALE)
 
@@ -64,6 +75,10 @@ class ImageScraperPipeline(FilesPipeline):
         if not _valid_constraint(img):
             self._ignore_file(path)
             raise DropItem('Item is illegal size by image constraint')
+
+        if _inference_line_art(img):
+            self._ignore_file(path)
+            raise DropItem('Item is line art probably {}'.format(path))
 
         self._save_tags(x['path'], tags)
 
