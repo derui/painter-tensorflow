@@ -32,6 +32,23 @@ def read_pair(filename_queue):
     return result
 
 
+def distorted_image(origin, wire):
+    """Construct distorted image for training"""
+
+    lr_random = tf.random_uniform([], 0, 1.0)
+    mirror_cond = tf.less(lr_random, .5)
+
+    origin = tf.where(mirror_cond, origin, tf.image.flip_left_right(origin))
+    wire = tf.where(mirror_cond, wire, tf.image.flip_left_right(wire))
+
+    ud_random = tf.random_uniform([], 0, 1.0)
+    mirror_cond = tf.less(ud_random, .5)
+    origin = tf.where(mirror_cond, origin, tf.image.flip_up_down(origin))
+    wire = tf.where(mirror_cond, wire, tf.image.flip_up_down(wire))
+
+    return origin, wire
+
+
 def _generate_pair_batch(pair, min_queue_examples, batch_size, shuffle):
     """
     Generate image pair batch. Return images of pair as (original, base).
@@ -57,7 +74,7 @@ def _generate_pair_batch(pair, min_queue_examples, batch_size, shuffle):
     return images
 
 
-def inputs(data_dir, batch_size):
+def inputs(data_dir, batch_size, distorted=True):
     filename_range = 0
     for (root, _, files) in os.walk(data_dir):
         filename_range += len(files)
@@ -71,17 +88,21 @@ def inputs(data_dir, batch_size):
     num_examples_per_epoch = 100
 
     read_input = read_pair(filename_queue)
-    reshapeed_o_image = tf.cast(read_input.original_image, tf.float32)
-    reshapeed_o_image = tf.multiply(reshapeed_o_image, 1 / 255.0)
-    reshapeed_w_image = tf.cast(read_input.wire_frame_image, tf.float32)
-    reshapeed_w_image = tf.multiply(reshapeed_w_image, 1 / 255.0)
+    reshaped_o_image = tf.cast(read_input.original_image, tf.float32)
+    reshaped_o_image = tf.multiply(reshaped_o_image, 1 / 255.0)
+    reshaped_w_image = tf.cast(read_input.wire_frame_image, tf.float32)
+    reshaped_w_image = tf.multiply(reshaped_w_image, 1 / 255.0)
+
+    if distorted:
+        reshaped_o_image, reshaped_w_image = distorted_image(reshaped_o_image,
+                                                             reshaped_w_image)
 
     min_fraction_of_examples_in_queue = 0.4
     min_queue_examples = int(num_examples_per_epoch *
                              min_fraction_of_examples_in_queue)
 
     return _generate_pair_batch(
-        [reshapeed_o_image, reshapeed_w_image],
+        [reshaped_o_image, reshaped_w_image],
         min_queue_examples,
         batch_size,
         shuffle=True)
