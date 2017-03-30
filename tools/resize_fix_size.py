@@ -65,10 +65,10 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
         path = futures[future]
         try:
             future.result()
+        except Ignore as exc:
+            ignored += 1
         except Exception as exc:
             print('%s generated as exception: %s' % (path, exc))
-        except Ignore:
-            ignored += 1
         else:
             num += 1
             if num % 100 == 0:
