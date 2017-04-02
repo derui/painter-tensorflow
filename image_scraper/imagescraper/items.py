@@ -12,4 +12,5 @@ class ImageScraperItem(scrapy.Item):
     file_urls = scrapy.Field()
     files = scrapy.Field()
     tags = scrapy.Field()
+    checksums = scrapy.Field()
     response = scrapy.Field()

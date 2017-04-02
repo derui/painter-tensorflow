@@ -8,7 +8,7 @@ class SafebooruSpider(scrapy.Spider):
     allowed_domains = ["safebooru.org"]
 
     def start_requests(self):
-        for offset in range(1000):
+        for offset in range(1500, 2500):
 
             yield self.make_requests_from_url(
                 'http://safebooru.org/index.php?page=dapi&s=post&q=index&pid={}'.
@@ -24,6 +24,7 @@ class SafebooruSpider(scrapy.Spider):
             if file_url is not None:
                 item = ImageScraperItem(
                     tags=tags,
+                    checksums=[],
                     file_urls=[file_url],
                     files=[],
                     response=response)

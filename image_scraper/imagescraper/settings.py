@@ -97,4 +97,4 @@ FEED_FORMAT = 'jsonlines'
 
 HTTPERROR_ALLOWED_CODES = [403, 404]
 
-DUPEFILTER_CLASS = 'scrapy.dupefilters.RFPDupeFilter'
+DUPEFILTER_DEBUG = True

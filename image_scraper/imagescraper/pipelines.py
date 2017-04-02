@@ -7,12 +7,12 @@
 import numpy as np
 import os
 import scrapy
-from scrapy.pipelines.files import FilesPipeline
 from scrapy.exceptions import DropItem
+from scrapy.pipelines.files import FileException, FilesPipeline
 import cv2 as cv
 
 ITEM_MIN_SIZES = {'w': 300, 'h': 300}
-IGNORE_TAGS = ['comic', 'monochrome']
+IGNORE_TAGS = ['comic', 'monochrome', 'tagme']
 
 
 def _inference_line_art(img):
@@ -46,7 +46,27 @@ def _include_ignoreable_tags(tags):
     return False
 
 
+def _write_ignore_file(basedir, path):
+    basedir = os.path.join(basedir, 'excluded')
+    filename, _ = os.path.splitext(os.path.basename(path))
+    if not os.path.exists(basedir):
+        os.makedirs(basedir)
+
+    tagfile = os.path.join(basedir, filename)
+    with open(tagfile, 'w'):
+        pass
+
 class ImageScraperPipeline(FilesPipeline):
+    def __init__(self, store_uri, download_func=None, settings=None):
+        super(ImageScraperPipeline, self).__init__(store_uri, download_func, settings)
+
+        self.checksums = {}
+
+        for root, _, files in os.walk(os.path.join(self.store.basedir, 'checksum')):
+            for fname in files:
+                with open(os.path.join(root, fname)) as f:
+                    self.checksums[fname] = f.readline()
+
     def get_media_requests(self, item, info):
         headers = item['response'].headers.copy()
         headers['referer'] = item['response'].url
@@ -55,45 +75,30 @@ class ImageScraperPipeline(FilesPipeline):
     def item_completed(self, results, item, info):
         ok, x = results[0]
 
-        tags = item.get('tags')
-        item['tags'] = []
-        path = os.path.join(self.store.basedir, x['path'])
+        item['files'] = [x['path']]
+        item['checksums'] = [x['checksum']]
 
         if not ok or not x['path']:
-            raise DropItem('Item contains no images')
+            raise FileException('Item contains no images')
 
-        if _include_ignoreable_tags(tags):
-            self._ignore_file(path)
-            raise DropItem('Item is posted had any ignoreable tag')
+        tags = item.get('tags')
+        item['tags'] = []
+        if self._ignore_tags(x['path'], tags):
+            return item
 
-        img = cv.imread(path, cv.IMREAD_GRAYSCALE)
+        if self._has_difference_checksum(x['path'], x['checksum']):
+            self._constraint_image(x['path'])
 
-        if img is None:
-            self._ignore_file(path)
-            raise DropItem('Item is not readable')
-
-        if not _valid_constraint(img):
-            self._ignore_file(path)
-            raise DropItem('Item is illegal size by image constraint')
-
-        if _inference_line_art(img):
-            self._ignore_file(path)
-            raise DropItem('Item is line art probably {}'.format(path))
-
-        self._save_tags(x['path'], tags)
-
-        item['files'] = [x['path']]
         return item
 
-    def _ignore_file(self, path):
-        basedir = os.path.join(self.store.basedir, 'excluded')
-        filename, _ = os.path.splitext(os.path.basename(path))
-        if not os.path.exists(basedir):
-            os.makedirs(basedir)
+    def _ignore_tags(self, path, tags):
 
-        tagfile = os.path.join(basedir, filename)
-        with open(tagfile, 'w'):
-            pass
+        if _include_ignoreable_tags(tags):
+            _write_ignore_file(self.store.basedir, path)
+            return True
+
+        self._save_tags(path, tags)
+        return False
 
     def _save_tags(self, path, tags):
         basedir = os.path.join(self.store.basedir, 'tags')
@@ -107,3 +112,39 @@ class ImageScraperPipeline(FilesPipeline):
         with open(tagfile, "w") as f:
             for tag in tags:
                 f.write(tag + "\n")
+
+    def _has_difference_checksum(self, path, checksum):
+        fname = os.path.basename(path)
+        checksum_file = os.path.join(self.store.basedir, 'checksum', fname)
+
+        if not os.path.exists(checksum_file):
+            self.checksums[fname] = checksum
+            with open(checksum_file, mode='w') as f:
+                f.write(checksum)
+            return True
+
+        diff = self.checksums[fname] != checksum
+
+        if diff:
+            self.checksums[fname] = checksum
+            with open(checksum_file, 'w') as f:
+                f.write(checksum)
+
+        return diff
+
+    def _constraint_image(self, path):
+
+        try:
+            img = cv.imread(os.path.join(self.store.basedir, path), cv.IMREAD_GRAYSCALE)
+
+            if img is None:
+                raise DropItem('Item is not readable')
+
+            if not _valid_constraint(img):
+                raise DropItem('Item is not valid size')
+
+            if _inference_line_art(img):
+                raise DropItem('Item is likely line art')
+        except DropItem as e:
+            _write_ignore_file(self.store.basedir, path)
+            raise e
