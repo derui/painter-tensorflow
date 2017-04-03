@@ -101,41 +101,34 @@ class Generator(object):
         self.bnc3 = op.BatchNormalization(name='bnc3')
         self.bnc4 = op.BatchNormalization(name='bnc4')
         self.bnc5 = op.BatchNormalization(name='bnc5')
-        self.bnc6 = op.BatchNormalization(name='bnc6')
-        self.bnc7 = op.BatchNormalization(name='bnc7')
-        self.bnc8 = op.BatchNormalization(name='bnc8')
-        self.bnc9 = op.BatchNormalization(name='bnc9')
 
         self.bnd1 = op.BatchNormalization(name='bnd1')
         self.bnd2 = op.BatchNormalization(name='bnd2')
         self.bnd3 = op.BatchNormalization(name='bnd3')
         self.bnd4 = op.BatchNormalization(name='bnd4')
         self.bnd5 = op.BatchNormalization(name='bnd5')
-        self.bnd6 = op.BatchNormalization(name='bnd6')
 
-        self.conv1 = Encoder(3, 32, 3, 3, name='encoder1')
-        self.conv2 = Encoder(32, 32, 1, 1, name='encoder2')
-        self.conv3 = Encoder(32, 64, 3, 3, name='encoder3')
-        self.conv4 = Encoder(64, 64, 1, 1, name='encoder4')
-        self.conv5 = Encoder(64, 128, 3, 3, name='encoder5')
-        self.conv6 = Encoder(128, 128, 1, 1, name='encoder6')
-        self.conv7 = Encoder(128, 256, 3, 3, name='encoder7')
-        self.conv8 = Encoder(256, 512, 3, 3, name='encoder8')
-        self.conv9 = Encoder(512, 1024, 3, 3, name='encoder9')
+        self.conv1 = Encoder(
+            3, 64, 4, 4, strides=[1, 2, 2, 1], name='encoder1')
+        self.conv2 = Encoder(
+            64, 128, 4, 4, strides=[1, 2, 2, 1], name='encoder2')
+        self.conv3 = Encoder(
+            128, 256, 4, 4, strides=[1, 2, 2, 1], name='encoder3')
+        self.conv4 = Encoder(
+            256, 512, 4, 4, strides=[1, 2, 2, 1], name='encoder4')
+        self.conv5 = Encoder(
+            512, 1024, 4, 4, strides=[1, 2, 2, 1], name='encoder5')
 
-        self.pool1 = MaxPool()
-        self.pool2 = MaxPool()
-        self.pool3 = MaxPool()
-        self.pool4 = MaxPool()
-        self.pool5 = MaxPool()
-        self.pool6 = MaxPool()
-
-        self.deconv1 = Decoder(1024, 512, 3, 3, batch_size=batch_size, name='decoder1')
-        self.deconv2 = Decoder(1024, 256, 3, 3, batch_size=batch_size, name='decoder2')
-        self.deconv3 = Decoder(512, 128, 3, 3, batch_size=batch_size, name='decoder3')
-        self.deconv4 = Decoder(256, 64, 3, 3, batch_size=batch_size, name='decoder4')
-        self.deconv5 = Decoder(128, 32, 3, 3, batch_size=batch_size, name='decoder5')
-        self.deconv6 = Encoder(64, 3, 1, 1, name='decoder6')
+        self.deconv1 = Decoder(
+            1024, 512, 4, 4, batch_size=batch_size, name='decoder1')
+        self.deconv2 = Decoder(
+            1024, 256, 4, 4, batch_size=batch_size, name='decoder2')
+        self.deconv3 = Decoder(
+            512, 128, 4, 4, batch_size=batch_size, name='decoder3')
+        self.deconv4 = Decoder(
+            256, 64, 4, 4, batch_size=batch_size, name='decoder4')
+        self.deconv5 = Decoder(
+            128, 3, 4, 4, batch_size=batch_size, name='decoder5')
 
 
 def generator(image, width, height, channels, batch_size):
@@ -145,95 +138,63 @@ def generator(image, width, height, channels, batch_size):
     gen = Generator(batch_size)
 
     relu = tf.nn.relu
-    tanh = tf.nn.tanh
+    def lrelu(x):
+        return tf.maximum(0.2 * x, x)
 
-    conv1 = relu(gen.bnc1(gen.conv1(image, [width, height])))
-    conv2 = relu(gen.bnc2(gen.conv2(conv1, [width, height])))
-    conv3 = relu(gen.bnc3(gen.conv3(gen.pool1(conv2), [width // 2, height // 2])))
-    conv4 = relu(gen.bnc4(gen.conv4(conv3, [width // 2, height // 2])))
-    conv5 = relu(gen.bnc5(gen.conv5(gen.pool2(conv4), [width // 4, height // 4])))
-    conv6 = relu(gen.bnc6(gen.conv6(conv5, [width // 4, height // 4])))
-    conv7 = relu(gen.bnc7(gen.conv7(gen.pool3(conv6), [width // 8, height // 8])))
-    conv8 = relu(gen.bnc8(gen.conv8(gen.pool4(conv7), [width // 16, height // 16])))
-    conv9 = relu(gen.bnc9(gen.conv9(gen.pool5(conv8), [width // 32, height // 32])))
+    conv1 = lrelu(gen.bnc1(gen.conv1(image, [width, height])))
+    conv2 = lrelu(gen.bnc2(gen.conv2(conv1, [width // 2, height // 2])))
+    conv3 = lrelu(gen.bnc3(gen.conv3(conv2, [width // 4, height // 4])))
+    conv4 = lrelu(gen.bnc4(gen.conv4(conv3, [width // 8, height // 8])))
+    conv5 = lrelu(gen.conv5(conv4, [width // 16, height // 16]))
 
-    deconv1 = relu(gen.bnd1(gen.deconv1(conv9, [width // 32, height // 32])))
-    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv1, conv8], 3), [width // 16, height // 16])))
-    deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv2, conv7], 3), [width // 8, height // 8])))
-    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv3, conv6], 3), [width // 4, height // 4])))
-    deconv5 = relu(gen.bnd5(gen.deconv5(tf.concat([deconv4, conv4], 3), [width // 2, height // 2])))
-    deconv6 = gen.deconv6(tf.concat([deconv5, conv2], 3), [width, height])
+    deconv1 = relu(gen.bnd1(gen.deconv1(conv5, [width // 32, height // 32])))
+    deconv1 = tf.nn.dropout(deconv1, 0.5)
+    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv1, conv4], 3), [width // 16, height // 16])))
+    deconv2 = tf.nn.dropout(deconv2, 0.5)
+    deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv2, conv3], 3), [width // 8, height // 8])))
+    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv3, conv2], 3), [width // 4, height // 4])))
+    deconv5 = tf.nn.tanh(gen.deconv5(tf.concat([deconv4, conv1], 3), [width // 2, height // 2]))
 
-    return deconv6
+    return deconv5
 
 
 class Discriminator(object):
     """Define discriminator"""
 
-    def __init__(self):
+    def __init__(self, in_ch):
         self.bnc1 = op.BatchNormalization(name='bnc1')
         self.bnc2 = op.BatchNormalization(name='bnc2')
         self.bnc3 = op.BatchNormalization(name='bnc3')
-        self.bnc4 = op.BatchNormalization(name='bnc4')
-        self.bnc5 = op.BatchNormalization(name='bnc5')
-        self.bnc6 = op.BatchNormalization(name='bnc6')
-        self.bnc7 = op.BatchNormalization(name='bnc7')
-        self.bnc8 = op.BatchNormalization(name='bnc8')
-        self.bnc9 = op.BatchNormalization(name='bnc9')
 
-        self.conv1 = Encoder(3, 32, 3, 3, name='encoder1', strides=[1,2,2,1])
-        self.conv2 = Encoder(32, 32, 1, 1, name='encoder2')
-        self.conv3 = Encoder(32, 64, 3, 3, name='encoder3', strides=[1,2,2,1])
-        self.conv4 = Encoder(64, 64, 1, 1, name='encoder4')
-        self.conv5 = Encoder(64, 128, 3, 3, name='encoder5', strides=[1,2,2,1])
-        self.conv6 = Encoder(128, 128, 1, 1, name='encoder6')
-        self.conv7 = Encoder(128, 256, 3, 3, name='encoder7', strides=[1,2,2,1])
-        self.conv8 = Encoder(256, 512, 3, 3, name='encoder8', strides=[1,2,2,1])
-        self.conv9 = Encoder(512, 1024, 3, 3, name='encoder9', strides=[1,2,2,1])
+        self.conv1 = Encoder(
+            in_ch, 64, 4, 4, name='encoder1', strides=[1, 2, 2, 1])
+        self.conv2 = Encoder(
+            64, 128, 4, 4, name='encoder2', strides=[1, 2, 2, 1])
+        self.conv3 = Encoder(
+            128, 256, 4, 4, name='encoder3', strides=[1, 2, 2, 1])
+        self.conv4 = Encoder(
+            256, 1, 4, 4, name='encoder4', strides=[1, 1, 1, 1])
 
-        self.bnc1 = op.BatchNormalization(name='bnc1')
-        self.bnc2 = op.BatchNormalization(name='bnc2')
-        self.bnc3 = op.BatchNormalization(name='bnc3')
-        self.bnc4 = op.BatchNormalization(name='bnc4')
-        self.bnc5 = op.BatchNormalization(name='bnc5')
-        self.bnc6 = op.BatchNormalization(name='bnc6')
+    def __call__(self, tensor):
+        _, width, height, _ = tensor.get_shape().as_list()
 
+        def lrelu(x):
+            return tf.maximum(0.2 * x, x)
 
-class LinearEncoder(object):
-    """Encoder for Linear Operation."""
+        net = lrelu((self.conv1(tensor, [width, height])))
+        net = lrelu(self.bnc1(self.conv2(net, [width // 2, height // 2])))
+        net = lrelu(self.bnc2(self.conv3(net, [width // 4, height // 4])))
+        net = lrelu((self.conv4(net, [width // 8, height // 8])))
 
-    def __init__(self, name='linear_encoder'):
-        self.name = name
-
-    def __call__(self, tensor, in_ch, out_ch):
-        weight = weight_variable(
-            [in_ch, out_ch], name="{}_weight".format(self.name))
-        bias = bias_variable([out_ch], name='{}_bias'.format(self.name))
-        conv = tf.matmul(tensor, weight)
-        conv = tf.nn.bias_add(conv, bias)
-
-        return conv
+        return net
 
 
-def discriminator(images, height, width, chan):
+def discriminator(bases, originals, height, width, chan):
     """make discriminator network"""
 
-    D = Discriminator()
+    D = Discriminator(6)
+    logit = D(tf.concat([originals, bases], 3))
 
-    relu = tf.nn.relu
-    net = relu(D.bnc1(D.conv1(images, [width, height])))
-    net = relu(D.bnc2(D.conv2(net, [width // 2, height // 2])))
-    net = relu(D.bnc3(D.conv3(net, [width // 2, height // 2])))
-    net = relu(D.bnc4(D.conv4(net, [width // 4, height // 4])))
-    net = relu(D.bnc5(D.conv5(net, [width // 4, height // 4])))
-    net = relu(D.bnc6(D.conv6(net, [width // 8, height // 8])))
-    net = relu(D.bnc7(D.conv7(net, [width // 8, height // 8])))
-    net = relu(D.bnc8(D.conv8(net, [width // 16, height // 16])))
-    net = relu(D.bnc9(D.conv9(net, [width // 32, height // 32])))
-
-    _, w, h, c = net.get_shape().as_list()
-    conv6 = tf.reshape(net, [-1, w * h * c])
-    logit = LinearEncoder()(conv6, w * h * c, 1)
     tf.summary.histogram('logit', logit)
     tf.summary.histogram('softmax', tf.nn.sigmoid(logit))
     return logit
@@ -242,13 +203,13 @@ def discriminator(images, height, width, chan):
 def d_loss(real, fake):
     with tf.name_scope('d_loss'):
         # log(D(x))
-        real_loss = tf.reduce_mean(tf.nn.softplus(-real))
+        real_loss = -tf.nn.softplus(-real)
         # log(1 - D(G(x)))
-        fake_loss = tf.reduce_mean(tf.nn.softplus(fake))
+        fake_loss = -tf.nn.softplus(fake)
 
-        loss = real_loss + fake_loss
-        tf.summary.scalar('real', real_loss)
-        tf.summary.scalar('fake', fake_loss)
+        loss = -tf.reduce_mean(real_loss + fake_loss)
+        tf.summary.histogram('real', real_loss)
+        tf.summary.histogram('fake', fake_loss)
         tf.summary.scalar('d_entropy', loss)
     return loss
 
@@ -263,10 +224,23 @@ def g_loss(logit):
         # log(D(G(x)) / (1 - D(G(x))))
         # = log(D(G(x))) - log(1 - D(G(x)))
         cross_entropy = -tf.reduce_mean(prob_fake - not_prob_fake)
-        tf.summary.histogram('fake', prob_fake)
-        tf.summary.histogram('non_fake', not_prob_fake)
         tf.summary.scalar('g_entropy', cross_entropy)
+
     return cross_entropy
+
+
+def l1_loss(original, gen):
+    with tf.name_scope('l1_loss'):
+        _, w, h, c = original.get_shape().as_list()
+        original = tf.reshape(original, [-1, w * h * c])
+        gen = tf.reshape(gen, [-1, w * h * c])
+
+        l1_distance = 100 * tf.reduce_mean(
+            tf.reduce_sum(tf.abs(original - gen), 1))
+
+        tf.summary.scalar('distance', l1_distance)
+
+    return l1_distance
 
 
 class Trainer(object):
@@ -275,6 +249,7 @@ class Trainer(object):
 
     This class should create instance per training.
     """
+
     def __init__(self):
         self.global_step = tf.Variable(0, trainable=False, name='global_step')
 
@@ -282,5 +257,5 @@ class Trainer(object):
         optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta1)
         train_step = optimizer.minimize(
             loss, global_step=self.global_step, var_list=var_list)
- 
+
         return train_step

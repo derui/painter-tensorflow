@@ -90,8 +90,10 @@ def inputs(data_dir, batch_size, distorted=True):
     read_input = read_pair(filename_queue)
     reshaped_o_image = tf.cast(read_input.original_image, tf.float32)
     reshaped_o_image = tf.multiply(reshaped_o_image, 1 / 255.0)
+    reshaped_o_image = tf.multiply(reshaped_o_image, 2) - 1.0
     reshaped_w_image = tf.cast(read_input.wire_frame_image, tf.float32)
     reshaped_w_image = tf.multiply(reshaped_w_image, 1 / 255.0)
+    reshaped_w_image = tf.multiply(reshaped_w_image, 2) - 1.0
 
     if distorted:
         reshaped_o_image, reshaped_w_image = distorted_image(reshaped_o_image,

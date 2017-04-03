@@ -44,177 +44,202 @@ ARGS = argparser.parse_args()
 
 def train():
 
-    with tf.device('/cpu:0'):
-        original, x = tf_dataset_input.inputs(ARGS.dataset_dir,
-                                              ARGS.batch_size)
+    with tf.Graph().as_default():
 
-    with tf.variable_scope('generator'):
-        G = model.generator(x, 128, 128, 3, ARGS.batch_size)
+        with tf.device('/cpu:0'):
+            original, x = tf_dataset_input.inputs(ARGS.dataset_dir,
+                                                  ARGS.batch_size)
 
-    tf.summary.image('base', x, max_outputs=10)
-    tf.summary.image('gen', G, max_outputs=10)
-    tf.summary.image('origin', original, max_outputs=10)
+        with tf.variable_scope('generator'):
+            G = model.generator(x, 128, 128, 3, ARGS.batch_size)
 
-    with tf.variable_scope('discriminator'):
-        D = model.discriminator(original, 128, 128, 3)
+        tf.summary.image('base', x, max_outputs=10)
+        tf.summary.image('gen', G, max_outputs=10)
+        tf.summary.image('origin', original, max_outputs=10)
 
-    with tf.variable_scope('discriminator') as scope:
-        scope.reuse_variables()
-        D_G = model.discriminator(G, 128, 128, 3)
+        with tf.variable_scope('discriminator'):
+            D = model.discriminator(x, original, 128, 128, 3)
 
-    d_loss = model.d_loss(D, D_G)
-    g_loss = model.g_loss(D_G)
+        with tf.variable_scope('discriminator') as scope:
+            scope.reuse_variables()
+            D_G = model.discriminator(x, G, 128, 128, 3)
 
-    with tf.name_scope('d_train'):
-        d_trainer = model.Trainer()
-        d_training = d_trainer(
-            d_loss,
-            learning_rate=ARGS.learning_rate,
-            beta1=ARGS.beta1,
-            var_list=tf.get_collection(
-                tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator'))
+        d_loss = model.d_loss(D, D_G)
+        g_loss = model.g_loss(D_G)
+        l1_loss = model.l1_loss(original, G)
 
-    with tf.name_scope('g_train'):
-        g_trainer = model.Trainer()
-        g_training = g_trainer(
-            g_loss,
-            learning_rate=ARGS.learning_rate,
-            beta1=ARGS.beta1,
-            var_list=tf.get_collection(
-                tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
+        with tf.name_scope('d_train'):
+            d_trainer = model.Trainer()
+            d_training = d_trainer(
+                d_loss,
+                learning_rate=ARGS.learning_rate,
+                beta1=ARGS.beta1,
+                var_list=tf.get_collection(
+                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator'))
 
-    class LoggingSession(object):
-        """Logs loss and runtime """
+        with tf.name_scope('g_train'):
+            g_trainer = model.Trainer()
+            g_training = g_trainer(
+                g_loss,
+                learning_rate=ARGS.learning_rate,
+                beta1=ARGS.beta1,
+                var_list=tf.get_collection(
+                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
 
-        def __init__(self,
-                     sess,
-                     train_dir,
-                     max_steps,
-                     save_summary_per_step=100,
-                     full_trace=False):
-            self._step = -1
-            self.sess = sess
-            self.saver = tf.train.Saver()
-            self.summary_writer = tf.summary.FileWriter(train_dir)
-            self.max_steps = max_steps
-            self.train_dir = train_dir
-            self.full_trace = full_trace
-            self._checkpoint_time = time.time()
-            self.save_checkpoint_per_sec = 60
-            self.merged_summaries = tf.summary.merge_all()
-            self._save_summary_per_step = save_summary_per_step
-            self._checkpoint_step = 0
+        with tf.name_scope('l1_train'):
+            l1_trainer = model.Trainer()
+            l1_training = l1_trainer(
+                l1_loss,
+                learning_rate=ARGS.learning_rate,
+                beta1=ARGS.beta1,
+                var_list=tf.get_collection(
+                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
 
-        def finish_session(self):
-            self.save_summary(self.max_steps)
-            self.save_checkpoint(self.max_steps)
+        class LoggingSession(object):
+            """Logs loss and runtime """
 
-        def save_checkpoint(self, steps):
-            self.saver.save(
-                self.sess,
-                os.path.join(self.train_dir, 'model.ckpt'),
-                global_step=steps + self._checkpoint_step)
+            def __init__(self,
+                         sess,
+                         train_dir,
+                         max_steps,
+                         save_summary_per_step=100,
+                         full_trace=False):
+                self._step = -1
+                self.sess = sess
+                self.saver = tf.train.Saver()
+                self.summary_writer = tf.summary.FileWriter(train_dir)
+                self.max_steps = max_steps
+                self.train_dir = train_dir
+                self.full_trace = full_trace
+                self._checkpoint_time = time.time()
+                self.save_checkpoint_per_sec = 60
+                self.merged_summaries = tf.summary.merge_all()
+                self._save_summary_per_step = save_summary_per_step
+                self._checkpoint_step = 0
 
-        def save_summary(self, steps):
-            summary = self.sess.run(self.merged_summaries)
-            self.summary_writer.add_summary(summary,
-                                            steps + self._checkpoint_step)
+                self.summary_writer.add_graph(sess.graph)
 
-        def _restore_if_exists(self):
-            ckpt = tf.train.get_checkpoint_state(self.train_dir)
-            if ckpt and ckpt.model_checkpoint_path:
-                path = ckpt.model_checkpoint_path.split('-')
-                if path and path[-1]:
-                    self._checkpoint_step = int(path[-1])
-                self.saver.restore(self.sess, ckpt.model_checkpoint_path)
+            def finish_session(self):
+                self.save_summary(self.max_steps)
+                self.save_checkpoint(self.max_steps)
 
-        def run(self):
-            self._restore_if_exists()
+            def save_checkpoint(self, steps):
+                self.saver.save(
+                    self.sess,
+                    os.path.join(self.train_dir, 'model.ckpt'),
+                    global_step=steps + self._checkpoint_step)
 
-            step_wrote_summaries = self._save_summary_per_step
-            self._checkpoint_time = time.time()
-            for i in range(self.max_steps):
-                args = self.before_run()
+            def save_summary(self, steps):
+                summary = self.sess.run(self.merged_summaries)
+                self.summary_writer.add_summary(summary,
+                                                steps + self._checkpoint_step)
 
-                # run training operations.
-                self.sess.run(
-                    d_training, options=run_options, run_metadata=run_metadata)
+            def _restore_if_exists(self):
+                ckpt = tf.train.get_checkpoint_state(self.train_dir)
+                if ckpt and ckpt.model_checkpoint_path:
+                    path = ckpt.model_checkpoint_path.split('-')
+                    if path and path[-1]:
+                        self._checkpoint_step = int(path[-1])
+                    self.saver.restore(self.sess, ckpt.model_checkpoint_path)
 
-                self.sess.run(
-                    g_training, options=run_options, run_metadata=run_metadata)
+            def run(self):
+                self._restore_if_exists()
 
-                results = sess.run(args)
-                self.after_run(results)
+                step_wrote_summaries = self._save_summary_per_step
+                self._checkpoint_time = time.time()
+                for i in range(self.max_steps):
+                    args = self.before_run()
 
-                if i >= step_wrote_summaries:
-                    self.save_summary(i)
-                    step_wrote_summaries = i + self._save_summary_per_step
+                    # run training operations.
+                    self.sess.run(
+                        d_training,
+                        options=run_options,
+                        run_metadata=run_metadata)
 
-                duration = time.time() - self._checkpoint_time
-                if int(duration) > self.save_checkpoint_per_sec:
-                    self._checkpoint_time = time.time()
-                    self.save_checkpoint(i)
+                    self.sess.run(
+                        g_training,
+                        options=run_options,
+                        run_metadata=run_metadata)
+                    self.sess.run(
+                        l1_training,
+                        options=run_options,
+                        run_metadata=run_metadata)
+                    
+                    results = sess.run(args)
+                    self.after_run(results)
 
-        def before_run(self):
-            self._step += 1
-            self._start_time = time.time()
-            return [d_loss, g_loss]
+                    if i >= step_wrote_summaries:
+                        self.save_summary(i)
+                        step_wrote_summaries = i + self._save_summary_per_step
 
-        def after_run(self, run_values):
-            duration = time.time() - self._start_time
+                    duration = time.time() - self._checkpoint_time
+                    if int(duration) > self.save_checkpoint_per_sec:
+                        self._checkpoint_time = time.time()
+                        self.save_checkpoint(i)
 
-            if self._step % 10 == 0 and self.full_trace:
-                # write train
-                tl = timeline.Timeline(run_metadata.step_stats)
-                ctf = tl.generate_chrome_trace_format()
-                with open('timeline.json', 'w') as f:
-                    f.write(ctf)
+            def before_run(self):
+                self._step += 1
+                self._start_time = time.time()
+                return [d_loss, g_loss]
 
-            if self._step % 10 == 0:
-                examples_per_step = ARGS.batch_size / duration
-                d_loss_value, g_loss_value = run_values
-                sec_per_batch = float(duration)
+            def after_run(self, run_values):
+                duration = time.time() - self._start_time
 
-                format_str = '{}: step {}, loss = {:.2f},{:.2f} ({:.1f} examples/sec; {:.3f} sec/batch)'
-                print(
-                    format_str.format(datetime.now(), self._step, d_loss_value,
-                                      g_loss_value, examples_per_step,
-                                      sec_per_batch))
+                if self._step % 10 == 0 and self.full_trace:
+                    # write train
+                    tl = timeline.Timeline(run_metadata.step_stats)
+                    ctf = tl.generate_chrome_trace_format()
+                    with open('timeline.json', 'w') as f:
+                        f.write(ctf)
 
-    init_op = tf.global_variables_initializer()
-    with tf.Session(config=tf.ConfigProto(
-            log_device_placement=ARGS.log_device_placement)) as sess:
+                if self._step % 10 == 0:
+                    examples_per_step = ARGS.batch_size / duration
+                    d_loss_value, g_loss_value = run_values
+                    sec_per_batch = float(duration)
 
-        run_options = tf.RunOptions()
-        if ARGS.full_trace:
-            run_options.trace_level = tf.RunOptions.FULL_TRACE
-        run_metadata = tf.RunMetadata()
+                    format_str = '{}: step {}, loss = {:.2f},{:.2f} ({:.1f} examples/sec; {:.3f} sec/batch)'
+                    print(
+                        format_str.format(datetime.now(), self._step,
+                                          d_loss_value, g_loss_value,
+                                          examples_per_step, sec_per_batch))
 
-        sess.run(init_op)
-
-        coord = tf.train.Coordinator()
-        try:
-            threads = []
-            for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
-                threads.extend(
-                    qr.create_threads(
-                        sess, coord=coord, daemon=True, start=True))
-
-            logging_session = LoggingSession(
-                sess,
-                ARGS.train_dir,
-                ARGS.max_steps,
-                full_trace=ARGS.full_trace)
-
-            logging_session.run()
-
-            logging_session.finish_session()
-
-        except Exception as e:
-            coord.request_stop(e)
-
-        coord.request_stop()
-        coord.join(threads, stop_grace_period_secs=10)
+        init_op = tf.global_variables_initializer()
+        with tf.Session(config=tf.ConfigProto(
+                gpu_options=tf.GPUOptions(
+                    per_process_gpu_memory_fraction=0.85
+                ),
+                log_device_placement=ARGS.log_device_placement)) as sess:
+    
+            run_options = tf.RunOptions()
+            if ARGS.full_trace:
+                run_options.trace_level = tf.RunOptions.FULL_TRACE
+            run_metadata = tf.RunMetadata()
+    
+            sess.run(init_op)
+    
+            coord = tf.train.Coordinator()
+            try:
+                threads = []
+                for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
+                    threads.extend(
+                        qr.create_threads(
+                            sess, coord=coord, daemon=True, start=True))
+    
+                logging_session = LoggingSession(
+                    sess,
+                    ARGS.train_dir,
+                    ARGS.max_steps,
+                    full_trace=ARGS.full_trace)
+    
+                logging_session.run()
+    
+                logging_session.finish_session()
+    
+            except Exception as e:
+                coord.request_stop(e)
+    
+            coord.request_stop()
+            coord.join(threads, stop_grace_period_secs=10)
 
 
 if __name__ == '__main__':

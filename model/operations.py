@@ -2,6 +2,25 @@
 import tensorflow as tf
 
 
+class LinearEncoder(object):
+    """Encoder for Linear Operation."""
+
+    def __init__(self, name='linear_encoder'):
+        self.name = name
+
+    def __call__(self, tensor, in_ch, out_ch):
+        weight = tf.get_variable(
+            "{}_weight".format(self.name)[in_ch, out_ch],
+            initializer=tf.random_uniform_initializer(stddev=0.02))
+        bias = tf.get_variable(
+            '{}_bias'.format(self.name), [out_ch],
+            initializer=tf.constant_initializer(0.0))
+        conv = tf.matmul(tensor, weight)
+        conv = tf.nn.bias_add(conv, bias)
+
+        return conv
+
+
 class BatchNormalization(object):
     def __init__(self, epsilon=0.0005, momentam=0.9, name="batch_norm"):
         self.epsilon = epsilon
@@ -20,9 +39,6 @@ class BatchNormalization(object):
                 initializer=tf.random_normal_initializer(1.0, 0.1))
 
             y, _, _ = tf.nn.fused_batch_norm(
-                x,
-                self.gamma,
-                self.beta,
-                epsilon=self.epsilon)
+                x, self.gamma, self.beta, epsilon=self.epsilon)
 
         return y
