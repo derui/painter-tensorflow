@@ -19,6 +19,7 @@ args = argparser.parse_args()
 class Ignore(Exception):
     pass
 
+
 def process(path, out_dir, excludes):
 
     filename, _ = os.path.splitext(os.path.basename(path))
@@ -50,7 +51,7 @@ excludes = []
 for r, _, files in os.walk(args.excludes_dir):
     excludes.extend(files)
 
-with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
     futures = {}
     for (r, _, files) in os.walk(args.input_dir):
         for f in files:

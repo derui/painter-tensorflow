@@ -1,12 +1,54 @@
 # coding: utf-8
 
 import cv2 as cv
+import os
+
+
+# Return a new function to read files and read with given function
+# almost sequentially
+def sequential_read_dir(directory, queue, read_func, excludes=[]):
+    all_files = {}
+
+    for root, _, files in os.walk(directory):
+        all_files.update({
+            os.stat(os.path.join(root, f)).st_ino: os.path.join(root, f)
+            for f in files
+        })
+
+    keys = sorted(all_files.keys())
+
+    def process():
+        for key in keys:
+            if all_files[key] in excludes:
+                continue
+            queue.put((read_func(all_files[key]), all_files[key]))
+
+        print('Done read all files')
+
+    return process
+
+
+# Return a new function to write data that are from queue via given function
+def queue_writer(directory, queue, write_func):
+    def process():
+        while True:
+            item = queue.get()
+            queue.task_done()
+
+            write_func(item, directory)
+
+    return process
 
 
 def resize_image(img, fixed_size):
 
     correct_size = get_corrected_size(fixed_size, img.shape[1], img.shape[0])
-    img_resized = cv.resize(img, correct_size, interpolation=cv.INTER_CUBIC)
+
+    if correct_size < img.shape:
+        img_resized = cv.resize(img, correct_size, interpolation=cv.INTER_AREA)
+    else:
+        img_resized = cv.resize(
+            img, correct_size, interpolation=cv.INTER_CUBIC)
 
     img_cropped = img_resized[0:fixed_size, 0:fixed_size]
     return img_cropped

@@ -41,11 +41,6 @@ def distorted_image(origin, wire):
     origin = tf.where(mirror_cond, origin, tf.image.flip_left_right(origin))
     wire = tf.where(mirror_cond, wire, tf.image.flip_left_right(wire))
 
-    ud_random = tf.random_uniform([], 0, 1.0)
-    mirror_cond = tf.less(ud_random, .5)
-    origin = tf.where(mirror_cond, origin, tf.image.flip_up_down(origin))
-    wire = tf.where(mirror_cond, wire, tf.image.flip_up_down(wire))
-
     return origin, wire
 
 
@@ -54,7 +49,7 @@ def _generate_pair_batch(pair, min_queue_examples, batch_size, shuffle):
     Generate image pair batch. Return images of pair as (original, base).
     """
 
-    num_preprocess_threads = 16
+    num_preprocess_threads = 1
 
     if shuffle:
         images = tf.train.shuffle_batch(
@@ -80,8 +75,8 @@ def inputs(data_dir, batch_size, distorted=True):
         filename_range += len(files)
 
     filenames = [
-        os.path.join(data_dir, 'image_pack_{}.bin'.format(i))
-        for i in range(1, filename_range + 1)
+        os.path.join(data_dir, 'image_pack_{}.bin'.format(i + 1))
+        for i in range(0, filename_range)
     ]
 
     filename_queue = tf.train.string_input_producer(filenames)
@@ -98,6 +93,7 @@ def inputs(data_dir, batch_size, distorted=True):
     if distorted:
         reshaped_o_image, reshaped_w_image = distorted_image(reshaped_o_image,
                                                              reshaped_w_image)
+    tf.train.MonitoredTrainingSession
 
     min_fraction_of_examples_in_queue = 0.4
     min_queue_examples = int(num_examples_per_epoch *

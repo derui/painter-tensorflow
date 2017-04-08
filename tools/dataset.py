@@ -3,8 +3,6 @@
 import os
 import numpy as np
 import cv2
-import logging
-import random
 
 IMAGE_SIDE = 128
 IMAGE_SIZE = IMAGE_SIDE * IMAGE_SIDE * 3
@@ -68,4 +66,4 @@ class ImagePack(object):
         array = np.frombuffer(self.pack_file.read(RECORD_SIZE), dtype=np.uint8)
         array = array.reshape([2, IMAGE_SIZE])
 
-        return array
+        return {'original': array[0], 'line_art': array[1]}
