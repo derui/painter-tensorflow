@@ -2,11 +2,12 @@
 
 import cv2 as cv
 import os
+import queue
 
 
-# Return a new function to read files and read with given function
-# almost sequentially
-def sequential_read_dir(directory, queue, read_func, excludes=[]):
+# Return a new priority queue contains pathes prioritized with inode
+def make_sequential_queue(directory, excludes=[]):
+    q = queue.PriorityQueue()
     all_files = {}
 
     for root, _, files in os.walk(directory):
@@ -16,26 +17,41 @@ def sequential_read_dir(directory, queue, read_func, excludes=[]):
         })
 
     keys = sorted(all_files.keys())
+    for key in keys:
+        f = all_files[key]
+        n = os.path.splitext(os.path.basename(f))
+        if n in excludes:
+            continue
+        q.put((key, f))
 
+    return q
+
+
+# Return a new function to read with given function and path read from queue
+def sequential_read_dir(rq, wq, read_func):
     def process():
-        for key in keys:
-            if all_files[key] in excludes:
-                continue
-            queue.put((read_func(all_files[key]), all_files[key]))
+        while True:
+            _, path = rq.get()
 
-        print('Done read all files')
+            try:
+                image = read_func(path)
+                wq.put((image, path))
+            except Exception as e:
+                print('Exception raised in reader thread: {}'.format(e))
+
+            rq.task_done()
 
     return process
 
 
 # Return a new function to write data that are from queue via given function
-def queue_writer(directory, queue, write_func):
+def queue_writer(directory, wq, write_func):
     def process():
         while True:
-            item = queue.get()
-            queue.task_done()
+            item = wq.get()
 
             write_func(item, directory)
+            wq.task_done()
 
     return process
 

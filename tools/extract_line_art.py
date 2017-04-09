@@ -14,12 +14,12 @@ argparser.add_argument(
     help='the directory included images to extract edge layer')
 argparser.add_argument('-d', dest='out_dir', type=str, required=True)
 argparser.add_argument('-s', '--size', dest='size', type=int)
-argparser.add_argument('-e', dest='excludes_dir', type=str, required=True)
+argparser.add_argument('-e', dest='excludes_dir', type=str)
 
 args = argparser.parse_args()
 
 neiborhood8 = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], np.uint8)
-FIXED_SIZE = 512 if args.size is None else args.size
+FIXED_SIZE = args.size
 
 
 class Ignore(Exception):
@@ -31,18 +31,18 @@ def extract_edge(rq, wq):
     img, path = rq.get()
     rq.task_done()
 
+    if FIXED_SIZE is not None:
+        img = util.resize_image(img, FIXED_SIZE)
     img_dilate = cv.dilate(img, neiborhood8, iterations=1)
     img_diff = cv.absdiff(img, img_dilate)
     img_diff_not = cv.bitwise_not(img_diff)
     img_diff_not = cv.cvtColor(img_diff_not, cv.COLOR_RGB2GRAY)
     img_diff_not = cv.adaptiveThreshold(img_diff_not, 255,
                                         cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                        cv.THRESH_BINARY, 5, 8)
+                                        cv.THRESH_BINARY, 7, 8)
     img_diff_not = cv.cvtColor(img_diff_not, cv.COLOR_GRAY2RGB)
 
-    img = util.resize_image(img_diff_not, FIXED_SIZE)
-
-    wq.put((img, path))
+    wq.put((img_diff_not, path))
 
 
 def read_image(path):
@@ -67,28 +67,40 @@ def write_image(info, out_dir):
 
 
 excludes = []
-for r, _, files in os.walk(args.excludes_dir):
-    excludes.extend(files)
+if args.excludes_dir is not None:
+    for r, _, files in os.walk(args.excludes_dir):
+        excludes.extend(files)
 
-image_queue = queue.LifoQueue(100)
+path_queue = util.make_sequential_queue(args.input_dir, excludes)
+
+image_queue = queue.LifoQueue(300)
 write_queue = queue.LifoQueue(300)
 
-queue_reading_process = util.sequential_read_dir(
-    args.input_dir, image_queue, read_image, excludes=excludes)
-queue_writing_process = util.queue_writer(args.out_dir, write_queue,
-                                          write_image)
-
-readerExecutor = concurrent.futures.ThreadPoolExecutor(2)
-read_thread = readerExecutor.submit(queue_reading_process)
-
-writerExecutor = concurrent.futures.ThreadPoolExecutor(4)
-write_thread = [
-    util.queue_writer(args.out_dir, write_queue, write_image),
-    util.queue_writer(args.out_dir, write_queue, write_image),
-    util.queue_writer(args.out_dir, write_queue, write_image)
+readerExecutor = concurrent.futures.ThreadPoolExecutor(8)
+read_thread = [
+    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image)),
+    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image)),
+    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image)),
+    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image)),
+    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image)),
+    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image)),
+    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image)),
+    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image))
 ]
 
-executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
+writerExecutor = concurrent.futures.ThreadPoolExecutor(8)
+write_thread = [
+    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image)),
+    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image)),
+    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image)),
+    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image)),
+    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image)),
+    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image)),
+    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image)),
+    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image))
+]
+
+executor = concurrent.futures.ThreadPoolExecutor(max_workers=16)
 
 
 def reader_process():
@@ -96,7 +108,7 @@ def reader_process():
 
     while True:
         futures = []
-        for _ in range(6):
+        for _ in range(14):
             futures.append(
                 executor.submit(extract_edge, image_queue, write_queue))
 
@@ -115,7 +127,8 @@ def reader_process():
 
 executor.submit(reader_process)
 
-read_thread.result()
+path_queue.join()
+print('Finish to read all pathes from queue')
 
 executor.shutdown()
 
