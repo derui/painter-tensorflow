@@ -16,10 +16,9 @@ def make_sequential_queue(directory, excludes=[]):
             for f in files
         })
 
-    keys = sorted(all_files.keys())
-    for key in keys:
+    for key in all_files.keys():
         f = all_files[key]
-        n = os.path.splitext(os.path.basename(f))
+        n, _ = os.path.splitext(os.path.basename(f))
         if n in excludes:
             continue
         q.put((key, f))

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import os
 import numpy as np
 import cv2
 
@@ -26,29 +25,15 @@ class ImagePack(object):
     def __init__(self, pack):
         self.pack_file = pack
 
-    def pack(self, original_file, line_art_file):
+    def pack(self, original_image, line_art_image):
         """
         Write binary data as image pair into target.
 
         An order of pair of images is (original, line_art).
         """
 
-        if not os.path.exists(original_file):
-            raise Exception(
-                'not found original file: {}'.format(original_file))
-
-        if not os.path.exists(line_art_file):
-            raise Exception(
-                'not found wire frame file: {}'.format(line_art_file))
-
-        original_image = cv2.imread(original_file, cv2.IMREAD_COLOR)
         original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
-        line_art_image = cv2.imread(line_art_file, cv2.IMREAD_COLOR)
         line_art_image = cv2.cvtColor(line_art_image, cv2.COLOR_BGR2RGB)
-
-        if original_image is None or line_art_image is None:
-            raise Exception('can not read image {},{}'.format(original_file,
-                                                              line_art_file))
 
         ndary = np.concatenate(
             (original_image.reshape([-1]), line_art_image.reshape([-1])))

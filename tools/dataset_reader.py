@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import argparse
 from . import dataset as ip
 import numpy as np
-import logging
 import os
 import random
 

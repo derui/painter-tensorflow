@@ -4,6 +4,7 @@ import argparse
 from . import dataset as ip
 import logging
 import os
+import cv2
 
 
 class DataSetBuilder(object):
@@ -17,7 +18,7 @@ class DataSetBuilder(object):
     - Second of each data pair is wire-framed image.
     - all images are flattened with numpy's reshape method.
       - applied np.reshape(512*512*3), so aligns of data is RGBRGBRGB...
-    - A data pack contains 1000 image pairs.
+    - A data pack contains 5000 image pairs.
 
     DataSetBuilder requires directory structure of original and wire-framed images,
     one is what each directories should have same structure,
@@ -25,7 +26,7 @@ class DataSetBuilder(object):
 
     """
 
-    def __init__(self, original_dir, wire_frame_dir, out_dir, pack_size=1000):
+    def __init__(self, original_dir, wire_frame_dir, out_dir, pack_size=5000):
         assert pack_size > 0
 
         self.original_dir = original_dir
@@ -47,11 +48,19 @@ class DataSetBuilder(object):
         if not os.path.exists(self.out_dir):
             os.mkdir(self.out_dir)
 
-        target_files = []
+        target_files = set()
         for (root, _, files) in os.walk(self.original_dir):
             for f in files:
                 _, prefix = os.path.split(root)
-                target_files.append((prefix, f))
+                target_files.add(os.path.join(prefix, f))
+
+        diff_files = set()
+        for (root, _, files) in os.walk(self.wire_frame_dir):
+            for f in files:
+                _, prefix = os.path.split(root)
+                diff_files.add(os.path.join(prefix, f))
+
+        target_files = list(target_files.intersection(diff_files))
 
         file_num = len(target_files)
         (all_pack_num, reminder_pack) = divmod(file_num, self.pack_size)
@@ -65,6 +74,27 @@ class DataSetBuilder(object):
         if reminder_pack != 0:
             self.__build_pack(all_pack_num + 1, target_files[-reminder_pack:])
 
+    def __read_images(self, f):
+        original_file = os.path.join(self.original_dir, f)
+        line_art_file = os.path.join(self.wire_frame_dir, f)
+
+        if not os.path.exists(original_file):
+            raise Exception(
+                'not found original file: {}'.format(original_file))
+
+        if not os.path.exists(line_art_file):
+            raise Exception(
+                'not found wire frame file: {}'.format(line_art_file))
+
+        original_image = cv2.imread(original_file, cv2.IMREAD_COLOR)
+        line_art_image = cv2.imread(line_art_file, cv2.IMREAD_COLOR)
+
+        if original_image is None or line_art_image is None:
+            raise Exception('can not read image {},{}'.format(original_file,
+                                                              line_art_file))
+
+        return original_image, line_art_image
+
     def __build_pack(self, pack_num, files):
         logging.debug('Start packing no:{}'.format(pack_num))
         output = open(
@@ -73,10 +103,10 @@ class DataSetBuilder(object):
             mode='wb')
 
         image_pack = ip.ImagePack(output)
-        for prefix, f in files:
-            origin = os.path.join(self.original_dir, prefix, f)
-            wf = os.path.join(self.wire_frame_dir, prefix, f)
-            image_pack.pack(origin, wf)
+        images = [self.__read_images(f) for f in files]
+
+        for (origin, la) in images:
+            image_pack.pack(origin, la)
 
         output.close()
         logging.debug('Finish packing no:{}'.format(pack_num))
@@ -94,6 +124,7 @@ argparser.add_argument('-d', dest='out_dir', type=str)
 
 args = argparser.parse_args()
 
+logging.basicConfig(level=logging.DEBUG)
 # the directory to output
 out_dir = '.' if args.out_dir is None else args.out_dir
 

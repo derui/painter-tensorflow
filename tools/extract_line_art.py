@@ -18,7 +18,11 @@ argparser.add_argument('-e', dest='excludes_dir', type=str)
 
 args = argparser.parse_args()
 
-neiborhood8 = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], np.uint8)
+neiborhood8 = np.array([
+    [1, 1, 1],
+    [1, 1, 1],
+    [1, 1, 1]
+], np.uint8)
 FIXED_SIZE = args.size
 
 
@@ -31,15 +35,24 @@ def extract_edge(rq, wq):
     img, path = rq.get()
     rq.task_done()
 
-    if FIXED_SIZE is not None:
-        img = util.resize_image(img, FIXED_SIZE)
     img_dilate = cv.dilate(img, neiborhood8, iterations=1)
     img_diff = cv.absdiff(img, img_dilate)
     img_diff_not = cv.bitwise_not(img_diff)
     img_diff_not = cv.cvtColor(img_diff_not, cv.COLOR_RGB2GRAY)
-    img_diff_not = cv.adaptiveThreshold(img_diff_not, 255,
-                                        cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                        cv.THRESH_BINARY, 7, 8)
+
+    if FIXED_SIZE is not None:
+        img_diff_not = cv.adaptiveThreshold(img_diff_not, 255,
+                                            cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                            cv.THRESH_BINARY, 7, 8)
+        img_diff_not = util.resize_image(img_diff_not, FIXED_SIZE)
+        img_dilate = cv.erode(img_diff_not, neiborhood8, iterations=1)
+        img_dilate = cv.dilate(img_diff_not, neiborhood8, iterations=1)
+        img_diff = cv.absdiff(img_diff_not, img_dilate)
+        img_diff_not = cv.bitwise_not(img_diff)
+        # img_diff_not = cv.adaptiveThreshold(img_diff_not, 255,
+        #                                 cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+        #                                 cv.THRESH_BINARY, 7, 8)
+
     img_diff_not = cv.cvtColor(img_diff_not, cv.COLOR_GRAY2RGB)
 
     wq.put((img_diff_not, path))
@@ -128,8 +141,7 @@ def reader_process():
 executor.submit(reader_process)
 
 path_queue.join()
+image_queue.join()
 print('Finish to read all pathes from queue')
-
-executor.shutdown()
 
 write_queue.join()
