@@ -8,7 +8,7 @@ class SafebooruSpider(scrapy.Spider):
     allowed_domains = ["safebooru.org"]
 
     def start_requests(self):
-        for offset in range(1500, 2500):
+        for offset in range(1, 3000):
 
             yield self.make_requests_from_url(
                 'http://safebooru.org/index.php?page=dapi&s=post&q=index&pid={}'.
