@@ -142,7 +142,9 @@ def generator(image, width, height, channels, batch_size):
     conv5 = lrelu(gen.conv5(conv4, [width // 16, height // 16]))
 
     deconv1 = relu(gen.bnd1(gen.deconv1(conv5, [width // 32, height // 32])))
+    deconv1 = tf.nn.dropout(deconv1, keep_prob=0.5)
     deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv1, conv4], 3), [width // 16, height // 16])))
+    deconv2 = tf.nn.dropout(deconv2, keep_prob=0.5)
     deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv2, conv3], 3), [width // 8, height // 8])))
     deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv3, conv2], 3), [width // 4, height // 4])))
     deconv5 = tf.nn.tanh(gen.deconv5(tf.concat([deconv4, conv1], 3), [width // 2, height // 2]))
@@ -217,8 +219,7 @@ def l1_loss(original, gen):
         original = tf.reshape(original, [-1, w * h * c])
         gen = tf.reshape(gen, [-1, w * h * c])
 
-        l1_distance = 100 * tf.reduce_mean(
-            tf.reduce_sum(tf.abs(original - gen), 1))
+        l1_distance = tf.reduce_mean(tf.reduce_sum(tf.abs(original - gen), 1))
 
         tf.summary.scalar('distance', l1_distance)
 
@@ -237,6 +238,23 @@ class Trainer(object):
 
     def __call__(self, loss, learning_rate, var_list):
         optimizer = tf.train.RMSPropOptimizer(learning_rate)
+        train_step = optimizer.minimize(
+            loss, global_step=self.global_step, var_list=var_list)
+
+        return train_step
+
+class AdamTrainer(object):
+    """
+    Wrap up training function in this model.
+
+    This class should create instance per training.
+    """
+
+    def __init__(self):
+        self.global_step = tf.Variable(0, trainable=False, name='global_step')
+
+    def __call__(self, loss, learning_rate, beta1, var_list):
+        optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta1)
         train_step = optimizer.minimize(
             loss, global_step=self.global_step, var_list=var_list)
 

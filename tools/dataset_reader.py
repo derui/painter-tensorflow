@@ -32,6 +32,8 @@ class DataSetReader(object):
         for root, _, files in os.walk(dataset_dir):
             self.__datasets.extend([(os.path.join(root, f), os.stat(os.path.join(root,f))) for f in files])
 
+        self.__files = [open(f, "rb") for (f, _) in self.__datasets]
+
     def inputs(self, batch_size):
 
         images = np.zeros([2, batch_size, ip.IMAGE_SIZE], np.float32)
@@ -39,12 +41,12 @@ class DataSetReader(object):
             findex = random.randrange(len(self.__datasets))
             f, stat = self.__datasets[findex]
             rindex = random.randrange(stat.st_size / ip.RECORD_SIZE)
+            fh = self.__files[findex]
 
-            with open(f, "rb") as fh:
-                pack = ip.ImagePack(fh)
-                packed = pack.unpack(rindex)
-                images[0, i] = self._preprocess(packed['original'])
-                images[1, i] = self._preprocess(packed['line_art'])
+            pack = ip.ImagePack(fh)
+            packed = pack.unpack(rindex)
+            images[0, i] = self._preprocess(packed['original'])
+            images[1, i] = self._preprocess(packed['line_art'])
 
         return np.reshape(images, [2, batch_size, ip.IMAGE_SIDE, ip.IMAGE_SIDE, 3])
 

@@ -16,6 +16,8 @@ argparser.add_argument('--batch_size', default=5, type=int, help='Batch size')
 argparser.add_argument(
     '--critic_step', default=5, type=int, help='Critic steps')
 argparser.add_argument(
+    '--beta1', default=0.5, type=float, help="beta1 value for optimizer [0.5]")
+argparser.add_argument(
     '--learning_rate',
     default=0.00005,
     type=float,
@@ -71,6 +73,7 @@ def train():
 
         c_loss = model.c_loss(C, C_G)
         g_loss = model.g_loss(C_G)
+        l1_loss = model.l1_loss(original, G)
 
         with tf.name_scope('c_train'):
             c_trainer = model.Trainer()
@@ -91,6 +94,15 @@ def train():
             g_training = g_trainer(
                 g_loss,
                 learning_rate=ARGS.learning_rate,
+                var_list=tf.get_collection(
+                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
+
+        with tf.name_scope('l1_train'):
+            l1_trainer = model.AdamTrainer()
+            l1_training = l1_trainer(
+                l1_loss,
+                learning_rate=ARGS.learning_rate,
+                beta1=ARGS.beta1,
                 var_list=tf.get_collection(
                     tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
 
@@ -166,7 +178,7 @@ def train():
 
                     if i % self.critic_step == 0:
                         self.sess.run(
-                            g_training,
+                            [g_training, l1_training],
                             feed_dict={original: images[0],
                                        x: images[1]},
                             options=run_options,
