@@ -2,9 +2,6 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: |
   A template to create stack for tensorflow with GPU
 Parameters:
-  FleetRoleArn:
-    Type: String
-    Description: The role ARN for spot fleet
   Bucket:
     Type: String
     Description: Bucket name
@@ -176,19 +173,54 @@ Resources:
       InstanceId: !Ref Bastion
       Domain: vpc
 
+  FleetRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "spotfleet.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        -
+          PolicyName: !Sub
+            - ${Service}-fleet-role
+            - { Service: !Ref ServiceName}
+
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "ec2:DescribeImages"
+                  - "ec2:DescribeSubnets"
+                  - "ec2:RequestSpotInstances"
+                  - "ec2:TerminateInstances"
+                  - "ec2:DescribeInstanceStatus"
+                  - "iam:PassRole"
+                Resource:
+                  - "*"
+
   # A spot fleet for GPU Instance
   GPUSpotFleet:
     Type: 'AWS::EC2::SpotFleet'
     Properties:
       SpotFleetRequestConfigData:
-        IamFleetRole: !Ref FleetRoleArn
+        IamFleetRole: !GetAtt FleetRole.Arn
         TargetCapacity: 8
-        SpotPrice: '0.1'
+        SpotPrice: '0.2'
         LaunchSpecifications:
           - EbsOptimized: 'false'
             KeyName: !Ref KeyName
             InstanceType: p2.xlarge
-            ImageId: ami-7c803d1c
+            ImageId: ami-a69e15c6
             SecurityGroups:
               - GroupId: !GetAtt InstanceSecurityGroup.GroupId
             SubnetId: !Ref PrivateSubnet

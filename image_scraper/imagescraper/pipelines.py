@@ -61,10 +61,10 @@ class ImageScraperPipeline(FilesPipeline):
     def __init__(self, store_uri, download_func=None, settings=None):
         super(ImageScraperPipeline, self).__init__(store_uri, download_func, settings)
 
-    def get_media_requests(self, item, info):
-        headers = item['response'].headers.copy()
-        headers['referer'] = item['response'].url
-        return [scrapy.Request(item.get('file_urls')[0], headers=headers)]
+    # def get_media_requests(self, item, info):
+    #     headers = item['response'].headers.copy()
+    #     headers['referer'] = item['response'].url
+    #     return [scrapy.Request(item.get('file_urls')[0], headers=headers)]
 
     def item_completed(self, results, item, info):
         ok, x = results[0]
