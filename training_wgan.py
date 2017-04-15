@@ -47,7 +47,7 @@ ARGS = argparser.parse_args()
 
 def train():
     reader = dataset_reader.DataSetReader(ARGS.dataset_dir)
-    queue_runner = reader.make_queue_runner()
+    reader.make_queue_runner()
 
     with tf.Graph().as_default():
 
@@ -88,7 +88,7 @@ def train():
                 c_clip = [
                     v.assign(tf.clip_by_value(v, -0.01, 0.01))
                     for v in tf.get_collection(
-                            tf.GraphKeys.TRAINABLE_VARIABLES, scope='critic')
+                        tf.GraphKeys.TRAINABLE_VARIABLES, scope='critic')
                 ]
 
         with tf.name_scope('g_train'):
@@ -165,16 +165,16 @@ def train():
                     images = reader.inputs(ARGS.batch_size)
 
                     # run training operations.
-                    if i % self.critic_step != 0:
+                    self.sess.run(
+                        [c_training, c_clip],
+                        feed_dict={original: images[0],
+                                   x: images[1]},
+                        options=run_options,
+                        run_metadata=run_metadata)
+
+                    if i % self.critic_step == 0:
                         self.sess.run(
-                            [c_training, c_clip],
-                            feed_dict={original: images[0],
-                                       x: images[1]},
-                            options=run_options,
-                            run_metadata=run_metadata)
-                    else:
-                        self.sess.run(
-                            [c_training, c_clip, g_training, l1_training],
+                            [g_training, l1_training],
                             feed_dict={original: images[0],
                                        x: images[1]},
                             options=run_options,
@@ -258,9 +258,7 @@ def train():
             # coord.request_stop()
             # coord.join(threads, stop_grace_period_secs=10)
 
-
-    queue_runner.shutdown(wait=False)
+    reader.finish_queue_runner()
 
 if __name__ == '__main__':
     train()
-

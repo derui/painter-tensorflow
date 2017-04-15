@@ -24,12 +24,12 @@ class Encoder(object):
     def __init__(self,
                  in_ch,
                  out_ch,
-                 patch_w,
                  patch_h,
+                 patch_w,
                  strides=[1, 1, 1, 1],
                  name='encoder'):
-        self.patch_w = patch_w
         self.patch_h = patch_h
+        self.patch_w = patch_w
         self.in_ch = in_ch
         self.out_ch = out_ch
         self.name = name
@@ -37,7 +37,7 @@ class Encoder(object):
 
     def __call__(self, tensor, input_shape):
         weight = weight_variable(
-            [self.patch_w, self.patch_h, self.in_ch, self.out_ch],
+            [self.patch_h, self.patch_w, self.in_ch, self.out_ch],
             name="{}_weight".format(self.name))
         bias = bias_variable([self.out_ch], name='{}_bias'.format(self.name))
         conv = tf.nn.conv2d(
@@ -55,22 +55,22 @@ class Decoder(object):
     def __init__(self,
                  in_ch,
                  out_ch,
-                 patch_w,
                  patch_h,
+                 patch_w,
                  batch_size,
-                 padding='SAME',
+                 strides=[1, 1, 1, 1],
                  name='decoder'):
         self.batch_size = batch_size
-        self.patch_w = patch_w
         self.patch_h = patch_h
+        self.patch_w = patch_w
         self.in_ch = in_ch
         self.out_ch = out_ch
-        self.padding = padding
         self.name = name
+        self.strides = strides
 
-    def __call__(self, tensor, input_shape):
+    def __call__(self, tensor, output_shape):
         weight = weight_variable(
-            [self.patch_w, self.patch_h, self.out_ch, self.in_ch],
+            [self.patch_h, self.patch_w, self.out_ch, self.in_ch],
             name='{}_weight'.format(self.name))
 
         bias = bias_variable([self.out_ch], name="{}_bias".format(self.name))
@@ -78,9 +78,9 @@ class Decoder(object):
         conv = tf.nn.conv2d_transpose(
             tensor,
             weight, [
-                self.batch_size, input_shape[0] * 2, input_shape[1] * 2,
+                self.batch_size, output_shape[0], output_shape[1],
                 self.out_ch
-            ], [1, 2, 2, 1],
+            ], strides=self.strides,
             padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
 
@@ -112,19 +112,15 @@ class Generator(object):
         self.conv5 = Encoder(
             512, 1024, 4, 4, strides=[1, 2, 2, 1], name='encoder5')
 
-        self.deconv1 = Decoder(
-            1024, 512, 4, 4, batch_size=batch_size, name='decoder1')
-        self.deconv2 = Decoder(
-            1024, 256, 4, 4, batch_size=batch_size, name='decoder2')
-        self.deconv3 = Decoder(
-            512, 128, 4, 4, batch_size=batch_size, name='decoder3')
-        self.deconv4 = Decoder(
-            256, 64, 4, 4, batch_size=batch_size, name='decoder4')
-        self.deconv5 = Decoder(
-            128, 3, 4, 4, batch_size=batch_size, name='decoder5')
+        self.deconv1 = Decoder(1024, 512, 4, 4, batch_size=batch_size, name='decoder1')
+        self.deconv2 = Decoder(1024, 256, 4, 4, batch_size=batch_size, name='decoder2')
+        self.deconv3 = Decoder(512, 128, 4, 4, batch_size=batch_size, name='decoder3')
+        self.deconv4 = Decoder(256, 64, 4, 4, batch_size=batch_size, name='decoder4')
+        self.deconv5 = Decoder(128, 3, 4, 4, batch_size=batch_size,
+                               strides=[1,2,2,1], name='decoder5')
 
 
-def generator(image, width, height, channels, batch_size):
+def generator(image, height, width, channels, batch_size):
     """Make construction layer.
     """
 
@@ -135,19 +131,23 @@ def generator(image, width, height, channels, batch_size):
     def lrelu(x):
         return tf.maximum(0.2 * x, x)
 
-    conv1 = lrelu(gen.bnc1(gen.conv1(image, [width, height])))
-    conv2 = lrelu(gen.bnc2(gen.conv2(conv1, [width // 2, height // 2])))
-    conv3 = lrelu(gen.bnc3(gen.conv3(conv2, [width // 4, height // 4])))
-    conv4 = lrelu(gen.bnc4(gen.conv4(conv3, [width // 8, height // 8])))
-    conv5 = lrelu(gen.conv5(conv4, [width // 16, height // 16]))
+    conv1 = lrelu(gen.bnc1(gen.conv1(image, [height, width])))
+    conv2 = lrelu(gen.bnc2(gen.conv2(conv1, [height // 2, width // 2])))
+    conv3 = lrelu(gen.bnc3(gen.conv3(conv2, [height // 4, width // 4])))
+    conv4 = lrelu(gen.bnc4(gen.conv4(conv3, [height // 8, width // 8])))
+    conv5 = lrelu(gen.conv5(conv4, [height // 16, width // 16]))
 
-    deconv1 = relu(gen.bnd1(gen.deconv1(conv5, [width // 32, height // 32])))
+    deconv1 = relu(gen.bnd1(gen.deconv1(conv5, [height // 32, width // 32])))
+    deconv1 = tf.image.resize_nearest_neighbor(deconv1, [height // 16, width // 16])
     deconv1 = tf.nn.dropout(deconv1, keep_prob=0.5)
-    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv1, conv4], 3), [width // 16, height // 16])))
+    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv1, conv4], 3), [height // 16, width // 16])))
+    deconv2 = tf.image.resize_nearest_neighbor(deconv2, [height // 8, width // 8])
     deconv2 = tf.nn.dropout(deconv2, keep_prob=0.5)
-    deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv2, conv3], 3), [width // 8, height // 8])))
-    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv3, conv2], 3), [width // 4, height // 4])))
-    deconv5 = tf.nn.tanh(gen.deconv5(tf.concat([deconv4, conv1], 3), [width // 2, height // 2]))
+    deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv2, conv3], 3), [height // 8, width // 8])))
+    deconv3 = tf.image.resize_nearest_neighbor(deconv3, [height // 4, width // 4])
+    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv3, conv2], 3), [height // 4, width // 4])))
+    deconv4 = tf.image.resize_nearest_neighbor(deconv4, [height // 2, width // 2])
+    deconv5 = tf.nn.tanh(gen.deconv5(tf.concat([deconv4, conv1], 3), [height, width]))
 
     return deconv5
 
@@ -175,10 +175,10 @@ class Critic(object):
         def lrelu(x):
             return tf.maximum(0.2 * x, x)
 
-        net = lrelu((self.conv1(tensor, [width, height])))
-        net = lrelu((self.conv2(net, [width // 2, height // 2])))
-        net = lrelu((self.conv3(net, [width // 4, height // 4])))
-        net = self.conv4(net, [width // 8, height // 8])
+        net = lrelu((self.conv1(tensor, [height, width])))
+        net = lrelu((self.conv2(net, [height // 2, width // 2])))
+        net = lrelu((self.conv3(net, [height // 4, width // 4])))
+        net = self.conv4(net, [height // 8, width // 8])
 
         return net
 

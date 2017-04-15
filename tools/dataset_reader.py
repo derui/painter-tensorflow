@@ -37,14 +37,15 @@ class DataSetReader(object):
 
         self.__files = [open(f, "rb") for (f, _) in self.__datasets]
         self.__queue = queue.LifoQueue(300)
+        self.__finisher = queue.LifoQueue()
 
     def make_queue_runner(self):
         reader_executor = concurrent.futures.ThreadPoolExecutor(16)
 
         threads = []
 
-        def reader(q, files, preprocess):
-            while True:
+        def reader(q, files, preprocess, finisher):
+            while finisher.empty():
                 findex = random.randrange(len(self.__datasets))
                 f, stat = self.__datasets[findex]
                 rindex = random.randrange(stat.st_size / ip.RECORD_SIZE)
@@ -57,6 +58,8 @@ class DataSetReader(object):
 
                 q.put((origin, line_art))
 
+            print("Finish reader")
+
         def preprocess(image):
             image = np.ndarray.astype(image, np.float32)
             image = np.multiply(image, 1 / 255.0)
@@ -67,9 +70,13 @@ class DataSetReader(object):
         for _ in range(16):
             threads.append(
                 reader_executor.submit(reader, self.__queue, self.__files,
-                                       preprocess))
+                                       preprocess, self.__finisher))
 
         return reader_executor
+
+    def finish_queue_runner(self):
+        print("Terminate threads...")
+        self.__finisher.put_nowait(True)
 
     def inputs(self, batch_size):
 
