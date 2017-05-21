@@ -38,5 +38,5 @@ class SafebooruSpider(scrapy.Spider):
         p = os.path.basename(url)
         _, ext = os.path.splitext(p)
 
-        ignoreable_exts = ['gif']
+        ignoreable_exts = ['.gif']
         return ext in ignoreable_exts

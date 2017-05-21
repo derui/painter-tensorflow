@@ -8,7 +8,7 @@ without overhead coping data.
 
 import os
 import tensorflow as tf
-from tools import dataset as ds
+from .tools import dataset as ds
 
 
 def read_pair(filename_queue):
@@ -24,10 +24,8 @@ def read_pair(filename_queue):
 
     record_bytes = tf.decode_raw(value, tf.uint8)
 
-    result.original_image = tf.reshape(record_bytes[0:ds.IMAGE_SIZE],
-                                       ds.original_shape())
-    result.wire_frame_image = tf.reshape(record_bytes[ds.IMAGE_SIZE:],
-                                         ds.line_art_shape())
+    result.original_image = tf.reshape(record_bytes[0:ds.IMAGE_SIZE], ds.original_shape())
+    result.wire_frame_image = tf.reshape(record_bytes[ds.IMAGE_SIZE:], ds.line_art_shape())
 
     return result
 
@@ -74,10 +72,7 @@ def inputs(data_dir, batch_size, distorted=True):
     for (root, _, files) in os.walk(data_dir):
         filename_range += len(files)
 
-    filenames = [
-        os.path.join(data_dir, 'image_pack_{}.bin'.format(i + 1))
-        for i in range(0, filename_range)
-    ]
+    filenames = [os.path.join(data_dir, 'image_pack_{}.bin'.format(i + 1)) for i in range(0, filename_range)]
 
     filename_queue = tf.train.string_input_producer(filenames)
     num_examples_per_epoch = 100
@@ -91,16 +86,10 @@ def inputs(data_dir, batch_size, distorted=True):
     reshaped_w_image = tf.multiply(reshaped_w_image, 2) - 1.0
 
     if distorted:
-        reshaped_o_image, reshaped_w_image = distorted_image(reshaped_o_image,
-                                                             reshaped_w_image)
+        reshaped_o_image, reshaped_w_image = distorted_image(reshaped_o_image, reshaped_w_image)
     tf.train.MonitoredTrainingSession
 
     min_fraction_of_examples_in_queue = 0.4
-    min_queue_examples = int(num_examples_per_epoch *
-                             min_fraction_of_examples_in_queue)
+    min_queue_examples = int(num_examples_per_epoch * min_fraction_of_examples_in_queue)
 
-    return _generate_pair_batch(
-        [reshaped_o_image, reshaped_w_image],
-        min_queue_examples,
-        batch_size,
-        shuffle=True)
+    return _generate_pair_batch([reshaped_o_image, reshaped_w_image], min_queue_examples, batch_size, shuffle=True)

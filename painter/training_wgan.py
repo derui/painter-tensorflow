@@ -6,41 +6,21 @@ import time
 from datetime import datetime
 from tensorflow.python.client import timeline
 import tensorflow as tf
-from model import model_wgan as model
-from tools import dataset_reader
+from .model import model_wgan as model
+from .tools import dataset_reader
 
-import tf_dataset_input
+from . import tf_dataset_input
 
 argparser = argparse.ArgumentParser(description='Learning painter model')
 argparser.add_argument('--batch_size', default=5, type=int, help='Batch size')
-argparser.add_argument(
-    '--critic_step', default=5, type=int, help='Critic steps')
-argparser.add_argument(
-    '--beta1', default=0.5, type=float, help="beta1 value for optimizer [0.5]")
-argparser.add_argument(
-    '--learning_rate',
-    default=0.00005,
-    type=float,
-    help="learning rate[0.00005]")
-argparser.add_argument(
-    '--train_dir',
-    default='./log',
-    type=str,
-    help='Directory will have been saving checkpoint')
-argparser.add_argument(
-    '--dataset_dir',
-    default='./datasets',
-    type=str,
-    help='Directory contained datasets')
-argparser.add_argument(
-    '--max_steps', default=200000, type=int, help='number of maximum steps')
-argparser.add_argument(
-    '--full_trace', default=False, type=bool, help='Enable full trace of gpu')
-argparser.add_argument(
-    '--log_device_placement',
-    default=False,
-    type=bool,
-    help='manage logging log_device_placement')
+argparser.add_argument('--critic_step', default=5, type=int, help='Critic steps')
+argparser.add_argument('--beta1', default=0.5, type=float, help="beta1 value for optimizer [0.5]")
+argparser.add_argument('--learning_rate', default=0.00005, type=float, help="learning rate[0.00005]")
+argparser.add_argument('--train_dir', default='./log', type=str, help='Directory will have been saving checkpoint')
+argparser.add_argument('--dataset_dir', default='./datasets', type=str, help='Directory contained datasets')
+argparser.add_argument('--max_steps', default=200000, type=int, help='number of maximum steps')
+argparser.add_argument('--full_trace', default=False, type=bool, help='Enable full trace of gpu')
+argparser.add_argument('--log_device_placement', default=False, type=bool, help='manage logging log_device_placement')
 
 ARGS = argparser.parse_args()
 
@@ -52,10 +32,8 @@ def train():
     with tf.Graph().as_default():
 
         with tf.device('/cpu:0'):
-            original = tf.placeholder(
-                tf.float32, shape=[ARGS.batch_size, 128, 128, 3])
-            x = tf.placeholder(
-                tf.float32, shape=[ARGS.batch_size, 128, 128, 3])
+            original = tf.placeholder(tf.float32, shape=[ARGS.batch_size, 128, 128, 3])
+            x = tf.placeholder(tf.float32, shape=[ARGS.batch_size, 128, 128, 3])
             # original, x = tf_dataset_input.inputs(ARGS.dataset_dir,
             #                                       ARGS.batch_size)
 
@@ -81,14 +59,12 @@ def train():
             c_training = c_trainer(
                 c_loss,
                 learning_rate=ARGS.learning_rate,
-                var_list=tf.get_collection(
-                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='critic'))
+                var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='critic'))
 
             with tf.control_dependencies([c_training]):
                 c_clip = [
                     v.assign(tf.clip_by_value(v, -0.01, 0.01))
-                    for v in tf.get_collection(
-                        tf.GraphKeys.TRAINABLE_VARIABLES, scope='critic')
+                    for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='critic')
                 ]
 
         with tf.name_scope('g_train'):
@@ -96,28 +72,19 @@ def train():
             g_training = g_trainer(
                 g_loss,
                 learning_rate=ARGS.learning_rate,
-                var_list=tf.get_collection(
-                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
+                var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
 
         with tf.name_scope('l1_train'):
-            l1_trainer = model.AdamTrainer()
+            l1_trainer = model.Trainer()
             l1_training = l1_trainer(
                 l1_loss,
                 learning_rate=ARGS.learning_rate,
-                beta1=ARGS.beta1,
-                var_list=tf.get_collection(
-                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
+                var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
 
         class LoggingSession(object):
             """Logs loss and runtime """
 
-            def __init__(self,
-                         sess,
-                         train_dir,
-                         max_steps,
-                         save_summary_per_step=100,
-                         critic_step=5,
-                         full_trace=False):
+            def __init__(self, sess, train_dir, max_steps, save_summary_per_step=100, critic_step=5, full_trace=False):
                 self._step = -1
                 self.sess = sess
                 self.saver = tf.train.Saver()
@@ -139,13 +106,10 @@ def train():
 
             def save_checkpoint(self, steps):
                 self.saver.save(
-                    self.sess,
-                    os.path.join(self.train_dir, 'model.ckpt'),
-                    global_step=steps + self._checkpoint_step)
+                    self.sess, os.path.join(self.train_dir, 'model.ckpt'), global_step=steps + self._checkpoint_step)
 
             def save_summary(self, summary, steps):
-                self.summary_writer.add_summary(summary,
-                                                steps + self._checkpoint_step)
+                self.summary_writer.add_summary(summary, steps + self._checkpoint_step)
 
             def _restore_if_exists(self):
                 ckpt = tf.train.get_checkpoint_state(self.train_dir)
@@ -180,16 +144,11 @@ def train():
                             options=run_options,
                             run_metadata=run_metadata)
 
-                    results = self.sess.run(
-                        args, feed_dict={original: images[0],
-                                         x: images[1]})
+                    results = self.sess.run(args, feed_dict={original: images[0], x: images[1]})
                     self.after_run(results)
 
                     if i >= step_wrote_summaries:
-                        summary = self.sess.run(
-                            self.merged_summaries,
-                            feed_dict={original: images[0],
-                                       x: images[1]})
+                        summary = self.sess.run(self.merged_summaries, feed_dict={original: images[0], x: images[1]})
                         self.save_summary(summary, i)
                         step_wrote_summaries = i + self._save_summary_per_step
 
@@ -219,15 +178,11 @@ def train():
                     sec_per_batch = float(duration)
 
                     format_str = '{}: step {}, loss = {:.3f} ({:.1f} examples/sec; {:.3f} sec/batch)'
-                    print(
-                        format_str.format(datetime.now(), self._step,
-                                          c_loss_value, examples_per_step,
-                                          sec_per_batch))
+                    print(format_str.format(datetime.now(), self._step, c_loss_value, examples_per_step, sec_per_batch))
 
         init_op = tf.global_variables_initializer()
         with tf.Session(config=tf.ConfigProto(
-                gpu_options=tf.GPUOptions(
-                    per_process_gpu_memory_fraction=0.85),
+                gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.85),
                 log_device_placement=ARGS.log_device_placement)) as sess:
 
             run_options = tf.RunOptions()
@@ -242,11 +197,7 @@ def train():
             # try:
 
             logging_session = LoggingSession(
-                sess,
-                ARGS.train_dir,
-                ARGS.max_steps,
-                critic_step=ARGS.critic_step,
-                full_trace=ARGS.full_trace)
+                sess, ARGS.train_dir, ARGS.max_steps, critic_step=ARGS.critic_step, full_trace=ARGS.full_trace)
 
             logging_session.run()
 
@@ -259,6 +210,7 @@ def train():
             # coord.join(threads, stop_grace_period_secs=10)
 
     reader.finish_queue_runner()
+
 
 if __name__ == '__main__':
     train()

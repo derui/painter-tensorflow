@@ -10,11 +10,8 @@ class LinearEncoder(object):
 
     def __call__(self, tensor, in_ch, out_ch):
         weight = tf.get_variable(
-            "{}_weight".format(self.name)[in_ch, out_ch],
-            initializer=tf.random_uniform_initializer(stddev=0.02))
-        bias = tf.get_variable(
-            '{}_bias'.format(self.name), [out_ch],
-            initializer=tf.constant_initializer(0.0))
+            "{}_weight".format(self.name)[in_ch, out_ch], initializer=tf.random_uniform_initializer(stddev=0.02))
+        bias = tf.get_variable('{}_bias'.format(self.name), [out_ch], initializer=tf.constant_initializer(0.0))
         conv = tf.matmul(tensor, weight)
         conv = tf.nn.bias_add(conv, bias)
 
@@ -32,13 +29,9 @@ class BatchNormalization(object):
 
         shape = x.get_shape().as_list()
         with tf.variable_scope(self.name) as scope:
-            self.beta = tf.get_variable(
-                "beta", [shape[-1]], initializer=tf.constant_initializer(0.))
-            self.gamma = tf.get_variable(
-                "gamma", [shape[-1]],
-                initializer=tf.random_normal_initializer(1.0, 0.1))
+            self.beta = tf.get_variable("beta", [shape[-1]], initializer=tf.constant_initializer(0.))
+            self.gamma = tf.get_variable("gamma", [shape[-1]], initializer=tf.random_normal_initializer(1.0, 0.1))
 
-            y, _, _ = tf.nn.fused_batch_norm(
-                x, self.gamma, self.beta, epsilon=self.epsilon)
+            y, _, _ = tf.nn.fused_batch_norm(x, self.gamma, self.beta, epsilon=self.epsilon)
 
         return y

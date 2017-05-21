@@ -6,14 +6,12 @@ from . import operations as op
 
 # Define weight variable
 def weight_variable(shape, name=None):
-    return tf.get_variable(
-        name, shape, initializer=tf.truncated_normal_initializer(stddev=0.02))
+    return tf.get_variable(name, shape, initializer=tf.truncated_normal_initializer(stddev=0.02))
 
 
 # Define bias variable
 def bias_variable(shape, name=None):
-    return tf.get_variable(
-        name, shape, initializer=tf.constant_initializer(0.0))
+    return tf.get_variable(name, shape, initializer=tf.constant_initializer(0.0))
 
 
 class Encoder(object):
@@ -21,13 +19,7 @@ class Encoder(object):
     this class that are defined convolutional layer.
     """
 
-    def __init__(self,
-                 in_ch,
-                 out_ch,
-                 patch_h,
-                 patch_w,
-                 strides=[1, 1, 1, 1],
-                 name='encoder'):
+    def __init__(self, in_ch, out_ch, patch_h, patch_w, strides=[1, 1, 1, 1], name='encoder'):
         self.patch_h = patch_h
         self.patch_w = patch_w
         self.in_ch = in_ch
@@ -37,11 +29,9 @@ class Encoder(object):
 
     def __call__(self, tensor, input_shape):
         weight = weight_variable(
-            [self.patch_h, self.patch_w, self.in_ch, self.out_ch],
-            name="{}_weight".format(self.name))
+            [self.patch_h, self.patch_w, self.in_ch, self.out_ch], name="{}_weight".format(self.name))
         bias = bias_variable([self.out_ch], name='{}_bias'.format(self.name))
-        conv = tf.nn.conv2d(
-            tensor, weight, strides=self.strides, padding='SAME')
+        conv = tf.nn.conv2d(tensor, weight, strides=self.strides, padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
 
         return conv
@@ -52,14 +42,7 @@ class Decoder(object):
     this class that are defined convolutional layer.
     """
 
-    def __init__(self,
-                 in_ch,
-                 out_ch,
-                 patch_h,
-                 patch_w,
-                 batch_size,
-                 strides=[1, 1, 1, 1],
-                 name='decoder'):
+    def __init__(self, in_ch, out_ch, patch_h, patch_w, batch_size, strides=[1, 1, 1, 1], name='decoder'):
         self.batch_size = batch_size
         self.patch_h = patch_h
         self.patch_w = patch_w
@@ -70,17 +53,14 @@ class Decoder(object):
 
     def __call__(self, tensor, output_shape):
         weight = weight_variable(
-            [self.patch_h, self.patch_w, self.out_ch, self.in_ch],
-            name='{}_weight'.format(self.name))
+            [self.patch_h, self.patch_w, self.out_ch, self.in_ch], name='{}_weight'.format(self.name))
 
         bias = bias_variable([self.out_ch], name="{}_bias".format(self.name))
 
         conv = tf.nn.conv2d_transpose(
             tensor,
-            weight, [
-                self.batch_size, output_shape[0], output_shape[1],
-                self.out_ch
-            ], strides=self.strides,
+            weight, [self.batch_size, output_shape[0], output_shape[1], self.out_ch],
+            strides=self.strides,
             padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
 
@@ -101,23 +81,17 @@ class Generator(object):
         self.bnd4 = op.BatchNormalization(name='bnd4')
         self.bnd5 = op.BatchNormalization(name='bnd5')
 
-        self.conv1 = Encoder(
-            3, 64, 4, 4, strides=[1, 2, 2, 1], name='encoder1')
-        self.conv2 = Encoder(
-            64, 128, 4, 4, strides=[1, 2, 2, 1], name='encoder2')
-        self.conv3 = Encoder(
-            128, 256, 4, 4, strides=[1, 2, 2, 1], name='encoder3')
-        self.conv4 = Encoder(
-            256, 512, 4, 4, strides=[1, 2, 2, 1], name='encoder4')
-        self.conv5 = Encoder(
-            512, 1024, 4, 4, strides=[1, 2, 2, 1], name='encoder5')
+        self.conv1 = Encoder(3, 64, 4, 4, strides=[1, 2, 2, 1], name='encoder1')
+        self.conv2 = Encoder(64, 128, 4, 4, strides=[1, 2, 2, 1], name='encoder2')
+        self.conv3 = Encoder(128, 256, 4, 4, strides=[1, 2, 2, 1], name='encoder3')
+        self.conv4 = Encoder(256, 512, 4, 4, strides=[1, 2, 2, 1], name='encoder4')
+        self.conv5 = Encoder(512, 1024, 4, 4, strides=[1, 2, 2, 1], name='encoder5')
 
-        self.deconv1 = Decoder(1024, 512, 4, 4, batch_size=batch_size, name='decoder1')
-        self.deconv2 = Decoder(1024, 256, 4, 4, batch_size=batch_size, name='decoder2')
-        self.deconv3 = Decoder(512, 128, 4, 4, batch_size=batch_size, name='decoder3')
-        self.deconv4 = Decoder(256, 64, 4, 4, batch_size=batch_size, name='decoder4')
-        self.deconv5 = Decoder(128, 3, 4, 4, batch_size=batch_size,
-                               strides=[1,2,2,1], name='decoder5')
+        self.deconv1 = Decoder(1024, 512, 4, 4, batch_size=batch_size, strides=[1, 2, 2, 1], name='decoder1')
+        self.deconv2 = Decoder(1024, 256, 4, 4, batch_size=batch_size, strides=[1, 2, 2, 1], name='decoder2')
+        self.deconv3 = Decoder(512, 128, 4, 4, batch_size=batch_size, strides=[1, 2, 2, 1], name='decoder3')
+        self.deconv4 = Decoder(256, 64, 4, 4, batch_size=batch_size, strides=[1, 2, 2, 1], name='decoder4')
+        self.deconv5 = Decoder(128, 3, 4, 4, batch_size=batch_size, strides=[1, 2, 2, 1], name='decoder5')
 
 
 def generator(image, height, width, channels, batch_size):
@@ -137,16 +111,12 @@ def generator(image, height, width, channels, batch_size):
     conv4 = lrelu(gen.bnc4(gen.conv4(conv3, [height // 8, width // 8])))
     conv5 = lrelu(gen.conv5(conv4, [height // 16, width // 16]))
 
-    deconv1 = relu(gen.bnd1(gen.deconv1(conv5, [height // 32, width // 32])))
-    deconv1 = tf.image.resize_nearest_neighbor(deconv1, [height // 16, width // 16])
+    deconv1 = relu(gen.bnd1(gen.deconv1(conv5, [height // 16, width // 16])))
     deconv1 = tf.nn.dropout(deconv1, keep_prob=0.5)
-    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv1, conv4], 3), [height // 16, width // 16])))
-    deconv2 = tf.image.resize_nearest_neighbor(deconv2, [height // 8, width // 8])
+    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv1, conv4], 3), [height // 8, width // 8])))
     deconv2 = tf.nn.dropout(deconv2, keep_prob=0.5)
-    deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv2, conv3], 3), [height // 8, width // 8])))
-    deconv3 = tf.image.resize_nearest_neighbor(deconv3, [height // 4, width // 4])
-    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv3, conv2], 3), [height // 4, width // 4])))
-    deconv4 = tf.image.resize_nearest_neighbor(deconv4, [height // 2, width // 2])
+    deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv2, conv3], 3), [height // 4, width // 4])))
+    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv3, conv2], 3), [height // 2, width // 2])))
     deconv5 = tf.nn.tanh(gen.deconv5(tf.concat([deconv4, conv1], 3), [height, width]))
 
     return deconv5
@@ -160,14 +130,10 @@ class Critic(object):
         self.bnc2 = op.BatchNormalization(name='bnc2')
         self.bnc3 = op.BatchNormalization(name='bnc3')
 
-        self.conv1 = Encoder(
-            in_ch, 64, 4, 4, name='encoder1', strides=[1, 2, 2, 1])
-        self.conv2 = Encoder(
-            64, 128, 4, 4, name='encoder2', strides=[1, 2, 2, 1])
-        self.conv3 = Encoder(
-            128, 256, 4, 4, name='encoder3', strides=[1, 2, 2, 1])
-        self.conv4 = Encoder(
-            256, 256, 1, 1, name='encoder4', strides=[1, 1, 1, 1])
+        self.conv1 = Encoder(in_ch, 64, 4, 4, name='encoder1', strides=[1, 2, 2, 1])
+        self.conv2 = Encoder(64, 128, 4, 4, name='encoder2', strides=[1, 2, 2, 1])
+        self.conv3 = Encoder(128, 256, 4, 4, name='encoder3', strides=[1, 2, 2, 1])
+        self.conv4 = Encoder(256, 256, 1, 1, name='encoder4', strides=[1, 1, 1, 1])
 
     def __call__(self, tensor):
         bs, width, height, _ = tensor.get_shape().as_list()
@@ -219,7 +185,7 @@ def l1_loss(original, gen):
         original = tf.reshape(original, [-1, w * h * c])
         gen = tf.reshape(gen, [-1, w * h * c])
 
-        l1_distance = tf.reduce_mean(tf.reduce_sum(tf.abs(original - gen), 1))
+        l1_distance = tf.reduce_mean(tf.reduce_sum(tf.abs(original - gen), 1)) * 0.1
 
         tf.summary.scalar('distance', l1_distance)
 
@@ -238,10 +204,10 @@ class Trainer(object):
 
     def __call__(self, loss, learning_rate, var_list):
         optimizer = tf.train.RMSPropOptimizer(learning_rate)
-        train_step = optimizer.minimize(
-            loss, global_step=self.global_step, var_list=var_list)
+        train_step = optimizer.minimize(loss, global_step=self.global_step, var_list=var_list)
 
         return train_step
+
 
 class AdamTrainer(object):
     """
@@ -255,7 +221,6 @@ class AdamTrainer(object):
 
     def __call__(self, loss, learning_rate, beta1, var_list):
         optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta1)
-        train_step = optimizer.minimize(
-            loss, global_step=self.global_step, var_list=var_list)
+        train_step = optimizer.minimize(loss, global_step=self.global_step, var_list=var_list)
 
         return train_step

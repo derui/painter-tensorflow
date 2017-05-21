@@ -35,8 +35,7 @@ class ImagePack(object):
         original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
         line_art_image = cv2.cvtColor(line_art_image, cv2.COLOR_BGR2RGB)
 
-        ndary = np.concatenate(
-            (original_image.reshape([-1]), line_art_image.reshape([-1])))
+        ndary = np.concatenate((original_image.reshape([-1]), line_art_image.reshape([-1])))
         self.pack_file.write(np.ndarray.tobytes(ndary))
 
     def unpack(self, record_index):

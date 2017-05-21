@@ -1,61 +1,34 @@
 import os
 import argparse
-import numpy as np
 import cv2 as cv
 import concurrent.futures
 import queue
 from . import util
 
-argparser = argparse.ArgumentParser(
-    description='Extract edge layer of a color image')
-argparser.add_argument(
-    'input_dir',
-    type=str,
-    help='the directory included images to extract edge layer')
+argparser = argparse.ArgumentParser(description='Resize image to fixed size')
+argparser.add_argument('input_dir', type=str, help='the directory of image to resize and crop to fixed size')
 argparser.add_argument('-d', dest='out_dir', type=str, required=True)
+argparser.add_argument('-e', dest='excludes_dir', type=str, required=True)
 argparser.add_argument('-s', '--size', dest='size', type=int)
-argparser.add_argument('-e', dest='excludes_dir', type=str)
 
 args = argparser.parse_args()
-
-neiborhood8 = np.array([
-    [1, 1, 1],
-    [1, 1, 1],
-    [1, 1, 1]
-], np.uint8)
-FIXED_SIZE = args.size
 
 
 class Ignore(Exception):
     pass
 
 
-def extract_edge(rq, wq):
+def process(rq, wq):
 
     img, path = rq.get()
     rq.task_done()
 
-    img_dilate = cv.dilate(img, neiborhood8, iterations=1)
-    img_diff = cv.absdiff(img, img_dilate)
-    img_diff_not = cv.bitwise_not(img_diff)
-    img_diff_not = cv.cvtColor(img_diff_not, cv.COLOR_RGB2GRAY)
+    img = util.resize_image(img, FIXED_SIZE)
 
-    if FIXED_SIZE is not None:
-        img_diff_not = cv.adaptiveThreshold(img_diff_not, 255,
-                                            cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                            cv.THRESH_BINARY, 7, 8)
-        img_diff_not = util.resize_image(img_diff_not, FIXED_SIZE)
-        img_dilate = cv.erode(img_diff_not, neiborhood8, iterations=1)
-        img_dilate = cv.dilate(img_diff_not, neiborhood8, iterations=1)
-        img_diff = cv.absdiff(img_diff_not, img_dilate)
-        img_diff_not = cv.bitwise_not(img_diff)
-        # img_diff_not = cv.adaptiveThreshold(img_diff_not, 255,
-        #                                 cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-        #                                 cv.THRESH_BINARY, 7, 8)
+    wq.put((img, path))
 
-    img_diff_not = cv.cvtColor(img_diff_not, cv.COLOR_GRAY2RGB)
 
-    wq.put((img_diff_not, path))
+FIXED_SIZE = 512 if args.size is None else args.size
 
 
 def read_image(path):
@@ -122,8 +95,7 @@ def reader_process():
     while True:
         futures = []
         for _ in range(14):
-            futures.append(
-                executor.submit(extract_edge, image_queue, write_queue))
+            futures.append(executor.submit(process, image_queue, write_queue))
 
         for future in concurrent.futures.as_completed(futures):
             try:
@@ -145,3 +117,5 @@ image_queue.join()
 print('Finish to read all pathes from queue')
 
 write_queue.join()
+
+executor.shutdown(wait=False)

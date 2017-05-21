@@ -3,6 +3,7 @@
 import cv2 as cv
 import os
 import queue
+import time
 
 
 # Return a new priority queue contains pathes prioritized with inode
@@ -11,10 +12,7 @@ def make_sequential_queue(directory, excludes=[]):
     all_files = {}
 
     for root, _, files in os.walk(directory):
-        all_files.update({
-            os.stat(os.path.join(root, f)).st_ino: os.path.join(root, f)
-            for f in files
-        })
+        all_files.update({os.stat(os.path.join(root, f)).st_ino: os.path.join(root, f) for f in files})
 
     for key in all_files.keys():
         f = all_files[key]
@@ -27,10 +25,14 @@ def make_sequential_queue(directory, excludes=[]):
 
 
 # Return a new function to read with given function and path read from queue
-def sequential_read_dir(rq, wq, read_func):
+def sequential_read_dir(rq, wq, read_func, ev):
     def process():
-        while True:
-            _, path = rq.get()
+        while not ev.is_set():
+            try:
+                _, path = rq.get_nowait()
+            except queue.Empty:
+                continue
+            rq.task_done()
 
             try:
                 image = read_func(path)
@@ -38,19 +40,23 @@ def sequential_read_dir(rq, wq, read_func):
             except Exception as e:
                 print('Exception raised in reader thread: {}'.format(e))
 
-            rq.task_done()
-
     return process
 
 
 # Return a new function to write data that are from queue via given function
-def queue_writer(directory, wq, write_func):
+def queue_writer(directory, wq, write_func, ev):
     def process():
-        while True:
-            item = wq.get()
+        while not ev.is_set():
+            try:
+                item = wq.get_nowait()
+            except queue.Empty:
+                continue
+            wq.task_done()
+
+            if item is None:
+                break
 
             write_func(item, directory)
-            wq.task_done()
 
     return process
 
@@ -62,8 +68,7 @@ def resize_image(img, fixed_size):
     if correct_size < img.shape:
         img_resized = cv.resize(img, correct_size, interpolation=cv.INTER_AREA)
     else:
-        img_resized = cv.resize(
-            img, correct_size, interpolation=cv.INTER_CUBIC)
+        img_resized = cv.resize(img, correct_size, interpolation=cv.INTER_CUBIC)
 
     img_cropped = img_resized[0:fixed_size, 0:fixed_size]
     return img_cropped

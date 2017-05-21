@@ -38,12 +38,10 @@ class DataSetBuilder(object):
 
     def build(self):
         if not os.path.exists(self.original_dir):
-            raise Exception(
-                'not found input directory: {}'.format(self.original_dir))
+            raise Exception('not found input directory: {}'.format(self.original_dir))
 
         if not os.path.exists(self.wire_frame_dir):
-            raise Exception(
-                'not found input directory: {}'.format(self.wire_frame_dir))
+            raise Exception('not found input directory: {}'.format(self.wire_frame_dir))
 
         if not os.path.exists(self.out_dir):
             os.mkdir(self.out_dir)
@@ -67,8 +65,7 @@ class DataSetBuilder(object):
 
         for pack_num in range(all_pack_num):
             self.__build_pack(pack_num + 1,
-                              target_files[pack_num * self.pack_size:pack_num *
-                                           self.pack_size + self.pack_size])
+                              target_files[pack_num * self.pack_size:pack_num * self.pack_size + self.pack_size])
 
         # build pack if do not just divide size of target_files with pack_size.
         if reminder_pack != 0:
@@ -79,28 +76,22 @@ class DataSetBuilder(object):
         line_art_file = os.path.join(self.wire_frame_dir, f)
 
         if not os.path.exists(original_file):
-            raise Exception(
-                'not found original file: {}'.format(original_file))
+            raise Exception('not found original file: {}'.format(original_file))
 
         if not os.path.exists(line_art_file):
-            raise Exception(
-                'not found wire frame file: {}'.format(line_art_file))
+            raise Exception('not found wire frame file: {}'.format(line_art_file))
 
         original_image = cv2.imread(original_file, cv2.IMREAD_COLOR)
         line_art_image = cv2.imread(line_art_file, cv2.IMREAD_COLOR)
 
         if original_image is None or line_art_image is None:
-            raise Exception('can not read image {},{}'.format(original_file,
-                                                              line_art_file))
+            raise Exception('can not read image {},{}'.format(original_file, line_art_file))
 
         return original_image, line_art_image
 
     def __build_pack(self, pack_num, files):
         logging.debug('Start packing no:{}'.format(pack_num))
-        output = open(
-            os.path.join(self.out_dir,
-                         self.__pack_name_format.format(pack_num)),
-            mode='wb')
+        output = open(os.path.join(self.out_dir, self.__pack_name_format.format(pack_num)), mode='wb')
 
         image_pack = ip.ImagePack(output)
         images = [self.__read_images(f) for f in files]
@@ -112,14 +103,9 @@ class DataSetBuilder(object):
         logging.debug('Finish packing no:{}'.format(pack_num))
 
 
-argparser = argparse.ArgumentParser(
-    description='Packing images for traininig data set')
-argparser.add_argument(
-    'original_dir', type=str, help='the directory included original images')
-argparser.add_argument(
-    'wire_frame_dir',
-    type=str,
-    help='the directory included extracted edge layer')
+argparser = argparse.ArgumentParser(description='Packing images for traininig data set')
+argparser.add_argument('original_dir', type=str, help='the directory included original images')
+argparser.add_argument('wire_frame_dir', type=str, help='the directory included extracted edge layer')
 argparser.add_argument('-d', dest='out_dir', type=str)
 
 args = argparser.parse_args()

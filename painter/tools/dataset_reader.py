@@ -6,6 +6,7 @@ import os
 import random
 import concurrent.futures
 import queue
+import threading
 
 
 class DataSetReader(object):
@@ -32,12 +33,11 @@ class DataSetReader(object):
 
         self.__datasets = []
         for root, _, files in os.walk(dataset_dir):
-            self.__datasets.extend([(os.path.join(root, f), os.stat(
-                os.path.join(root, f))) for f in files])
+            self.__datasets.extend([(os.path.join(root, f), os.stat(os.path.join(root, f))) for f in files])
 
         self.__files = [open(f, "rb") for (f, _) in self.__datasets]
         self.__queue = queue.LifoQueue(300)
-        self.__finisher = queue.LifoQueue()
+        self.__finisher = threading.Event()
 
     def make_queue_runner(self):
         reader_executor = concurrent.futures.ThreadPoolExecutor(16)
@@ -45,7 +45,7 @@ class DataSetReader(object):
         threads = []
 
         def reader(q, files, preprocess, finisher):
-            while finisher.empty():
+            while not finisher.is_set():
                 findex = random.randrange(len(self.__datasets))
                 f, stat = self.__datasets[findex]
                 rindex = random.randrange(stat.st_size / ip.RECORD_SIZE)
@@ -68,25 +68,26 @@ class DataSetReader(object):
             return image
 
         for _ in range(16):
-            threads.append(
-                reader_executor.submit(reader, self.__queue, self.__files,
-                                       preprocess, self.__finisher))
+            threads.append(reader_executor.submit(reader, self.__queue, self.__files, preprocess, self.__finisher))
 
         return reader_executor
 
     def finish_queue_runner(self):
         print("Terminate threads...")
-        self.__finisher.put_nowait(True)
+        self.__finisher.set()
 
     def inputs(self, batch_size):
 
         images = np.zeros([2, batch_size, ip.IMAGE_SIZE], np.float32)
 
         for i in range(batch_size):
-            origin, line_art = self.__queue.get()
+            try:
+                origin, line_art = self.__queue.get_nowait()
+            except queue.Empty:
+                return images
+
+            self.__queue.task_done()
             images[0, i] = origin
             images[1, i] = line_art
-            self.__queue.task_done()
 
-        return np.reshape(images,
-                          [2, batch_size, ip.IMAGE_SIDE, ip.IMAGE_SIDE, 3])
+        return np.reshape(images, [2, batch_size, ip.IMAGE_SIDE, ip.IMAGE_SIDE, 3])
