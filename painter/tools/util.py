@@ -19,7 +19,7 @@ def make_sequential_queue(directory, excludes=[]):
         n, _ = os.path.splitext(os.path.basename(f))
         if n in excludes:
             continue
-        q.put((key, f))
+        q.put_nowait((key, f))
 
     return q
 
