@@ -8,7 +8,6 @@ without overhead coping data.
 
 import os
 import tensorflow as tf
-from .tools import dataset as ds
 
 
 def read_pair(filename_queue):
@@ -16,16 +15,20 @@ def read_pair(filename_queue):
         pass
 
     result = Record()
-    record_bytes = ds.RECORD_SIZE
 
-    reader = tf.FixedLengthRecordReader(record_bytes)
+    reader = tf.TFRecordReader()
 
     result.key, value = reader.read(filename_queue)
+    features = tf.parse_single_example(value, {
+        'original': tf.FixedLenFeature([], tf.string),
+        'line_art': tf.FixedLenFeature([], tf.string),
+    })
 
-    record_bytes = tf.decode_raw(value, tf.uint8)
+    painted = tf.image.decode_png(features['original'], channels=3)
+    line_art = tf.image.decode_png(features['line_art'], channels=1)
 
-    result.original_image = tf.reshape(record_bytes[0:ds.IMAGE_SIZE], ds.original_shape())
-    result.wire_frame_image = tf.reshape(record_bytes[ds.IMAGE_SIZE:], ds.line_art_shape())
+    result.painted = painted
+    result.line_art = line_art
 
     return result
 
@@ -68,13 +71,12 @@ def _generate_pair_batch(pair, min_queue_examples, batch_size, shuffle):
 
 
 def inputs(data_dir, batch_size, distorted=True):
-    filename_range = 0
+    file_names = []
     for (root, _, files) in os.walk(data_dir):
-        filename_range += len(files)
+        for f in files:
+            file_names.append(os.path.join(root, f))
 
-    filenames = [os.path.join(data_dir, 'image_pack_{}.bin'.format(i + 1)) for i in range(0, filename_range)]
-
-    filename_queue = tf.train.string_input_producer(filenames)
+    filename_queue = tf.train.string_input_producer(file_names)
     num_examples_per_epoch = 100
 
     read_input = read_pair(filename_queue)

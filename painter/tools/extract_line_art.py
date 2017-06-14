@@ -23,14 +23,6 @@ class Ignore(Exception):
     pass
 
 
-gamma = 1.8
-
-lookUpTable = np.zeros((256, 1), dtype='uint8')
-
-for i in range(256):
-    lookUpTable[i][0] = 255 * pow(float(i) / 255, 1.0 / gamma)
-
-
 def extract_edge(rq, wq):
 
     try:
@@ -39,7 +31,6 @@ def extract_edge(rq, wq):
         raise Ignore()
     rq.task_done()
 
-    img = cv.LUT(img, lookUpTable)
     img_dilate = cv.dilate(img, neiborhood8, iterations=1)
     img_diff = cv.absdiff(img, img_dilate)
     img_diff_not = cv.bitwise_not(img_diff)
