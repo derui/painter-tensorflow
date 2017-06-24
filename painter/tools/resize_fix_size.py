@@ -50,6 +50,9 @@ def write_image(info, out_dir):
 
     writefname = os.path.join(d, "{}{}".format(fname, '.png'))
 
+    if len(img.shape) == 2:
+        img = cv.cvtColor(img, cv.COLOR_GRAY2RGB)
+
     cv.imwrite(writefname, img)
 
 

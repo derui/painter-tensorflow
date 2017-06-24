@@ -5,7 +5,12 @@ import argparse
 argparser = argparse.ArgumentParser(
     description='Resize images that equals size of pair files')
 argparser.add_argument(
-    '--input_dir',
+    '--original_dir',
+    type=str,
+    help='the directory is contained images',
+    required=True)
+argparser.add_argument(
+    '--line_art_dir',
     type=str,
     help='the directory is contained images',
     required=True)
@@ -48,12 +53,13 @@ def main(argv):
 
     original_list = []
     line_art_list = []
-    for (root, _, files) in os.walk(args.input_dir):
+    for (root, _, files) in os.walk(args.original_dir):
         for f in files:
-            if 'original' in root:
-                original_list.append(os.path.join(root, f))
-            else:
-                line_art_list.append(os.path.join(root, f))
+            original_list.append(os.path.join(root, f))
+
+    for (root, _, files) in os.walk(args.line_art_dir):
+        for f in files:
+            line_art_list.append(os.path.join(root, f))
 
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir, mode=0o755)
