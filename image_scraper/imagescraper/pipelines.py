@@ -6,13 +6,11 @@
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 import numpy as np
 import os
-import scrapy
 from scrapy.exceptions import DropItem
-from scrapy.pipelines.files import FileException, FilesPipeline
+from scrapy.pipelines.files import FilesPipeline
 import cv2 as cv
 
 ITEM_MIN_SIZES = {'w': 300, 'h': 300}
-IGNORE_TAGS = ['comic', 'monochrome', 'tagme']
 
 
 def _inference_line_art(img):
@@ -39,14 +37,6 @@ def _valid_constraint(img):
     return True
 
 
-def _include_ignoreable_tags(tags):
-    for tag in tags:
-        if tag in IGNORE_TAGS:
-            return True
-
-    return False
-
-
 def _write_ignore_file(basedir, path):
     basedir = os.path.join(basedir, 'excluded')
     filename, _ = os.path.splitext(os.path.basename(path))
@@ -56,6 +46,7 @@ def _write_ignore_file(basedir, path):
     tagfile = os.path.join(basedir, filename)
     with open(tagfile, 'w'):
         pass
+
 
 class ImageScraperPipeline(FilesPipeline):
     def __init__(self, store_uri, download_func=None, settings=None):
@@ -67,30 +58,18 @@ class ImageScraperPipeline(FilesPipeline):
     #     return [scrapy.Request(item.get('file_urls')[0], headers=headers)]
 
     def item_completed(self, results, item, info):
-        ok, x = results[0]
+        
+        items = [x for ok, x in results if ok is True]
 
-        item['files'] = [x['path']]
+        item['files'] = [x['path'] for x in items]
+        tags = item['tags']
+        item['tags'] = {}
+        for x in items:
 
-        if not ok or not x['path']:
-            raise FileException('Item contains no images')
-
-        tags = item.get('tags')
-        item['tags'] = []
-        if self._ignore_tags(x['path'], tags):
-            return item
-
-        self._constraint_image(x['path'])
+            self._save_tags(x['path'], tags[x['url']])
+            self._constraint_image(x['path'])
 
         return item
-
-    def _ignore_tags(self, path, tags):
-
-        if _include_ignoreable_tags(tags):
-            _write_ignore_file(self.store.basedir, path)
-            return True
-
-        self._save_tags(path, tags)
-        return False
 
     def _save_tags(self, path, tags):
         basedir = os.path.join(self.store.basedir, 'tags')
@@ -123,4 +102,3 @@ class ImageScraperPipeline(FilesPipeline):
 
         except DropItem as e:
             _write_ignore_file(self.store.basedir, path)
-            raise e
