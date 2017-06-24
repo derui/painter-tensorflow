@@ -24,11 +24,11 @@ def read_pair(filename_queue):
         'line_art': tf.FixedLenFeature([], tf.string),
     })
 
-    painted = tf.image.decode_png(features['original'], channels=3)
+    original = tf.image.decode_png(features['original'], channels=3)
     line_art = tf.image.decode_png(features['line_art'], channels=1)
 
-    result.painted = painted
-    result.line_art = line_art
+    result.original = tf.reshape(original, [128, 128, 3])
+    result.line_art = tf.reshape(line_art, [128, 128, 1])
 
     return result
 
@@ -41,6 +41,12 @@ def distorted_image(origin, wire):
 
     origin = tf.where(mirror_cond, origin, tf.image.flip_left_right(origin))
     wire = tf.where(mirror_cond, wire, tf.image.flip_left_right(wire))
+
+    ud_random = tf.random_uniform([], 0, 1.0)
+    ud_cond = tf.less(ud_random, .5)
+
+    origin = tf.where(ud_cond, origin, tf.image.flip_up_down(origin))
+    wire = tf.where(ud_cond, wire, tf.image.flip_up_down(wire))
 
     return origin, wire
 
@@ -80,10 +86,10 @@ def inputs(data_dir, batch_size, distorted=True):
     num_examples_per_epoch = 100
 
     read_input = read_pair(filename_queue)
-    reshaped_o_image = tf.cast(read_input.original_image, tf.float32)
+    reshaped_o_image = tf.cast(read_input.original, tf.float32)
     reshaped_o_image = tf.multiply(reshaped_o_image, 1 / 255.0)
     reshaped_o_image = tf.multiply(reshaped_o_image, 2) - 1.0
-    reshaped_w_image = tf.cast(read_input.wire_frame_image, tf.float32)
+    reshaped_w_image = tf.cast(read_input.line_art, tf.float32)
     reshaped_w_image = tf.multiply(reshaped_w_image, 1 / 255.0)
     reshaped_w_image = tf.multiply(reshaped_w_image, 2) - 1.0
 
