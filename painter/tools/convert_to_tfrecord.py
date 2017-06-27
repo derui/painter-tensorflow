@@ -5,6 +5,11 @@ import argparse
 argparser = argparse.ArgumentParser(
     description='Resize images that equals size of pair files')
 argparser.add_argument(
+    '--tags_dir',
+    type=str,
+    help='the directory is contained tags',
+    required=True)
+argparser.add_argument(
     '--original_dir',
     type=str,
     help='the directory is contained images',
@@ -27,23 +32,32 @@ def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
+def _bytes_features(value):
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
+
+
 def convert_to(data_set, name):
     original_images = data_set.original_images
     line_art_images = data_set.line_art_images
+    tags = data_set.tags_list
 
     filename = os.path.join(args.out_dir, name + ".tfrecords")
     writer = tf.python_io.TFRecordWriter(filename)
 
-    for index in range(data_set.num_images):
+    for key in original_images.keys():
 
-        with open(original_images[index], 'rb') as f:
+        with open(original_images[key], 'rb') as f:
             original_raw = f.read()
-        with open(line_art_images[index], 'rb') as f:
+        with open(line_art_images[key], 'rb') as f:
             line_art_raw = f.read()
+
+        with open(tags[key]) as f:
+            tags_raw = list(map(lambda x: x.strip, f.readlines()))
 
         example = tf.train.Example(features=tf.train.Features(feature={
             'original': _bytes_feature(original_raw),
-            'line_art': _bytes_feature(line_art_raw)
+            'line_art': _bytes_feature(line_art_raw),
+            'tags': _bytes_features(tags_raw)
         }))
         writer.write(example.SerializeToString())
     writer.close()
@@ -51,15 +65,20 @@ def convert_to(data_set, name):
 
 def main(argv):
 
-    original_list = []
-    line_art_list = []
+    original_list = {}
+    line_art_list = {}
+    tags_list = {}
     for (root, _, files) in os.walk(args.original_dir):
         for f in files:
-            original_list.append(os.path.join(root, f))
+            original_list[os.path.splitext(f)[0]] = os.path.join(root, f)
 
     for (root, _, files) in os.walk(args.line_art_dir):
         for f in files:
-            line_art_list.append(os.path.join(root, f))
+            line_art_list[os.path.splitext(f)[0]] = os.path.join(root, f)
+
+    for (root, _, files) in os.walk(args.tags_dir):
+        for f in files:
+            tags_list[os.path.splitext(f)[0]] = os.path.join(root, f)
 
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir, mode=0o755)
@@ -68,6 +87,7 @@ def main(argv):
         pass
 
     datasets = Record()
+    datasets.tags = tags_list
     datasets.original_images = original_list
     datasets.line_art_images = line_art_list
     datasets.num_images = len(original_list)
