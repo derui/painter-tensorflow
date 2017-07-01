@@ -3,6 +3,18 @@ import tensorflow as tf
 import math
 
 
+# Define weight variable
+def weight_variable(shape, name=None):
+    return tf.get_variable(
+        name, shape, initializer=tf.truncated_normal_initializer(stddev=0.02))
+
+
+# Define bias variable
+def bias_variable(shape, name=None):
+    return tf.get_variable(
+        name, shape, initializer=tf.constant_initializer(0.0))
+
+
 class LinearEncoder(object):
     """Encoder for Linear Operation."""
 
@@ -11,8 +23,11 @@ class LinearEncoder(object):
 
     def __call__(self, tensor, in_ch, out_ch):
         weight = tf.get_variable(
-            "{}_weight".format(self.name)[in_ch, out_ch], initializer=tf.random_uniform_initializer(stddev=0.02))
-        bias = tf.get_variable('{}_bias'.format(self.name), [out_ch], initializer=tf.constant_initializer(0.0))
+            "{}_weight".format(self.name)[in_ch, out_ch],
+            initializer=tf.random_uniform_initializer(stddev=0.02))
+        bias = tf.get_variable(
+            '{}_bias'.format(self.name), [out_ch],
+            initializer=tf.constant_initializer(0.0))
         conv = tf.matmul(tensor, weight)
         conv = tf.nn.bias_add(conv, bias)
 
@@ -30,12 +45,114 @@ class BatchNormalization(object):
 
         shape = x.get_shape().as_list()
         with tf.variable_scope(self.name) as scope:
-            self.beta = tf.get_variable("beta", [shape[-1]], initializer=tf.constant_initializer(0.))
-            self.gamma = tf.get_variable("gamma", [shape[-1]], initializer=tf.random_normal_initializer(1.0, 0.1))
+            self.beta = tf.get_variable(
+                "beta", [shape[-1]], initializer=tf.constant_initializer(0.))
+            self.gamma = tf.get_variable(
+                "gamma", [shape[-1]],
+                initializer=tf.random_normal_initializer(1.0, 0.1))
 
-            y, _, _ = tf.nn.fused_batch_norm(x, self.gamma, self.beta, epsilon=self.epsilon)
+            y, _, _ = tf.nn.fused_batch_norm(
+                x, self.gamma, self.beta, epsilon=self.epsilon)
 
         return y
+
+
+class LayerNormalization(object):
+    def __init__(self, epsilon=0.0005, name="layer_norm"):
+        self.epsilon = epsilon
+        self.name = name
+
+    def __call__(self, x, train=True):
+        """Implementation layer_normalization """
+        # keep only neurons on [BHWC] format.
+        neurons = x.shape.as_list()[3]
+        with tf.variable_scope(self.name) as scope:
+
+            # compute mean and variance of each neuron.
+            # 1/HΣi=>H ai , resulting only one value each input.
+            mean, var = tf.nn.moments(x, [1, 2, 3], keep_dims=True)
+
+            self.beta = tf.get_variable("beta", [neurons],
+                                        initializer=tf.constant_initializer(0.))
+            self.gamma = tf.get_variable("gamma", [neurons],
+                                         initializer=tf.constant_initializer(1.))
+            # broadcasting dims for [BHWC]
+            self.beta = tf.reshape(self.beta, [1, 1, -1])
+            self.gamma = tf.reshape(self.gamma, [1, 1, -1])
+
+            y = tf.nn.batch_normalization(x, mean, var, self.beta, self.gamma, self.epsilon)
+
+        return y
+
+
+class Encoder(object):
+    """The encoder of AutoEncoder. User should give arguments to
+    this class that are defined convolutional layer.
+    """
+
+    def __init__(self,
+                 in_ch,
+                 out_ch,
+                 patch_h,
+                 patch_w,
+                 strides=[1, 1, 1, 1],
+                 name='encoder'):
+        self.patch_h = patch_h
+        self.patch_w = patch_w
+        self.in_ch = in_ch
+        self.out_ch = out_ch
+        self.name = name
+        self.strides = strides
+
+    def __call__(self, tensor):
+        weight = weight_variable(
+            [self.patch_h, self.patch_w, self.in_ch, self.out_ch],
+            name="{}_weight".format(self.name))
+        bias = bias_variable([self.out_ch], name='{}_bias'.format(self.name))
+        conv = tf.nn.conv2d(
+            tensor, weight, strides=self.strides, padding='SAME')
+        conv = tf.nn.bias_add(conv, bias)
+
+        return conv
+
+
+class Decoder(object):
+    """The encoder of AutoEncoder. User should give arguments to
+    this class that are defined convolutional layer.
+    """
+
+    def __init__(self,
+                 in_ch,
+                 out_ch,
+                 patch_h,
+                 patch_w,
+                 batch_size,
+                 strides=[1, 1, 1, 1],
+                 name='decoder'):
+        self.batch_size = batch_size
+        self.patch_h = patch_h
+        self.patch_w = patch_w
+        self.in_ch = in_ch
+        self.out_ch = out_ch
+        self.name = name
+        self.strides = strides
+
+    def __call__(self, tensor, output_shape):
+        weight = weight_variable(
+            [self.patch_h, self.patch_w, self.out_ch, self.in_ch],
+            name='{}_weight'.format(self.name))
+
+        bias = bias_variable([self.out_ch], name="{}_bias".format(self.name))
+
+        conv = tf.nn.conv2d_transpose(
+            tensor,
+            weight,
+            [self.batch_size, output_shape[0], output_shape[1], self.out_ch],
+            strides=self.strides,
+            padding='SAME')
+        conv = tf.nn.bias_add(conv, bias)
+
+        return conv
 
 
 class PixelShuffler(object):
@@ -70,3 +187,21 @@ class PixelShuffler(object):
         net = tf.reshape(net, [batch_size, f_h, f_w, self.out_ch])
 
         return net
+
+
+class Dense(object):
+    """The dense layer """
+
+    def __init__(self, name='dense'):
+        self.name = name
+
+    def __call__(self, tensor, out_ch):
+        _, w, h, c = tensor.shape.as_list()
+        in_ch = w * h * c
+        weight = weight_variable(
+            [in_ch, out_ch], name="{}_weight".format(self.name))
+        bias = bias_variable([out_ch], name='{}_bias'.format(self.name))
+        conv = tf.nn.bias_add(
+            tf.matmul(tf.reshape(tensor, [-1, in_ch]), weight), bias)
+
+        return conv

@@ -26,19 +26,20 @@ ARGS = argparser.parse_args()
 
 def train():
     with tf.Graph().as_default():
-        DIM = 128 * 128 * 3
+        SIZE = 64
+        DIM = SIZE * SIZE * 3
 
         with tf.device('/cpu:0'):
             gradient_factor = tf.random_uniform([ARGS.batch_size, 1], 0.0, 1.0)
+            randomize_hint = tf.random_uniform([ARGS.batch_size, SIZE, SIZE, 3], -1.0, 1.0)
+            global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
             original, x = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size)
+            original = tf.image.resize_images(original, (SIZE, SIZE))
+            x = tf.image.resize_images(x, (SIZE, SIZE))
 
         with tf.variable_scope('generator'):
-            G = model.generator(x)
-
-        tf.summary.image('base', x, max_outputs=10)
-        tf.summary.image('gen', G, max_outputs=10)
-        tf.summary.image('original', original, max_outputs=10)
+            G = model.generator(x, randomize_hint)
 
         with tf.variable_scope('critic'):
             C = model.critic(x, original)
@@ -48,26 +49,39 @@ def train():
 
             _original = tf.reshape(original, [-1, DIM])
             _G = tf.reshape(G, [-1, DIM])
-            penalty_image = _original + tf.multiply(gradient_factor, _G - _original)
-            _penalty_image = tf.reshape(penalty_image, [-1, 128, 128, 3])
+            penalty_image = _original + (gradient_factor * (_G - _original))
+            _penalty_image = tf.reshape(penalty_image, [-1, SIZE, SIZE, 3])
             C_P = model.critic(x, _penalty_image)
 
-        gradient_penalty = model.gradient_penalty(C_P, penalty_image, ARGS.lambda_)
-        c_loss = model.c_loss(C, C_G, gradient_penalty)
+        gradient_penalty = model.gradient_penalty(C_P, _penalty_image, ARGS.lambda_)
+        c_loss = model.c_loss(C, C_G)
         g_loss = model.g_loss(C_G)
         l1_loss = model.l1_loss(original, G)
 
+        tf.summary.image('base', x, max_outputs=10)
+        tf.summary.image('gen', G, max_outputs=10)
+        tf.summary.image('original', original, max_outputs=10)
+        tf.summary.image('penalty', _penalty_image, max_outputs=10)
+
+        with tf.name_scope('losses'):
+            tf.summary.scalar("penalty", gradient_penalty)
+            tf.summary.scalar("c_loss", c_loss)
+            tf.summary.scalar("g_loss", g_loss)
+            tf.summary.scalar("l1_loss", l1_loss)
+
         with tf.name_scope('c_train'):
-            c_trainer = model.Trainer()
+            c_trainer = model.AdamTrainer()
             c_training = c_trainer(
-                c_loss,
+                c_loss + gradient_penalty,
+                beta1=ARGS.beta1,
                 learning_rate=ARGS.learning_rate,
                 var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='critic'))
 
         with tf.name_scope('g_train'):
-            g_trainer = model.Trainer()
+            g_trainer = model.AdamTrainer()
             g_training = g_trainer(
                 g_loss + l1_loss,
+                beta1=ARGS.beta1,
                 learning_rate=ARGS.learning_rate,
                 var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
 
@@ -75,14 +89,14 @@ def train():
             """Logs loss and runtime """
 
             def begin(self):
-                self._step = -1
+                pass
 
             def before_run(self, run_context):
-                self._step += 1
                 self._start_time = time.time()
-                return tf.train.SessionRunArgs(c_loss)
+                return tf.train.SessionRunArgs([global_step_tensor, c_loss])
 
             def after_run(self, run_context, run_values):
+                self._step = run_values.results[0]
                 duration = time.time() - self._start_time
 
                 if self._step % 10 == 0 and ARGS.full_trace:
@@ -94,13 +108,12 @@ def train():
 
                 if self._step % 10 == 0:
                     examples_per_step = ARGS.batch_size / duration
-                    c_loss_value = run_values.results
+                    c_loss_value = run_values.results[1]
                     sec_per_batch = float(duration)
 
                     format_str = '{}: step {}, loss = {:.3f} ({:.1f} examples/sec; {:.3f} sec/batch)'
                     print(format_str.format(datetime.now(), self._step, c_loss_value, examples_per_step, sec_per_batch))
 
-        global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
         update_global_step = tf.assign(global_step_tensor, global_step_tensor + 1)
 
         run_options = tf.RunOptions()
@@ -115,14 +128,15 @@ def train():
                 save_checkpoint_secs=60,
                 config=tf.ConfigProto(log_device_placement=ARGS.log_device_placement)) as sess:
 
-            critic = 0
             while not sess.should_stop():
 
-                if critic % ARGS.critic_step == 0:
-                    sess.run([c_training, g_training], options=run_options, run_metadata=run_metadata)
-                else:
+                # Update generator
+                sess.run([g_training], options=run_options, run_metadata=run_metadata)
+
+                # Update critic
+                for _ in range(ARGS.critic_step):
                     sess.run([c_training], options=run_options, run_metadata=run_metadata)
-                critic += 1
+
                 sess.run([update_global_step], options=run_options, run_metadata=run_metadata)
 
 
