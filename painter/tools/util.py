@@ -6,59 +6,54 @@ import queue
 import time
 
 
-# Return a new priority queue contains pathes prioritized with inode
-def make_sequential_queue(directory, excludes=[]):
-    q = queue.PriorityQueue()
-    all_files = {}
+def load_exclude_names(excludes_dir):
+    """load file names from the directory.
 
-    for root, _, files in os.walk(directory):
-        all_files.update({os.stat(os.path.join(root, f)).st_ino: os.path.join(root, f) for f in files})
+    @return list that files should exclude in process. Not contained extension of file
+            in list.
+    """
+    excludes = []
+    for r, _, files in os.walk(excludes_dir):
+        names = [v for v, _ in map(lambda x: os.path.splitext(x), files)]
+        excludes.extend(names)
 
-    for key in all_files.keys():
-        f = all_files[key]
-        n, _ = os.path.splitext(os.path.basename(f))
-        if n in excludes:
-            continue
-        q.put_nowait((key, f))
-
-    return q
+    return excludes
 
 
-# Return a new function to read with given function and path read from queue
-def sequential_read_dir(rq, wq, read_func, ev):
-    def process():
-        while not ev.is_set():
-            try:
-                _, path = rq.get_nowait()
-            except queue.Empty:
+def walk_images(image_dir, exclude_files, per_yield_files):
+
+    return_files = []
+    for root, _, files in os.walk(image_dir):
+        for f in files:
+            n, _ = os.path.splitext(os.path.basename(f))
+            if n in exclude_files:
                 continue
-            rq.task_done()
 
-            try:
-                image = read_func(path)
-                wq.put((image, path))
-            except Exception as e:
-                print('Exception raised in reader thread: {}'.format(e))
+            return_files.append((root, f))
 
-    return process
+            if len(return_files) >= per_yield_files:
+                yield return_files
+
+            files = []
+
+    if len(return_files) > 0:
+        yield return_files
 
 
-# Return a new function to write data that are from queue via given function
-def queue_writer(directory, wq, write_func, ev):
-    def process():
-        while not ev.is_set():
-            try:
-                item = wq.get_nowait()
-            except queue.Empty:
-                continue
-            wq.task_done()
+def make_generic_image_processor(read_func, write_func, process):
+    """make generic-image-processor funciton.
 
-            if item is None:
-                break
+    generic image processor has three processes: reader, writer, and image processing.
+    it accept only two arguments, such as input path and output path.
 
-            write_func(item, directory)
+    @return new generic image processor
+    """
+    def func(in_path, out_path):
+        img = read_func(in_path)
+        img = process(img)
+        write_func(img, out_path)
 
-    return process
+    return func
 
 
 def resize_image(img, fixed_size):
