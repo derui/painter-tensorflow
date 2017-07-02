@@ -1,7 +1,7 @@
 # coding: utf-8
 
 import tensorflow as tf
-from . import operations as op
+from tflib import operations as op
 
 
 class Generator(object):

@@ -3,8 +3,4 @@
 .direnv
 .envrc
 images
-dataset
-extracted
-resized
-
 __pycache__

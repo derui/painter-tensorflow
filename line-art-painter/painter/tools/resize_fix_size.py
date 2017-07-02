@@ -55,7 +55,7 @@ if args.excludes_dir is not None:
     excludes = util.load_exclude_names(args.excludes_dir)
 
 num = 0
-for files in util.walk_images(args.input_dir, excludes, 100):
+for files, ignored_files in util.walk_images(args.input_dir, excludes, 100):
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
         futures = []
         for root, f in files:
@@ -70,4 +70,4 @@ for files in util.walk_images(args.input_dir, excludes, 100):
                 print('exception: %s' % exc)
 
     num += 100
-    print('{}: Completed {} items'.format(datetime.now(), num))
+    print('{}: Completed {} items, {} ignored.'.format(datetime.now(), num, ignored_files))

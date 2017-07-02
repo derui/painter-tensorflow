@@ -17,27 +17,29 @@ def load_exclude_names(excludes_dir):
         names = [v for v, _ in map(lambda x: os.path.splitext(x), files)]
         excludes.extend(names)
 
-    return excludes
+    return set(excludes)
 
 
 def walk_images(image_dir, exclude_files, per_yield_files):
 
     return_files = []
+    ignored_files = 0
     for root, _, files in os.walk(image_dir):
         for f in files:
             n, _ = os.path.splitext(os.path.basename(f))
             if n in exclude_files:
+                ignored_files += 1
                 continue
 
             return_files.append((root, f))
 
             if len(return_files) >= per_yield_files:
-                yield return_files
+                yield (return_files, ignored_files)
 
-            files = []
+                return_files = []
 
     if len(return_files) > 0:
-        yield return_files
+        yield (return_files, ignored_files)
 
 
 def make_generic_image_processor(read_func, write_func, process):

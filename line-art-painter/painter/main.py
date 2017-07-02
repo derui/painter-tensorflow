@@ -21,24 +21,29 @@ def normalize_image(img):
     return np.multiply(img, 255.0)
 
 
+def initial_image(img):
+    return np.ones_like(img)
+
+
 def main():
     image = cv2.imread(ARGS.image)
 
     width, height, chan = image.shape
     width = pow(2, math.floor(math.log2(width)))
     height = pow(2, math.floor(math.log2(height)))
-    image = image[0:width, 0:height]
+    original = image[0:width, 0:height]
 
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = cv2.cvtColor(original, cv2.COLOR_RGB2GRAY)
     image = image / 255.0
     image = np.multiply(image, 2.0)
     image = image - 1.0
-    width, height, chan = image.shape
+    width, height = image.shape
 
     with tf.device('/cpu:0'):
-        x = tf.placeholder(tf.float32, shape=[1, width, height, chan])
+        x = tf.placeholder(tf.float32, shape=[1, width, height])
+        hint = tf.placeholder(tf.float32, shape=[1, width, height, 3])
         with tf.variable_scope('generator'):
-            construction_op = model.generator(x, width, height, chan, 1)
+            construction_op = model.generator(tf.reshape(x, [1, width, height, 1]), hint)
 
             var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
 
@@ -47,7 +52,7 @@ def main():
             ckpt = tf.train.get_checkpoint_state(ARGS.train_dir)
             saver.restore(sess, ckpt.model_checkpoint_path)
 
-            ret = sess.run([construction_op], {x: [image]})
+            ret = sess.run([construction_op], {x: [image], hint: [initial_image(original)]})
 
             ret = normalize_image(ret[0][0])
             ret = ret.astype(np.uint8)

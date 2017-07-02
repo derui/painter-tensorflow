@@ -7,10 +7,21 @@
 import numpy as np
 import os
 from scrapy.exceptions import DropItem
-from scrapy.pipelines.files import FilesPipeline
+from scrapy.pipelines.files import FilesPipeline, FileException
 import cv2 as cv
 
 ITEM_MIN_SIZES = {'w': 300, 'h': 300}
+IGNORE_TAGS = [
+    'comic', 'monochrome', 'tagme', 'translation request', 'greyscale'
+]
+
+
+def _include_ignoreable_tags(tags):
+    for tag in tags:
+        if tag in IGNORE_TAGS:
+            return True
+
+    return False
 
 
 def _inference_line_art(img):
@@ -50,7 +61,8 @@ def _write_ignore_file(basedir, path):
 
 class ImageScraperPipeline(FilesPipeline):
     def __init__(self, store_uri, download_func=None, settings=None):
-        super(ImageScraperPipeline, self).__init__(store_uri, download_func, settings)
+        super(ImageScraperPipeline, self).__init__(store_uri, download_func,
+                                                   settings)
 
     # def get_media_requests(self, item, info):
     #     headers = item['response'].headers.copy()
@@ -58,16 +70,17 @@ class ImageScraperPipeline(FilesPipeline):
     #     return [scrapy.Request(item.get('file_urls')[0], headers=headers)]
 
     def item_completed(self, results, item, info):
-        
-        items = [x for ok, x in results if ok is True]
 
-        item['files'] = [x['path'] for x in items]
+        ok, x = results[0]
+        if not ok:
+            raise FileException("Item not contains")
+
+        item['files'] = [x['path']]
         tags = item['tags']
         item['tags'] = {}
-        for x in items:
 
-            self._save_tags(x['path'], tags[x['url']])
-            self._constraint_image(x['path'])
+        self._save_tags(x['path'], tags)
+        self._constraint_image(x['path'])
 
         return item
 
@@ -83,6 +96,9 @@ class ImageScraperPipeline(FilesPipeline):
         with open(tagfile, "w") as f:
             for tag in tags:
                 f.write(tag + "\n")
+
+        if _include_ignoreable_tags(tags):
+            _write_ignore_file(self.store.basedir, path)
 
     def _constraint_image(self, path):
 
