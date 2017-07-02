@@ -35,7 +35,7 @@ def train():
             painted, line_art = dataset.inputs(ARGS.dataset_dir, ARGS.batch_size, ARGS.image_size, distorted=ARGS.distorted)
 
         with tf.variable_scope('classifier'):
-            encoded = model.autoencoder(painted, ARGS.image_size, ARGS.image_size)
+            encoded = model.autoencoder(painted)
 
         tf.summary.image('encoded', encoded)
         tf.summary.image('painted', painted)

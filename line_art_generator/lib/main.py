@@ -23,11 +23,11 @@ ARGS = argparser.parse_args()
 def init_sess(height, width):
 
     image_size = int(math.pow(2, math.ceil(math.log2(max(height, width)))))
-    x = tf.placeholder(tf.float32, [height, width, 3])
+    x = tf.placeholder(tf.float32, [1, height, width, 3])
     x_ = tf.image.resize_image_with_crop_or_pad(x, image_size, image_size)
 
     with tf.variable_scope('classifier'):
-        generate_op = model.autoencoder([x_], image_size, image_size)
+        generate_op = model.autoencoder(x_)
 
     generate_op = tf.image.resize_image_with_crop_or_pad(generate_op[0], height, width)
 
@@ -39,13 +39,12 @@ def init_sess(height, width):
     ckpt = tf.train.get_checkpoint_state(ARGS.train_dir)
     saver.restore(sess, ckpt.model_checkpoint_path)
 
-    return sess, generate_op, [x]
+    return sess, generate_op, x
 
 
 def generate(sess, op, ps, image):
-    [x] = ps
 
-    ret = sess.run(op, feed_dict={x: image})
+    ret = sess.run(op, feed_dict={ps: [image]})
 
     return ret
 

@@ -46,15 +46,15 @@ class Generator(object):
         self.deconv0 = op.Encoder(64, 3, 3, 3, name='decoder0')
 
 
-def generator(image, hint):
+def generator(image):
     """Make construction layer.
     """
-    channels = image.shape.as_list()[3] + hint.shape.as_list()[3]
+    channels = image.shape.as_list()[3]
     gen = Generator(channels)
 
     relu = tf.nn.relu
 
-    conv0 = relu(gen.bnc0(gen.conv0(tf.concat([image, hint], 3))))
+    conv0 = relu(gen.bnc0(gen.conv0(image)))
     conv1 = relu(gen.bnc1(gen.conv1(conv0)))
     conv2 = relu(gen.bnc2(gen.conv2(conv1)))
     conv3 = relu(gen.bnc3(gen.conv3(conv2)))

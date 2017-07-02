@@ -31,7 +31,6 @@ def train():
 
         with tf.device('/cpu:0'):
             gradient_factor = tf.random_uniform([ARGS.batch_size, 1], 0.0, 1.0)
-            randomize_hint = tf.random_uniform([ARGS.batch_size, SIZE, SIZE, 3], -1.0, 1.0)
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
             original, x = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size)
@@ -39,7 +38,7 @@ def train():
             x = tf.image.resize_images(x, (SIZE, SIZE))
 
         with tf.variable_scope('generator'):
-            G = model.generator(x, randomize_hint)
+            G = model.generator(x)
 
         with tf.variable_scope('critic'):
             C = model.critic(x, original)

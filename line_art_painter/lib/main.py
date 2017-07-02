@@ -21,10 +21,6 @@ def normalize_image(img):
     return np.multiply(img, 255.0)
 
 
-def initial_image(img):
-    return np.ones_like(img)
-
-
 def main():
     image = cv2.imread(ARGS.image)
 
@@ -41,9 +37,8 @@ def main():
 
     with tf.device('/cpu:0'):
         x = tf.placeholder(tf.float32, shape=[1, width, height])
-        hint = tf.placeholder(tf.float32, shape=[1, width, height, 3])
         with tf.variable_scope('generator'):
-            construction_op = model.generator(tf.reshape(x, [1, width, height, 1]), hint)
+            construction_op = model.generator(tf.reshape(x, [1, width, height, 1]))
 
             var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
 
@@ -52,7 +47,7 @@ def main():
             ckpt = tf.train.get_checkpoint_state(ARGS.train_dir)
             saver.restore(sess, ckpt.model_checkpoint_path)
 
-            ret = sess.run([construction_op], {x: [image], hint: [initial_image(original)]})
+            ret = sess.run([construction_op], {x: [image]})
 
             ret = normalize_image(ret[0][0])
             ret = ret.astype(np.uint8)
