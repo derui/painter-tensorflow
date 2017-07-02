@@ -126,7 +126,9 @@ def train():
                 hooks=[tf.train.StopAtStepHook(num_steps=ARGS.max_steps),
                        tf.train.NanTensorHook(c_loss), _LoggerHook()],
                 save_checkpoint_secs=60,
-                config=tf.ConfigProto(log_device_placement=ARGS.log_device_placement)) as sess:
+                config=tf.ConfigProto(
+                    gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.85),
+                    log_device_placement=ARGS.log_device_placement)) as sess:
 
             while not sess.should_stop():
 

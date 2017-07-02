@@ -44,7 +44,8 @@ def process(img):
 
 
 def to_out_path(out_dir, f):
-    return os.path.join(out_dir, f[:2], f)
+    name, _ = os.path.splitext(f)
+    return os.path.join(out_dir, f[:2], "{}.png".format(name))
 
 
 image_processor = util.make_generic_image_processor(read_image, write_image,

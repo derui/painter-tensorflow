@@ -1,4 +1,6 @@
 opencv-python
 numpy
-tensorflow
+tensorflow-gpu
+msgpack-python
+msgpack-numpy
 
