@@ -26,7 +26,7 @@ ARGS = argparser.parse_args()
 
 def train():
     with tf.Graph().as_default():
-        SIZE = 64
+        SIZE = 128
         DIM = SIZE * SIZE * 3
 
         with tf.device('/cpu:0'):

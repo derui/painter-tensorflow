@@ -30,13 +30,13 @@ argparser.add_argument(
 ARGS = argparser.parse_args()
 
 
-def init_sess(batch_size, height, width):
+def init_sess(batch_size, height, width, reuse=False):
 
     image_size = int(math.pow(2, math.ceil(math.log2(max(height, width)))))
     x = tf.placeholder(tf.float32, [batch_size, height, width, 3])
 
-    with tf.variable_scope('classifier', reuse=True):
-        generate_op = model.autoencoder(x, image_size, image_size)
+    with tf.variable_scope('classifier', reuse=reuse):
+        generate_op = model.autoencoder(x)
 
     var_list = tf.get_collection(
         tf.GraphKeys.TRAINABLE_VARIABLES, scope='classifier')
@@ -95,7 +95,8 @@ if __name__ == '__main__':
     input_files = input_files[:-1]
 
     sess, op, ps = init_sess(ARGS.batch_size, ARGS.image_size, ARGS.image_size)
-    for files in input_files:
+    for i in range(len(input_files)):
+        files = input_files[i]
         images = [cv2.imread(f) for f in files]
         images = [cv2.cvtColor(image, cv2.COLOR_BGR2RGB) for image in images]
         images = [image.astype(np.float32) for image in images]
@@ -103,10 +104,11 @@ if __name__ == '__main__':
 
         images = generate(sess, op, ps, images)
         write_images(zip(images, files), ARGS.output_dir)
+        print("Finished batch {}".format(i+1))
 
     sess.close()
 
-    sess, op, ps = init_sess(len(rest_input_files), ARGS.image_size, ARGS.image_size)
+    sess, op, ps = init_sess(len(rest_input_files), ARGS.image_size, ARGS.image_size, reuse=True)
     images = [cv2.imread(f) for f in rest_input_files]
     images = [cv2.cvtColor(image, cv2.COLOR_BGR2RGB) for image in images]
     images = [image.astype(np.float32) for image in images]

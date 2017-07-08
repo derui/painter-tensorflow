@@ -22,9 +22,11 @@ ARGS = argparser.parse_args()
 
 def init_sess(height, width):
 
-    image_size = int(math.pow(2, math.ceil(math.log2(max(height, width)))))
+    # image size to put in convolution should be able to divide 2
+    work_h = int(math.pow(2, math.ceil(math.log2(height))))
+    work_w = int(math.pow(2, math.ceil(math.log2(width))))
     x = tf.placeholder(tf.float32, [1, height, width, 3])
-    x_ = tf.image.resize_image_with_crop_or_pad(x, image_size, image_size)
+    x_ = tf.image.resize_image_with_crop_or_pad(x, work_h, work_w)
 
     with tf.variable_scope('classifier'):
         generate_op = model.autoencoder(x_)
