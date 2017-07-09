@@ -1,0 +1,38 @@
+.page-content {
+    width: 85%;
+    margin-top: 1em;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.image-uploader {
+    padding: 1em;
+    margin: 0.5em;
+
+    border: 1px dashed #888;
+}
+
+.image-uploader__label {
+    display: block;
+    margin-bottom: 0.5em;
+
+    border-bottom: 1px solid #f88;
+}
+
+.image-container {
+    padding: 0.5em;
+    margin: 0.5em;
+
+    border: 1px dashed #8f8;
+}
+
+.image-container__item--empty {
+    padding: 1em;
+    background-color: #fafafa;
+    color: #888;
+    font-size: 3em;
+    text-align: center;
+}
+.image-container__image {
+    width: 100%;
+}

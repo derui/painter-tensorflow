@@ -1,0 +1,42 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="/static/css/site.css">
+    <link rel="stylesheet" href="/static/css/material.min.css">
+    <script src="/static/js/material.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <script src="/static/js/jquery-3.2.1.min.js"></script>
+  </head>
+  <body>
+    <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+      <header class="mdl-layout__header">
+        <div class="mdl-layout__header-row">
+          <!-- Title -->
+          <span class="mdl-layout-title">Similar image sercher demo</span>
+          <!-- Add spacer, to align navigation to the right -->
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <main class="mdl-layout__content">
+        <div class="page-content">
+          <section>
+            <form id="target-image" class="image-uploader">
+              <div>
+                <label class="image-uploader__label" for="file">Image to similarity search</label>
+                <input type="file" id="file">
+              </div>
+              <button type="submit">検索する</button>
+            </form>
+          </section>
+          <section>
+            <div class="image-container mdl-grid">
+            </div>
+          </section>
+        </div>
+        
+      </main>
+    </div>
+      
+    <script src="/static/js/main.js"></script>
+  </body>
+</html>
+
