@@ -1,0 +1,13 @@
+{
+  "name": "main",
+  "version": "0.1.0",
+  "sources": [
+    "src"
+  ],
+  "bs-dependencies" : [
+    "bs-fetch"
+  ],
+
+  "generate-merlin": true,
+  "package-specs": ["es6"]
+}
