@@ -71,48 +71,41 @@ let similarities_to_images = function
     | _ -> [||]
 
 let () =
-  let send_request file = 
-    let form_data = Dom_util.FormData.create () in
-    form_data |> Dom_util.FormData.append "file" file;
+  (* let send_request file =  *)
+  (*   let form_data = Dom_util.FormData.create () in *)
+  (*   form_data |> Dom_util.FormData.append "file" file; *)
 
-    let open Bs_fetch in
-    fetchWithInit "/api/similarity-search" (RequestInit.make ~method_:Post ())
-    |> Js.Promise.then_ (fun res ->
-      if Response.ok res then Response.json res else
-        res |> Response.statusText |> failwith |> Js.Promise.reject
-    )
-    |> Js.Promise.then_ (fun json ->
-      let ret = match Js.Json.classify json with
-        | Js.Json.JSONObject obj ->
-           Js.Dict.get obj "similarities" |> similarities_to_images
-           |> Array.iter (fun _ -> ())
-        | _ -> Js.log json
-      in
-      Js.Promise.resolve ret
-    )
-  in
+  (*   let open Bs_fetch in *)
+  (*   fetchWithInit "/api/similarity-search" (RequestInit.make ~method_:Post ()) *)
+  (*   |> Js.Promise.then_ (fun res -> *)
+  (*     if Response.ok res then Response.json res else *)
+  (*       res |> Response.statusText |> failwith |> Js.Promise.reject *)
+  (*   ) *)
+  (*   |> Js.Promise.then_ (fun json -> *)
+  (*     let ret = match Js.Json.classify json with *)
+  (*       | Js.Json.JSONObject obj -> *)
+  (*          Js.Dict.get obj "similarities" |> similarities_to_images *)
+  (*          |> Array.iter (fun _ -> ()) *)
+  (*       | _ -> Js.log json *)
+  (*     in *)
+  (*     Js.Promise.resolve ret *)
+  (*   ) *)
+  (* in *)
 
-  let submit_handler = fun ev -> begin
-    ev##preventDefault ();
-    ev##stopPropagation ();
-
-    (* initialize image container first *)
-    match Dom_util.get_by_id Dom_util.dom "file" with
-    | None -> false
-    | Some file_input -> begin
-      match Dom_util.Node.get_files file_input |> Array.to_list with
-      | [] -> false
-      | file :: _ -> begin
-        send_request file |> ignore;
-        false
-      end
-    end
-  end in
-
+  let module Store = React_store.Make(struct
+                         type t = Reducer.state
+                       end) in
   let ready_callback = fun _ ->
     let open Option.Monad_infix in
     Dom_util.get_by_id Dom_util.dom "container" >>= fun c ->
-    Option.return (React.render component c)
+    let store = Dispatch.Store.make {Reducer.file = ""} in
+    let dispatcher = Dispatch.make ~store ~reducer:Reducer.reduce in
+    let render c =
+      React.render (React.component Component_main.t {
+                        Component_main.state = Dispatch.Store.get store;
+                        dispatcher = dispatcher
+                      } [| |]) c in
+    render c |> Option.return
   in 
 
   Dom_util.(add_event_handler dom Event_type.DOMContentLoaded ready_callback)

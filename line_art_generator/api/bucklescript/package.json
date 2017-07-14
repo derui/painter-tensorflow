@@ -4,16 +4,20 @@
   "scripts": {
     "clean": "bsb -clean-world",
     "build": "bsb -make-world",
-    "watch": "bsb -make-world -w"
+    "watch": "bsb -make-world -w",
+    "bundle": "bsb -make-world && webpack"
   },
   "keywords": [
     "BuckleScript"
   ],
   "license": "MIT",
   "devDependencies": {
-    "bs-platform": "^1.8.1"
+    "bs-platform": "^1.8.1",
+    "webpack": "^3.2.0"
   },
   "dependencies": {
-    "bs-fetch": "^0.1.1"
+    "bs-fetch": "^0.1.1",
+    "react": "^15.6.1",
+    "react-dom": "^15.6.1"
   }
 }

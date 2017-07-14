@@ -4,21 +4,24 @@
   Usage:
 
   type action = Action
-
-  module D = React_dispatch.Make(struct
+  module A = struct
     type t = action
     let to_string = function
     | Action -> "action"
-  end)
-  (struct
+  end
+
+  module R = struct
     type state = string
     let reduce state = function
     | Action -> "s"
-  end)
+  end
+
+  module D = React_dispatch.Make(React_store.Make(struct type t = string end))(A)(R)
 
   let store = D.make ""
-  let store = D.add_describe store (fun _ -> ()) in
-  D.dispatch store v (fun v -> Action)
+  let store = D.subscribe store (fun _ -> ()) in
+  let dispatch = D.make store in 
+  dispatch v (fun v -> Action)
 
 *)
 
@@ -39,32 +42,28 @@ end
 module type S = sig
   type t
   type action
+  type store
   type state
-  type describe = state -> unit
+  type reducer = state -> action -> state
 
-  val make: state -> t
-  val dispatch : t -> 'a -> ('a -> action) -> t
-  val add_describe: t -> (state -> unit) -> t
+  val make : store:store -> reducer:reducer -> t
+  val dispatch: t -> 'a -> ('a -> action) -> unit
 end
 
-module Make(A:Action)(R: Reducer with type action := A.t)
-  : (S with type action := A.t and type state := R.state) =
+module Make(Store: React_store.S)
+  (A: Action)
+  : (S with type action := A.t and type store := Store.t and type state := Store.state) =
 struct
-  type describe = R.state -> unit
+  type reducer = Store.state -> A.t -> Store.state
   type t = {
-    state: R.state;
-    describes: describe array;
+    mutable store: Store.t;
+    reducer: reducer;
   }
 
-  let make v = {state = v; describes = [||]}
+  (* This function return closure contained mutable store. *)
+  let make ~store ~reducer = {store; reducer}
   let dispatch t v f =
-    let new_state = f v |> R.reduce t.state in
-    let t = {t with state = new_state} in
-    Array.iter (fun f -> f new_state) t.describes;
-    t
-
-  let add_describe t describe =
-    {t with describes = Array.append [|describe|] t.describes}
-
+    let new_state = f v |> t.reducer (Store.get t.store) in
+    t.store <- Store.save t.store new_state
 end
 

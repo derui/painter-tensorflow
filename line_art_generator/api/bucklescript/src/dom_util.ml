@@ -54,6 +54,8 @@ module Node = struct
   external set_attribute : t -> string -> 'a -> unit = "setAttribute" [@@bs.send]
   external get_files : t -> blob array = "files" [@@bs.get]
 
+  external get_value : t -> string = "value" [@@bs.get]
+  external set_value : t -> string -> unit = "value" [@@bs.set]
 end
 
 (* Binding for add_event_handler *)
