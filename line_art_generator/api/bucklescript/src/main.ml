@@ -39,7 +39,6 @@ let create_card (item : image_item )=
   and card_text = div ()
   and img = D.(create_element dom "img")
   and text_node = D.(string_of_float item##similarity |> create_text_node dom) in
-
   D.Node.set_class_name img "image-container__image";
   D.Node.set_attribute img "src" item##url;
 
@@ -97,15 +96,17 @@ let () =
                        end) in
   let ready_callback = fun _ ->
     let open Option.Monad_infix in
-    Dom_util.get_by_id Dom_util.dom "container" >>= fun c ->
-    let store = Dispatch.Store.make {Reducer.file = ""} in
+    Dom_util.query_selector Dom_util.dom ".tp-Content" >>= fun c ->
+    let store = Dispatch.Store.make {Reducer.file_name = ""; choosed_image = ""} in
     let dispatcher = Dispatch.make ~store ~reducer:Reducer.reduce in
-    let render c =
+    let render t _ =
       React.render (React.component Component_main.t {
-                        Component_main.state = Dispatch.Store.get store;
+                        Component_main.state = Dispatch.Store.get t;
                         dispatcher = dispatcher
                       } [| |]) c in
-    render c |> Option.return
-  in 
 
-  Dom_util.(add_event_handler dom Event_type.DOMContentLoaded ready_callback)
+    let _ = Dispatch.subscribe dispatcher render in 
+    render store (Dispatch.Store.get store) |> Option.return
+  in
+
+  Dom_util.(add_event_listener dom Event_type.DOMContentLoaded ready_callback)

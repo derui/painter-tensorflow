@@ -26,7 +26,10 @@ module Make(T:TYPE) : S with type state = T.t = struct
   }
 
   let make state = {state = state; subscripters = [||]}
-  let save t state = {t with state}
+  let save t state =
+    let t' = {t with state} in
+    Array.iter (fun f -> f t' state) t.subscripters;
+    t'
   let get t = t.state
   let subscribe t s = {t with subscripters = Array.append [|s|] t.subscripters}
 end

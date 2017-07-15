@@ -1,22 +1,35 @@
-.page-content {
-    width: 85%;
+.tp-Content {
+    width: 50%;
     margin-top: 1em;
     margin-left: auto;
     margin-right: auto;
 }
 
-.image-uploader {
+.tp-ImageUploader {
     padding: 1em;
     margin: 0.5em;
 
     border: 1px dashed #888;
 }
 
-.image-uploader__label {
+.tp-ImageUploader_DragAndDrop {
+    padding: 1em;
+    margin: 0.5em 0;
+
+    background-color: rgba(0, 200, 172, 0.2);
+    border: 4px solid rgb(50, 200, 103);
+    border-radius: 4px;
+}
+
+.tp-ImageUploader_UploadButton {
     display: block;
     margin-bottom: 0.5em;
 
     border-bottom: 1px solid #f88;
+}
+
+.tp-ImageUploader_File {
+    display: none;
 }
 
 .image-container {

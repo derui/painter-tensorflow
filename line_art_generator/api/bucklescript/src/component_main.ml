@@ -10,8 +10,8 @@ type prop = {
 type state = unit
 
 let render prop _ _ =
-  R.div (R.props ()) [| R.component Component_file.t {
-    Component_file.state = prop.state;
+  R.div (R.props ()) [| R.component Component_uploader.t {
+    Component_uploader.state = prop.state;
     dispatcher = prop.dispatcher;
   } [||] |]
 

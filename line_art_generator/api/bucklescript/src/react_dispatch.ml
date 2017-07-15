@@ -48,6 +48,7 @@ module type S = sig
 
   val make : store:store -> reducer:reducer -> t
   val dispatch: t -> 'a -> ('a -> action) -> unit
+  val subscribe: t -> (store -> state -> unit) -> t
 end
 
 module Make(Store: React_store.S)
@@ -65,5 +66,9 @@ struct
   let dispatch t v f =
     let new_state = f v |> t.reducer (Store.get t.store) in
     t.store <- Store.save t.store new_state
+  let subscribe t subscription =
+    let store' = Store.subscribe t.store subscription in
+    t.store <- store';
+    t
 end
 
