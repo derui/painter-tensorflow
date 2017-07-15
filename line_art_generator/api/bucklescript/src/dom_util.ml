@@ -70,6 +70,30 @@ module Node = struct
   external set_value : t -> string -> unit = "value" [@@bs.set]
 end
 
+module Image_element = struct
+  type image
+  type t = image Event_target.t
+
+  external create: unit -> t = "Image" [@@bs.new]
+  external set_src: t -> string -> unit = "src" [@@bs.set]
+  external get_src: t -> string = "src" [@@bs.get]
+  external set_onload: t -> (image Progress_event.t -> unit) -> unit = "onload" [@@bs.set]
+end
+
+module Canvas_context = struct
+  type t
+
+  (* binding drawImage *)
+  external draw_image: Image_element.t -> int -> int -> unit = "drawImage" [@@bs.send.pipe:t]
+end
+
+module Canvas_element = struct
+  type t
+
+  (* binding getContext() method *)
+  external get_context: string -> Canvas_context.t = "getContext" [@@bs.send.pipe:t]
+end
+
 (* Interface for FileReader *)
 module FileReader = struct
   type file_reader

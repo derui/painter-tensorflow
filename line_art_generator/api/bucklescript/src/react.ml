@@ -25,6 +25,12 @@ function _createClass (fn, initialState, config) {
       return { state: initialState };
     },
 
+    componentWillReceiveProps: function(newProps) {
+      if (config && config.willReceiveProps) {
+        config.willReceiveProps(this.props, this.state, newProps);
+      }
+    },
+
     shouldComponentUpdate: function(props, state) {
       if (config && config.shouldUpdate) {
         return config.shouldUpdate(props, state);
@@ -32,21 +38,27 @@ function _createClass (fn, initialState, config) {
       return true;
     },
 
+    componentDidUpdate: function() {
+      if (config && config.didUpdate) {
+        config.didUpdate(this.props, this.state);
+      }
+    },
+
     componentDidMount: function() {
       if (config && config.didMount) {
-        return config.didMount();
+        return config.didMount(this.props, this.state);
       }
     },
 
     componentWillMount: function() {
       if (config && config.willMount) {
-        return config.willMount();
+        return config.willMount(this.props, this.state);
       }
     },
 
     componentWillUnmount: function() {
       if (config && config.willUnmount) {
-        return config.willUnmount();
+        return config.willUnmount(this.props, this.state);
       }
     },
 
@@ -60,21 +72,23 @@ function _createClass (fn, initialState, config) {
 type element
 type ('props, 'state) component
 
-type ('prop, 'state) shouldUpdate = 'prop -> 'state -> bool
-type 'prop recieveProps = 'prop -> unit
-type mount = unit -> unit
+type ('prop, 'state) should_update = 'prop -> 'state -> bool
+type ('prop, 'state) mount = 'prop -> 'state -> unit
+type ('prop, 'state) receive_props = 'prop -> 'state -> 'prop -> unit
 
 (* make configuration object for component created from createComponent_ function *)
 external make_class_config :
-  ?shouldUpdate:('prop, 'state) shouldUpdate ->
-  ?willRecieveProps:('prop) recieveProps ->
-  ?didMount:mount ->
-  ?willMount:mount ->
-  ?willUnmount:mount -> unit -> _ = "" [@@bs.obj]
+  ?shouldUpdate:('prop, 'state) should_update ->
+  ?didUpdate:('prop, 'state) mount ->
+  ?willReceiveProps:('prop, 'state) receive_props ->
+  ?didMount:('prop, 'state) mount ->
+  ?willMount:('prop, 'state) mount ->
+  ?willUnmount:('prop, 'state) mount ->
+  unit -> _ = "" [@@bs.obj]
 
-type 'state setStateFn = 'state -> unit
-type ('props, 'state) renderFn = 'props -> 'state -> 'state setStateFn -> element
-external createComponent_ : ('props, 'state) renderFn -> 'state -> 'a Js.t -> ('props, 'state) component = "_createClass" [@@bs.val]
+type 'state set_state_fn = 'state -> unit
+type ('props, 'state) render_fn = 'props -> 'state -> 'state set_state_fn -> element
+external createComponent_ : ('props, 'state) render_fn -> 'state -> 'a Js.t -> ('props, 'state) component = "_createClass" [@@bs.val]
 
 external createComponentElement_ : ('props, 'state) component -> 'props -> element array -> element = "_createElement" [@@bs.val]
 external createBasicElement_ : string -> 'a Js.t -> element array -> element = "_createElement" [@@bs.val]
@@ -133,6 +147,7 @@ let input props children = createBasicElement_ "input" props children
 let form props children = createBasicElement_ "form" props children
 let label props children = createBasicElement_ "label" props children
 let p props children = createBasicElement_ "p" props children
+let canvas props children = createBasicElement_ "canvas" props children
 
 let component comp = createComponentElement_ comp
 

@@ -10,6 +10,7 @@ let to_string = function
 
 type 'a dispatch = 'a -> ('a -> t) -> unit
 
+(* Load image from file object *)
 let load_file (dispatch:'a dispatch) file =
   let open Dom_util in
   let name = File.name file in
