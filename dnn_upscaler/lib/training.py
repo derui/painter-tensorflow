@@ -24,15 +24,15 @@ ARGS = argparser.parse_args()
 
 def train():
     with tf.Graph().as_default():
-        SIZE = 128
+        SIZE = 256
 
         with tf.device('/cpu:0'):
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
-            original, line_art, small = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size)
-            small = tf.image.resize_images(small, (SIZE // 4, SIZE // 4))
+            original, line_art = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size)
             original = tf.image.resize_images(original, (SIZE, SIZE))
             line_art = tf.image.resize_images(line_art, (SIZE, SIZE))
+            small = tf.image.resize_images(original, (SIZE // 4, SIZE // 4))
 
         with tf.variable_scope('painter'):
             S = model.upsampler(small)

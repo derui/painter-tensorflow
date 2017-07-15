@@ -22,16 +22,13 @@ def read_pair(filename_queue):
     features = tf.parse_single_example(value, {
         'original': tf.FixedLenFeature([], tf.string),
         'line_art': tf.FixedLenFeature([], tf.string),
-        'small': tf.FixedLenFeature([], tf.string),
     })
 
     original = tf.image.decode_png(features['original'], channels=3)
     line_art = tf.image.decode_png(features['line_art'], channels=1)
-    small = tf.image.decode_png(features['small'], channels=3)
 
-    result.original = tf.reshape(original, [512, 512, 3])
-    result.line_art = tf.reshape(line_art, [512, 512, 1])
-    result.small = tf.reshape(small, [128, 128, 3])
+    result.original = tf.reshape(original, [256, 256, 3])
+    result.line_art = tf.reshape(line_art, [256, 256, 1])
 
     return result
 
@@ -95,11 +92,8 @@ def inputs(data_dir, batch_size, distorted=True):
     reshaped_w_image = tf.cast(read_input.line_art, tf.float32)
     reshaped_w_image = tf.multiply(reshaped_w_image, 1 / 255.0)
     reshaped_w_image = tf.multiply(reshaped_w_image, 2) - 1.0
-    reshaped_s_image = tf.cast(read_input.small, tf.float32)
-    reshaped_s_image = tf.multiply(reshaped_s_image, 1 / 255.0)
-    reshaped_s_image = tf.multiply(reshaped_s_image, 2) - 1.0
 
     min_fraction_of_examples_in_queue = 0.4
     min_queue_examples = int(num_examples_per_epoch * min_fraction_of_examples_in_queue)
 
-    return _generate_pair_batch([reshaped_o_image, reshaped_w_image, reshaped_s_image], min_queue_examples, batch_size, shuffle=True)
+    return _generate_pair_batch([reshaped_o_image, reshaped_w_image], min_queue_examples, batch_size, shuffle=True)
