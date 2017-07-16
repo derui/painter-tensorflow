@@ -22,7 +22,6 @@ let render prop _ _ =
           dispatcher = prop.dispatcher;
           height = 512;
           width = 512;
-          on_update_canvas = Image_preview.update_canvas;
         } [||];
     |]
 

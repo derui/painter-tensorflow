@@ -1,8 +1,10 @@
+module D = Bs_dom_wrapper
 
-class type _image_item = object
-  method url : string
-  method similarity : float
-end [@bs]
+class type _image_item =
+  object
+    method url : string
+    method similarity : float
+  end [@bs]
 type image_item = _image_item Js.t
 
 module Image_item = struct
@@ -12,62 +14,26 @@ module Image_item = struct
     let module JJ = Js.Json in
     match JJ.classify json with
     | JJ.JSONObject obj -> begin
-      let url = match Js.Dict.get obj "url" with
-        | None -> raise (Js.Exn.raiseError "image item should have 'url'")
-        | Some s -> begin match JJ.decodeString s with 
-          | None -> raise (Js.Exn.raiseError "image item's url should be string")
-          | Some s -> s
-        end
-      in
-      let similarity = match Js.Dict.get obj "similarity" with
-        | None -> raise (Js.Exn.raiseError "image item should have 'similarity'")
-        | Some s -> begin match JJ.decodeNumber s with
-          | None -> raise (Js.Exn.raiseError "image item's similarity should be number")
-          | Some s -> s
-        end
-      in
-      [%bs.obj { url = url; similarity = similarity }]
-    end
+        let url = match Js.Dict.get obj "url" with
+          | None -> raise (Js.Exn.raiseError "image item should have 'url'")
+          | Some s -> begin
+              match JJ.decodeString s with 
+              | None -> raise (Js.Exn.raiseError "image item's url should be string")
+              | Some s -> s
+            end
+        in
+        let similarity = match Js.Dict.get obj "similarity" with
+          | None -> raise (Js.Exn.raiseError "image item should have 'similarity'")
+          | Some s -> begin
+              match JJ.decodeNumber s with
+              | None -> raise (Js.Exn.raiseError "image item's similarity should be number")
+              | Some s -> s
+            end
+        in
+        [%bs.obj { url = url; similarity = similarity }]
+      end
     | _ -> raise (Js.Exn.raiseError "similarity response must be json object")
 end
-
-let create_card (item : image_item )=
-  let module D = Dom_util in
-  let div () = D.(create_element dom "div") in
-  let card = div ()
-  and card_media = div ()
-  and card_text = div ()
-  and img = D.(create_element dom "img")
-  and text_node = D.(string_of_float item##similarity |> create_text_node dom) in
-  D.Node.set_class_name img "image-container__image";
-  D.Node.set_attribute img "src" item##url;
-
-  D.Node.set_class_name card "mdl-card";
-  D.Node.set_class_name card_media "mdl-card__media";
-  D.Node.set_class_name card_text "mdl-card__supporting-text";
-
-  D.Node.append_child card_text text_node |> ignore;
-  D.Node.append_child card card_media |> ignore;
-  D.Node.append_child card card_text |> ignore;
-
-  card
-
-let create_image_container item =
-  let module D = Dom_util in
-  let container = D.(create_element dom "div")
-  and card = create_card item in
-
-  D.Node.set_class_name container "image-container__item mdl-cell mdl-cell--3-col";
-  D.Node.append_child container card |> ignore;
-
-  container
-
-let similarities_to_images = function
-  | None -> [||]
-  | Some obj -> match Js.Json.classify obj with
-    | Js.Json.JSONArray ary ->
-       Array.map Image_item.from_json ary |> Array.map create_image_container
-    | _ -> [||]
 
 let () =
   (* let send_request file =  *)
@@ -96,17 +62,20 @@ let () =
                        end) in
   let ready_callback = fun _ ->
     let open Option.Monad_infix in
-    Dom_util.query_selector Dom_util.dom ".tp-Content" >>= fun c ->
-    let store = Dispatch.Store.make {Reducer.file_name = ""; choosed_image = ""} in
-    let dispatcher = Dispatch.make ~store ~reducer:Reducer.reduce in
-    let render t _ =
-      React.render (React.component Component_main.t {
-                        Component_main.state = Dispatch.Store.get t;
-                        dispatcher = dispatcher
-                      } [| |]) c in
+    let _ =
+      D.document |> D.Nodes.Document.querySelector ".tp-Content" >>= (fun c ->
+        let store = Dispatch.Store.make Reducer.empty in
+        let dispatcher = Dispatch.make ~store ~reducer:Reducer.reduce in
+        let render () =
+          React.render (React.component Component_main.t {
+                            Component_main.state = Dispatch.Store.get store;
+                            dispatcher = dispatcher
+                          } [| |]) c in
 
-    let _ = Dispatch.subscribe dispatcher render in 
-    render store (Dispatch.Store.get store) |> Option.return
+        let _ = Dispatch.subscribe dispatcher render in 
+        render () |> Option.return
+      )
+    in ()
   in
 
-  Dom_util.(add_event_listener dom Event_type.DOMContentLoaded ready_callback)
+  D.document |> D.Nodes.Document.addEventListener "DOMContentLoaded" ready_callback

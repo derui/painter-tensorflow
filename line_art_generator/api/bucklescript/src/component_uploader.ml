@@ -10,7 +10,7 @@ type prop = {
 
 external form_prop :
   ?className: string ->
-  ?onSubmit: (R.SyntheticEvent.t -> unit) ->
+  ?onSubmit: (('a, 'b) R.SyntheticEvent.t -> unit) ->
   unit -> _ = "" [@@bs.obj]
 
 type state = unit

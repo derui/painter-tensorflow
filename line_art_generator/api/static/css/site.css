@@ -33,6 +33,37 @@
     display: none;
 }
 
-.tp_ImagePreviewer {
+.tp-ImagePreviewer {
+    display: flex;
+    width: 100%;
     text-align: center;
+    position: relative;
+}
+
+.tp-ImagePreviewer_StrippedImage {
+    flex: 1 1 70%;
+    text-align: center;
+    position: relative;
+}
+
+.tp-ImagePreviewer_ImageMapContainer {
+    flex: 1 1 30%;
+    position: relative;
+}
+
+.tp-ImagePreviewer_ImageMapBase {
+    z-index: 0;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.tp-ImagePreviewer_ImageMapSelector {
+    z-index: 1;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+.tp-ImagePreviewer_Canvas {
 }

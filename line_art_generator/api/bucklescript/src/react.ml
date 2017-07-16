@@ -27,38 +27,38 @@ function _createClass (fn, initialState, config) {
 
     componentWillReceiveProps: function(newProps) {
       if (config && config.willReceiveProps) {
-        config.willReceiveProps(this.props, this.state, newProps);
+        config.willReceiveProps(this.props, this.state.state, newProps, state => this.setState({state}));
       }
     },
 
     shouldComponentUpdate: function(props, state) {
       if (config && config.shouldUpdate) {
-        return config.shouldUpdate(props, state);
+        return config.shouldUpdate(this.props, this.state.state, props, state);
       }
       return true;
     },
 
     componentDidUpdate: function() {
       if (config && config.didUpdate) {
-        config.didUpdate(this.props, this.state);
+        config.didUpdate(this.props, this.state.state, state => this.setState({state}));
       }
     },
 
     componentDidMount: function() {
       if (config && config.didMount) {
-        return config.didMount(this.props, this.state);
+        return config.didMount(this.props, this.state.state, state => this.setState({state}));
       }
     },
 
     componentWillMount: function() {
       if (config && config.willMount) {
-        return config.willMount(this.props, this.state);
+        return config.willMount(this.props, this.state.state, state => this.setState({state}));
       }
     },
 
     componentWillUnmount: function() {
       if (config && config.willUnmount) {
-        return config.willUnmount(this.props, this.state);
+        return config.willUnmount(this.props, this.state.state);
       }
     },
 
@@ -69,12 +69,17 @@ function _createClass (fn, initialState, config) {
 }
 |}]
 
+module D = Bs_dom_wrapper
+
 type element
 type ('props, 'state) component
+type 'state set_state_fn = 'state -> unit
 
-type ('prop, 'state) should_update = 'prop -> 'state -> bool
-type ('prop, 'state) mount = 'prop -> 'state -> unit
-type ('prop, 'state) receive_props = 'prop -> 'state -> 'prop -> unit
+type ('prop, 'state) should_update =
+  'prop -> 'state -> 'prop -> 'state -> bool
+type ('prop, 'state) mount = 'prop -> 'state -> 'state set_state_fn -> unit
+type ('prop, 'state) unmount = 'prop -> 'state -> unit
+type ('prop, 'state) receive_props = 'prop -> 'state -> 'prop -> 'state set_state_fn -> unit
 
 (* make configuration object for component created from createComponent_ function *)
 external make_class_config :
@@ -83,10 +88,9 @@ external make_class_config :
   ?willReceiveProps:('prop, 'state) receive_props ->
   ?didMount:('prop, 'state) mount ->
   ?willMount:('prop, 'state) mount ->
-  ?willUnmount:('prop, 'state) mount ->
+  ?willUnmount:('prop, 'state) unmount ->
   unit -> _ = "" [@@bs.obj]
 
-type 'state set_state_fn = 'state -> unit
 type ('props, 'state) render_fn = 'props -> 'state -> 'state set_state_fn -> element
 external createComponent_ : ('props, 'state) render_fn -> 'state -> 'a Js.t -> ('props, 'state) component = "_createClass" [@@bs.val]
 
@@ -105,32 +109,49 @@ let element = createBasicElement_
 
 (* Event of React *)
 module SyntheticEvent = struct
-  class type _t =
+  class type ['a, 'b] _t =
     object
       method preventDefault: unit -> unit
       method stopPropagation: unit -> unit
       method bubbles: bool
       method cancelable: bool
-      method currentTarget: Dom_util.Node.t
+      method currentTarget: 'a Dom.htmlElement_like
       method defaultPrevented: bool
       method eventPhase: int
       method isTrusted: bool
-      method nativeEvent: 'a Dom_util.Event.t
+      method nativeEvent: 'b Dom.event_like
       method isDefaultPrevented: unit -> bool
       method isPropagationStopped: unit -> bool
-      method target: Dom_util.Node.t
+      method target: 'a Dom.htmlElement_like
       method timeStamp: int
       method type_: string
+
+      (* properties when event belongs Mouse Events *)
+      method altKey: bool
+      method button: int
+      method buttons: int
+      method clientX: int
+      method clientY: int
+      method ctrlKey: bool
+      method getModifierState: int -> bool
+      method metaKey: bool
+      method pageX: int
+      method pageY: int
+      method relatedTarget: 'a Dom.htmlElement_like
+      method screenX: int
+      method screenY: int
+      method shiftKey: bool
+
     end [@bs]
-  type t = _t Js.t
+  type ('a, 'b) t = ('a, 'b) _t Js.t
 end
 
 (* Define common prop object. *)
 external props :
   ?className: string ->
-  ?onClick:(SyntheticEvent.t -> unit) ->
-  ?onChange:(SyntheticEvent.t -> unit) ->
-  ?onSubmit:(SyntheticEvent.t -> unit) ->
+  ?onClick:(('a, 'b) SyntheticEvent.t -> unit) ->
+  ?onChange:(('a, 'b) SyntheticEvent.t -> unit) ->
+  ?onSubmit:(('a, 'b) SyntheticEvent.t -> unit) ->
   ?href:    string ->
   ?_type:   string ->
   ?value:   string ->
@@ -153,4 +174,4 @@ let component comp = createComponentElement_ comp
 
 (* -- *)
 
-external render : element -> Dom_util.Node.t -> unit = "" [@@bs.module "react-dom"]
+external render : element -> 'a Dom.node_like -> unit = "" [@@bs.module "react-dom"]

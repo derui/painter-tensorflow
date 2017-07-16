@@ -1,5 +1,6 @@
 (* Define file component *)
 
+module D = Bs_dom_wrapper
 module R = React
 
 (* Property for file component *)
@@ -11,9 +12,10 @@ type prop = {
 type state = unit
 
 let on_change props e =
-  let file = Dom_util.Node.get_files e##target in
+  let target: D.Html.Input.input Dom.htmlElement_like = e##target in
+  let file = D.Html.Input.files target in
   let file = file.(0) in
-  let dispatch v f = Dispatch.dispatch props.dispatcher v f in
+  let dispatch = Dispatch.dispatch props.dispatcher in
   Actions.load_file dispatch file
 
 let label_style =

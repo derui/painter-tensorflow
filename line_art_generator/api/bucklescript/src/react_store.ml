@@ -6,7 +6,9 @@ module type TYPE = sig
   type t
 end
 
-(* An interface of store module made from functor *)
+(* An interface of store module made from functor.
+   Store is often that fully mutable 
+ *)
 module type S = sig
   type t
   type state
@@ -14,22 +16,31 @@ module type S = sig
   val make: state -> t
   val save: t -> state -> t
   val get: t -> state
-  val subscribe: t -> (t -> state -> unit) -> t
+  val subscribe: t -> (unit -> unit) -> (t * (unit -> unit))
 end
 
 (* The functor to make the store *)
 module Make(T:TYPE) : S with type state = T.t = struct
   type state = T.t
+  module M = Map.Make(struct
+                 type t = int
+                 let compare = Pervasives.compare
+               end)
   type t = {
-    state: T.t;
-    subscripters: (t -> T.t -> unit) array;
-  }
+      mutable state: T.t;
+      mutable subscripters: (unit -> unit) M.t;
+      mutable subscription_id: int;
+    }
 
-  let make state = {state = state; subscripters = [||]}
+  let make state = {state = state; subscripters = M.empty; subscription_id = 0}
   let save t state =
-    let t' = {t with state} in
-    Array.iter (fun f -> f t' state) t.subscripters;
-    t'
+    t.state <- state;
+    M.iter (fun _ f -> f ()) t.subscripters;
+    t
   let get t = t.state
-  let subscribe t s = {t with subscripters = Array.append [|s|] t.subscripters}
+  let subscribe t s =
+    let next_id = succ t.subscription_id in
+    t.subscripters <- M.add next_id s t.subscripters;
+    t.subscription_id <- next_id;
+    (t, fun () -> t.subscripters <- M.remove next_id t.subscripters)
 end

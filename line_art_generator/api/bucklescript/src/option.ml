@@ -10,3 +10,7 @@ include Monad.Make(struct
     | None -> None
     | Some v' -> return (f v')
 end)
+
+let is_some = function
+  | None -> false
+  | Some _ -> true

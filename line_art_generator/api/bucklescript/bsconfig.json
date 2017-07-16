@@ -5,7 +5,7 @@
     "src"
   ],
   "bs-dependencies" : [
-    "bs-fetch"
+    "bs-fetch", "bs-dom-wrapper"
   ],
 
   "generate-merlin": true,

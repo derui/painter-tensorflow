@@ -47,8 +47,8 @@ module type S = sig
   type reducer = state -> action -> state
 
   val make : store:store -> reducer:reducer -> t
-  val dispatch: t -> 'a -> ('a -> action) -> unit
-  val subscribe: t -> (store -> state -> unit) -> t
+  val dispatch: t -> action -> unit
+  val subscribe: t -> (unit -> unit) -> (unit -> unit)
 end
 
 module Make(Store: React_store.S)
@@ -57,18 +57,19 @@ module Make(Store: React_store.S)
 struct
   type reducer = Store.state -> A.t -> Store.state
   type t = {
-    mutable store: Store.t;
+    store: Store.t;
     reducer: reducer;
   }
 
   (* This function return closure contained mutable store. *)
   let make ~store ~reducer = {store; reducer}
-  let dispatch t v f =
-    let new_state = f v |> t.reducer (Store.get t.store) in
-    t.store <- Store.save t.store new_state
+
+  let dispatch t v =
+    let new_state = t.reducer (Store.get t.store) v in
+    Store.save t.store new_state |> ignore
+
   let subscribe t subscription =
-    let store' = Store.subscribe t.store subscription in
-    t.store <- store';
-    t
+    let _, unsub = Store.subscribe t.store subscription in
+    unsub
 end
 
