@@ -25,10 +25,12 @@ let load_file dispatch file =
   File_reader.setOnload reader (fun _ ->
       let result = File_reader.result reader in
       let img = Html.Image.create () in
+      Html.Image.setOnload img (fun _ ->
+          let width = Html.Image.width img
+          and height = Html.Image.height img in
+          dispatch (EndFileLoading (result, width, height))
+        );
       Html.Image.setSrc img result;
-      let width = Html.Image.width img
-      and height = Html.Image.height img in
-      dispatch (EndFileLoading (result, width, height))
     );
   reader |> File_reader.readAsDataURL file;
   dispatch (StartFileLoading name)

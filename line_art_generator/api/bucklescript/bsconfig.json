@@ -2,7 +2,7 @@
   "name": "main",
   "version": "0.1.0",
   "sources": [
-    "src"
+    {"dir": "src", "public": "all"}
   ],
   "bs-dependencies" : [
     "bs-fetch", "bs-dom-wrapper"

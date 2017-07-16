@@ -33,12 +33,21 @@ let empty = {
   }
 
 let calc_scaling_factor original max_size =
-  if original.Size.width > max_size then
-    (float_of_int original.Size.width) /. (float_of_int max_size)
-  else if original.Size.height > max_size then
-    (float_of_int original.Size.height) /. (float_of_int max_size)
+  if original.Size.width >= original.Size.height then
+    if original.Size.width > max_size then
+      (float_of_int original.Size.width) /. (float_of_int max_size)
+    else if original.Size.height > max_size then
+      (float_of_int original.Size.height) /. (float_of_int max_size)
+    else
+      1.0
   else
-    1.0
+    if original.Size.height > max_size then
+      (float_of_int original.Size.height) /. (float_of_int max_size)
+    else if original.Size.width > max_size then
+      (float_of_int original.Size.width) /. (float_of_int max_size)
+    else
+      1.0
+
 
 let scale_size original scaling_factor =
   let scale v = float_of_int v |> (fun v -> ceil (v /. scaling_factor))
@@ -47,7 +56,7 @@ let scale_size original scaling_factor =
   {Size.width = scale original.Size.width; height = scale original.Size.height}
 
 let make_image_map width height = 
-  let original_size = {Size.width = width; height} in 
+  let original_size = {Size.width; height} in 
   let selector_size = {Size.width = min width max_selector_size;
                        height = min height max_selector_size} in
   let scaling_factor = calc_scaling_factor original_size max_scaled_size in

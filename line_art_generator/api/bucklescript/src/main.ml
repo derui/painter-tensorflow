@@ -67,8 +67,8 @@ let () =
         let store = Dispatch.Store.make Reducer.empty in
         let dispatcher = Dispatch.make ~store ~reducer:Reducer.reduce in
         let render () =
-          React.render (React.component Component_main.t {
-                            Component_main.state = Dispatch.Store.get store;
+          React.render (React.component C_main.t {
+                            C_main.state = Dispatch.Store.get store;
                             dispatcher = dispatcher
                           } [| |]) c in
 

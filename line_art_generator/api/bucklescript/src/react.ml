@@ -33,7 +33,7 @@ function _createClass (fn, initialState, config) {
 
     shouldComponentUpdate: function(props, state) {
       if (config && config.shouldUpdate) {
-        return config.shouldUpdate(this.props, this.state.state, props, state);
+        return config.shouldUpdate(this.props, this.state.state, props, state.state);
       }
       return true;
     },

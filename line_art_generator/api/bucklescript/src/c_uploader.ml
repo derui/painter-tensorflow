@@ -19,12 +19,12 @@ let on_submit _ e = e##preventDefault ()
 
 let render props _ _ =
   R.form (form_prop ~className:"tp-ImageUploader" ~onSubmit:(on_submit props) ()) [|
-      R.component Component_dragdrop.t {
-          Component_dragdrop.state = props.state;
+      R.component C_dragdrop.t {
+          C_dragdrop.state = props.state;
           dispatcher = props.dispatcher
         } [||];
-      R.component Component_file.t {
-          Component_file.state = props.state;
+      R.component C_file.t {
+          C_file.state = props.state;
           dispatcher = props.dispatcher
         } [||];
     |]
