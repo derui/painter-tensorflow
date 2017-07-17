@@ -12,8 +12,8 @@
    - You can use pre-defined elements: div, span, a, input ...
 *)
 [%%bs.raw{|
-import _React from 'react';
-import _createReactClass from 'create-react-class';
+var _React = require('react');
+var _createReactClass = require('create-react-class');
 
 function _createElement (clazz, props, children) {
   return _React.createElement(clazz, props, ...children);

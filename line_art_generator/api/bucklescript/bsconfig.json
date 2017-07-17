@@ -5,9 +5,9 @@
     {"dir": "src", "public": "all"}
   ],
   "bs-dependencies" : [
-    "bs-fetch", "bs-dom-wrapper"
+    "bs-fetch", "bs-dom-wrapper", "bs-lwt"
   ],
 
   "generate-merlin": true,
-  "package-specs": ["es6"]
+  "package-specs": ["commonjs"]
 }

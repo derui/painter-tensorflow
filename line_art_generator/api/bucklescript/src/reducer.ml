@@ -12,6 +12,16 @@ module Size = struct
   let div t v = {width = t.width / v;height = t.height / v}
 end
 
+module Image_data = struct
+  type t = string
+
+  let url_to_data t =
+    let idx = String.index t ',' in
+    if idx = -1 then t
+    else
+      String.sub t (succ idx) (String.length t - (succ idx))
+end
+
 (* type for image map *)
 type image_map = {
     original_size: Size.t;
@@ -24,6 +34,7 @@ type image_map = {
 type state = {
     file_name: string;
     choosed_image: string;
+    stripped_image: Image_data.t;
     image_map: image_map option;
     dragging: bool;
   }
@@ -31,6 +42,7 @@ type state = {
 let empty = {
     file_name = "";
     choosed_image = "";
+    stripped_image = "";
     image_map = None;
     dragging = false;
   }
@@ -83,6 +95,9 @@ let reduce state = function
   | Actions.EndFileLoading action -> handle_end_file_loading state action
   | Actions.StartImageDragging -> {state with dragging = true}
   | Actions.EndImageDragging -> {state with dragging = false}
+  | Actions.SaveStrippedImage image -> {state with stripped_image = Image_data.url_to_data image}
+  | Actions.StartImageUploading -> state
+  | Actions.EndImageUploading -> state
   | Actions.MoveImage pos -> begin
       match state.image_map with
       | None -> state

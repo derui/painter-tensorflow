@@ -15,7 +15,10 @@ external form_prop :
 
 type state = unit
 
-let on_submit _ e = e##preventDefault ()
+let on_submit prop e =
+  e##preventDefault ();
+  let dispatch action = Dispatch.dispatch prop.dispatcher action in 
+  Actions.upload_image dispatch prop.state.Reducer.stripped_image
 
 let render props _ _ =
   R.form (form_prop ~className:"tp-ImageUploader" ~onSubmit:(on_submit props) ()) [|

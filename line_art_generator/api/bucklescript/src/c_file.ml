@@ -29,7 +29,7 @@ let label_style =
       "mdl-button";
       "mdl-js-button";
       "mdl-button--raised";
-    ] in 
+    ] in
   String.concat " " styles
 
 let whole_style =
@@ -37,7 +37,7 @@ let whole_style =
       "mdl-grid";
       "mdl-grid--no-spacing";
       "tp-ImageUploader_Operations";
-    ] in 
+    ] in
   String.concat " " styles
 
 let button_style =
@@ -60,7 +60,7 @@ let render props _ _ =
                          ~defaultValue:(props.state.Reducer.file_name)
                          ~onChange:(on_change props) ())
                 [||];
-              R.text "Select"
+              R.text "Select";
             |]
 
         |];
@@ -69,8 +69,8 @@ let render props _ _ =
                       ~disabled:(Js.Boolean.to_js_boolean (props.state.Reducer.file_name = ""))
                       ~_type:"submit"
                       ())
-            [|R.text "upload"|];
+            [|R.text "upload";|];
         |];
     |]
-  
+
 let t = R.createComponent render () (React.make_class_config ())

@@ -56,7 +56,12 @@ let update_canvas canvas state prop =
          let x,y = calc_original_pos im in
 
          context |> Reducer.(C.drawImageWithSSize img x y size.Size.width size.Size.height
-                               0 0 prop.width prop.height)
+                               0 0 prop.width prop.height);
+         (* Update stripped image *)
+         Lwt.async (fun () -> 
+             let data = c |> H.Canvas.toDataURL "image/png" in
+             Dispatch.dispatch prop.dispatcher (Actions.save_stripped_image data) |> Lwt.return
+           )
        );
      I.setSrc img image |> Option.return
   ) |> ignore
