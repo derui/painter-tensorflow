@@ -7,6 +7,9 @@ module Size = struct
       width: int;
       height: int;
     }
+
+  let mul t v = {width = t.width * v;height = t.height * v}
+  let div t v = {width = t.width / v;height = t.height / v}
 end
 
 (* type for image map *)
@@ -83,5 +86,16 @@ let reduce state = function
   | Actions.MoveImage pos -> begin
       match state.image_map with
       | None -> state
-      | Some image_map -> {state with image_map = Some {image_map with selector_position = pos}}
+      | Some image_map ->
+         let size = Size.div image_map.selector_size 2 in
+         let scaled_size = image_map.scaled_size in
+         let x, y = pos in
+         let x = x - size.Size.width
+         and y = y - size.Size.height in
+         let range min max v = Pervasives.min (Pervasives.max min v) max in
+         {state with image_map = Some {image_map with selector_position = (
+                                     Size.(range 0 (scaled_size.width - size.width * 2) x),
+                                     Size.(range 0 (scaled_size.height - size.height * 2) y)
+                                   )}
+         }
     end

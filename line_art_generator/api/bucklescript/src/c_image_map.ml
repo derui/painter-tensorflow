@@ -26,7 +26,7 @@ type inner_state = {
     mutable canvas: D.Html.Canvas.t option;
   }
 
-let update_canvas canvas state =
+let update_canvas canvas props state =
   let open Option.Monad_infix in
   (canvas >>= (fun v ->
      state.image_map >>= fun im ->
@@ -39,6 +39,7 @@ let update_canvas canvas state =
      I.setOnload img (fun _ ->
          let size = im.Reducer.scaled_size in
 
+         context |> C.clearRect 0 0 props.width props.height;
          context |> Reducer.(C.drawImageWithDSize img 0 0 size.Size.width size.Size.height)
        );
      I.setSrc img image |> Option.return
@@ -66,9 +67,9 @@ let t () =
     | (_, None) -> true
     | (Some v1, Some v2) -> v1 != v2
   in
-  let did_update _ state _ =
-    update_canvas inner_state.canvas state
-  in 
+  let did_update props state _ =
+    update_canvas inner_state.canvas props state
+  in
   let will_receive_props _ _ new_prop set_state =
     set_state {image = Some new_prop.state.Reducer.choosed_image;
                image_map = new_prop.state.Reducer.image_map;}

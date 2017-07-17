@@ -14,7 +14,7 @@ external make_prop :
   ?className: string ->
   ?onMouseDown: (('a, D.Events.Mouse_event.base) R.SyntheticEvent.t -> unit) ->
   ?onMouseUp: (('a, D.Events.Mouse_event.base) R.SyntheticEvent.t -> unit) ->
-  ?onMouseMove: (('a, D.Events.Mouse_event.base) R.SyntheticEvent.t -> unit) ->
+  ?onMouseMove: ((Dom._baseClass, D.Events.Mouse_event.base) R.SyntheticEvent.t -> unit) ->
   ?ref: ('a -> unit) ->
   ?width: int ->
   ?height: int ->
@@ -36,11 +36,11 @@ let on_mouseup props _ =
 
 let on_mousemove props e =
   if props.state.Reducer.dragging then
-    let x = e##clientX
-    and y = e##clientY in 
+    let rect = D.Html.Element.getBoundingClientRect e##target in
+    let x = e##clientX - (D.Dom_rect.left rect)
+    and y = e##clientY - (D.Dom_rect.top rect) in 
     let module A = Actions in  A.move_image x y |> Dispatch.dispatch props.dispatcher 
   else ()
-
 
 let update_canvas canvas state =
   let open Option.Monad_infix in
@@ -50,8 +50,10 @@ let update_canvas canvas state =
    let module C = H.Canvas.Context in
    let ctx = c |> H.Canvas.getContext H.Types.Context_type.Context2D in
    C.setStrokeStyle ctx "rgb(0,255,0)";
+   let rect = H.Canvas.getBoundingClientRect c in
    let s = im.Reducer.selector_size in
    let x, y = im.Reducer.selector_position in
+   ctx |> C.clearRect 0 0 (D.Dom_rect.width rect) (D.Dom_rect.height rect);
    ctx |> C.strokeRect x y s.Reducer.Size.width s.Reducer.Size.height;
    Option.return ()
   ) |> ignore
@@ -73,7 +75,15 @@ let t () =
                 ~ref:(fun v -> inner_state.canvas <- Some v)()) [||]
   in
 
-  let should_update _ state _ new_state = state <> new_state in
+  let should_update prop state new_prop new_state =
+    if prop.state.Reducer.dragging <> new_prop.state.Reducer.dragging then
+      true
+    else
+      match (state.image_map, new_state.image_map) with
+      | None, None -> false
+      | None, _ | _, None -> true
+      | Some v1, Some v2 -> v1 <> v2
+  in
   let will_receive_props _ _ new_prop set_state =
     set_state {image_map = new_prop.state.Reducer.image_map}
   in
