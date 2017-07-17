@@ -9,28 +9,8 @@ import concurrent.futures
 from .model import model
 import cv2
 
-argparser = argparse.ArgumentParser(
-    description='Generate line art from the image')
-argparser.add_argument('input_dir', type=str, help='input image')
-argparser.add_argument('output_dir', type=str, help='name of output image')
-argparser.add_argument(
-    '--train_dir',
-    default='./log',
-    type=str,
-    help='Directory will have been saving checkpoint')
-argparser.add_argument(
-    '--image_size',
-    default=128,
-    type=int)
-argparser.add_argument(
-    '--batch_size',
-    default=30,
-    type=int)
 
-ARGS = argparser.parse_args()
-
-
-def init_sess(batch_size, height, width, reuse=False):
+def init_sess(batch_size, height, width, train_dir, reuse=False):
 
     image_size = int(math.pow(2, math.ceil(math.log2(max(height, width)))))
     x = tf.placeholder(tf.float32, [batch_size, height, width, 3])
@@ -43,7 +23,7 @@ def init_sess(batch_size, height, width, reuse=False):
 
     sess = tf.Session()
     saver = tf.train.Saver(var_list=var_list)
-    ckpt = tf.train.get_checkpoint_state(ARGS.train_dir)
+    ckpt = tf.train.get_checkpoint_state(train_dir)
     saver.restore(sess, ckpt.model_checkpoint_path)
 
     return sess, generate_op, x
@@ -57,6 +37,25 @@ def generate(sess, op, ps, images):
 
 
 if __name__ == '__main__':
+    argparser = argparse.ArgumentParser(
+        description='Generate line art from the image')
+    argparser.add_argument('input_dir', type=str, help='input image')
+    argparser.add_argument('output_dir', type=str, help='name of output image')
+    argparser.add_argument(
+        '--train_dir',
+        default='./log',
+        type=str,
+        help='Directory will have been saving checkpoint')
+    argparser.add_argument(
+        '--image_size',
+        default=128,
+        type=int)
+    argparser.add_argument(
+        '--batch_size',
+        default=30,
+        type=int)
+
+    ARGS = argparser.parse_args()
 
     def write_images(images, output_dir):
         def writer(img, infile, output_dir):
@@ -94,7 +93,8 @@ if __name__ == '__main__':
     rest_input_files = input_files[-1]
     input_files = input_files[:-1]
 
-    sess, op, ps = init_sess(ARGS.batch_size, ARGS.image_size, ARGS.image_size)
+    sess, op, ps = init_sess(ARGS.batch_size, ARGS.image_size, ARGS.image_size,
+                             ARGS.train_dir)
     for i in range(len(input_files)):
         files = input_files[i]
         images = [cv2.imread(f) for f in files]
@@ -108,7 +108,9 @@ if __name__ == '__main__':
 
     sess.close()
 
-    sess, op, ps = init_sess(len(rest_input_files), ARGS.image_size, ARGS.image_size, reuse=True)
+    sess, op, ps = init_sess(len(rest_input_files), ARGS.image_size, ARGS.image_size,
+                             ARGS.train_dir,
+                             reuse=True)
     images = [cv2.imread(f) for f in rest_input_files]
     images = [cv2.cvtColor(image, cv2.COLOR_BGR2RGB) for image in images]
     images = [image.astype(np.float32) for image in images]
