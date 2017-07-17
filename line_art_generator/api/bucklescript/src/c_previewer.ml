@@ -14,9 +14,18 @@ type prop = {
 type state = ()
 let image_map = C_image_map.t ()
 let image_area_selector = C_image_area_selector.t ()
+let stripped_image = C_stripped_image.t ()
 
 let render props _ _ =
   R.div (R.props ~className:"tp-ImagePreviewer" ()) [|
+      R.div (R.props ~className:"tp-ImagePreviewer_StrippedImage" ()) [|
+          R.component stripped_image {
+              C_stripped_image.state = props.state;
+              dispatcher = props.dispatcher;
+              width = 512;
+              height = 512;
+            } [||]
+        |];
       R.div (R.props ~className:"tp-ImagePreviewer_ImageMapContainer" ()) [|
           R.component image_map {
               C_image_map.state = props.state;

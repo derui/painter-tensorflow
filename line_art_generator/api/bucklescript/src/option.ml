@@ -14,3 +14,9 @@ end)
 let is_some = function
   | None -> false
   | Some _ -> true
+
+let equal v1 v2 =
+  match (v1, v2) with
+  | None, None -> true
+  | None, _ | _, None -> false
+  | Some v1, Some v2 -> v1 = v2
