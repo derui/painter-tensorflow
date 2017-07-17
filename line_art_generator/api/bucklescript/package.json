@@ -5,13 +5,17 @@
     "clean": "bsb -clean-world",
     "build": "bsb -make-world",
     "watch": "bsb -make-world -w",
-    "bundle": "bsb -make-world && webpack"
+    "bundle": "bsb -make-world && webpack",
+    "bundle-prod": "bsb -make-world && webpack -p"
   },
   "keywords": [
     "BuckleScript"
   ],
   "license": "MIT",
   "devDependencies": {
+    "babel-core": "^6.25.0",
+    "babel-loader": "^7.1.1",
+    "babel-preset-env": "^1.6.0",
     "bs-platform": "^1.8.1",
     "webpack": "^3.2.0"
   },
