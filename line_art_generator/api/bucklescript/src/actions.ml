@@ -9,6 +9,7 @@ type t =
   | SaveStrippedImage of string
   | StartImageUploading
   | EndImageUploading
+  | UploadedImage of string
 
 let to_string = function
   | StartFileLoading _ -> "start_file_loading"
@@ -18,6 +19,7 @@ let to_string = function
   | EndImageDragging -> "end_image_dragging"
   | SaveStrippedImage _ -> "save_stripped_image"
   | StartImageUploading -> "start_image_uploading"
+  | UploadedImage _ -> "uploaded_image"
   | EndImageUploading -> "end_image_uploading"
 
 (* Actions for image dragging *)
@@ -46,7 +48,10 @@ let upload_image dispatch image =
                res |> Response.statusText |> failwith |> Js.Promise.reject
            )
       |> Js.Promise.then_ (fun blob ->
-             Js.Promise.resolve blob
+             D.URL.t |> D.URL.createObjectURL blob |> Js.Promise.resolve
+           )
+      |> Js.Promise.then_ (fun url ->
+             dispatch (UploadedImage url) |> Js.Promise.resolve
            )
       |> Lwt.return
     )

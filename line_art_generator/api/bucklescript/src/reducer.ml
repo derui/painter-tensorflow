@@ -18,8 +18,7 @@ module Image_data = struct
   let url_to_data t =
     let idx = String.index t ',' in
     if idx = -1 then t
-    else
-      String.sub t (succ idx) (String.length t - (succ idx))
+    else String.sub t (succ idx) (String.length t - (succ idx))
 end
 
 (* type for image map *)
@@ -37,6 +36,7 @@ type state = {
     stripped_image: Image_data.t;
     image_map: image_map option;
     dragging: bool;
+    generated_image: string option;
   }
 
 let empty = {
@@ -45,6 +45,7 @@ let empty = {
     stripped_image = "";
     image_map = None;
     dragging = false;
+    generated_image = None;
   }
 
 let calc_scaling_factor original max_size =
@@ -98,6 +99,7 @@ let reduce state = function
   | Actions.SaveStrippedImage image -> {state with stripped_image = Image_data.url_to_data image}
   | Actions.StartImageUploading -> state
   | Actions.EndImageUploading -> state
+  | Actions.UploadedImage s -> {state with generated_image = Some s}
   | Actions.MoveImage pos -> begin
       match state.image_map with
       | None -> state

@@ -46,8 +46,14 @@
     width: 100%;
     text-align: center;
     position: relative;
+    flex-direction: column;
 
     border-top: 3px solid green;
+}
+
+.tp-ImagePreviewer_BaseImageContainer {
+    display: flex;
+    flex: 1 1 auto;
 }
 
 .tp-ImagePreviewer_StrippedImage {
@@ -58,8 +64,14 @@
 }
 
 .tp-ImagePreviewer_ImageMapContainer {
+    display: flex;
     flex: 1 1 30%;
     position: relative;
+    padding: 1em;
+}
+
+.tp-ImagePreviewer_GeneratedImage {
+    flex: 1 1 auto;
     padding: 1em;
 }
 

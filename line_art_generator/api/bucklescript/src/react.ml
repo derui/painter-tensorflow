@@ -169,6 +169,7 @@ let form props children = createBasicElement_ "form" props children
 let label props children = createBasicElement_ "label" props children
 let p props children = createBasicElement_ "p" props children
 let canvas props children = createBasicElement_ "canvas" props children
+let img props children = createBasicElement_ "img" props children
 
 let component comp = createComponentElement_ comp
 
