@@ -57,11 +57,13 @@ let update_canvas canvas state prop =
 
          context |> Reducer.(C.drawImageWithSSize img x y size.Size.width size.Size.height
                                0 0 prop.width prop.height);
-         (* Update stripped image *)
-         Lwt.async (fun () -> 
-             let data = c |> H.Canvas.toDataURL "image/png" in
-             Dispatch.dispatch prop.dispatcher (Actions.save_stripped_image data) |> Lwt.return
-           )
+         if not prop.state.Reducer.dragging then
+           (* Update stripped image *)
+           Lwt.async (fun () -> 
+               let data = c |> H.Canvas.toDataURL "image/png" in
+               Dispatch.dispatch prop.dispatcher (Actions.save_stripped_image data) |> Lwt.return
+             )
+         else ()
        );
      I.setSrc img image |> Option.return
   ) |> ignore
@@ -80,14 +82,16 @@ let t () =
                 ~ref:(fun v -> inner_state.canvas <- Some v)()) [||];
   in
 
-  let should_update _ state _ new_state =
-    not (Option.equal state.image new_state.image)
+  let should_update prop state new_prop new_state =
+    (prop.state.Reducer.dragging <> new_prop.state.Reducer.dragging)
+    || not (Option.equal state.image new_state.image)
     || not (Option.equal state.image_map new_state.image_map)
   in
 
   let will_receive_props _ _ new_prop set_state =
     set_state {image = Some new_prop.state.Reducer.choosed_image;
-               image_map = new_prop.state.Reducer.image_map;}
+               image_map = new_prop.state.Reducer.image_map;
+      }
   in
 
   let did_update prop state _ =
@@ -96,9 +100,10 @@ let t () =
 
   let will_unmount _ _ = inner_state.canvas <- None in 
 
-  R.createComponent render () (React.make_class_config
-                                 ~willReceiveProps:will_receive_props
-                                 ~shouldUpdate:should_update
-                                 ~didUpdate:did_update
-                                 ~willUnmount:will_unmount
-                                 ())
+  R.createComponent render {image = None; image_map = None;}
+    (React.make_class_config
+       ~willReceiveProps:will_receive_props
+       ~shouldUpdate:should_update
+       ~didUpdate:did_update
+       ~willUnmount:will_unmount
+       ())
