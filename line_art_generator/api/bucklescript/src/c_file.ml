@@ -48,6 +48,11 @@ let button_style =
     ] in
   String.concat " " classes
 
+let should_disable props =
+  let disabled = props.state.Reducer.file_name = "" ||
+                   props.state.Reducer.uploading
+  in Js.Boolean.to_js_boolean disabled
+
 let render props _ _ =
   R.div (R.props ~className:whole_style ()) [|
       R.div (R.props ~className:"mdl-cell mdl-cell--8-col" ()) [|
@@ -66,7 +71,7 @@ let render props _ _ =
         |];
       R.div (R.props ~className:"mdl-cell mdl-cell--2-col" ()) [|
           R.button (make_prop ~className:button_style
-                      ~disabled:(Js.Boolean.to_js_boolean (props.state.Reducer.file_name = ""))
+                      ~disabled:(should_disable props)
                       ~_type:"submit"
                       ())
             [|R.text "upload";|];

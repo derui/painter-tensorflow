@@ -36,6 +36,7 @@ type state = {
     stripped_image: Image_data.t;
     image_map: image_map option;
     dragging: bool;
+    uploading: bool;
     generated_image: string option;
   }
 
@@ -45,6 +46,7 @@ let empty = {
     stripped_image = "";
     image_map = None;
     dragging = false;
+    uploading = false;
     generated_image = None;
   }
 
@@ -87,6 +89,7 @@ let make_image_map width height =
 
 let handle_end_file_loading state (result, width, height) =
   {state with choosed_image = result;
+              generated_image = None;
               image_map = Some (make_image_map width height)
   }
 
@@ -97,8 +100,8 @@ let reduce state = function
   | Actions.StartImageDragging -> {state with dragging = true}
   | Actions.EndImageDragging -> {state with dragging = false}
   | Actions.SaveStrippedImage image -> {state with stripped_image = Image_data.url_to_data image}
-  | Actions.StartImageUploading -> state
-  | Actions.EndImageUploading -> state
+  | Actions.StartImageUploading -> {state with uploading = true}
+  | Actions.EndImageUploading -> Js.log "foo";{state with uploading = false}
   | Actions.UploadedImage s -> {state with generated_image = Some s}
   | Actions.MoveImage pos -> begin
       match state.image_map with

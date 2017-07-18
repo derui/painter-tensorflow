@@ -1,6 +1,6 @@
 module D = Bs_dom_wrapper
 
-type t = 
+type t =
     StartFileLoading of string
   | EndFileLoading of (string * int * int)
   | StartImageDragging
@@ -32,29 +32,35 @@ let save_stripped_image image = SaveStrippedImage image
 module Form_data = D.Form_data.Make(struct type t = Bs_fetch.formData end)
 
 (* Action to upload stripped image *)
-let upload_image dispatch image = 
-  Lwt.finalize (fun () ->
-      let module D = Bs_dom_wrapper in 
-      let form_data = Form_data.create () in
-      form_data |> Form_data.appendString "image" image;
+let upload_image dispatch image =
+  let worker, wakeup = Lwt.task () in
+  let module D = Bs_dom_wrapper in
+  let form_data = Form_data.create () in
+  form_data |> Form_data.appendString "image" image;
 
-      let open Bs_fetch in
-      fetchWithInit "/api/generate_image" (RequestInit.make
-                                             ~method_:Post
-                                             ~body:(BodyInit.makeWithFormData form_data)
-                                             ())
-      |> Js.Promise.then_ (fun res ->
-             if Response.ok res then Response.blob res else
-               res |> Response.statusText |> failwith |> Js.Promise.reject
-           )
-      |> Js.Promise.then_ (fun blob ->
-             D.URL.t |> D.URL.createObjectURL blob |> Js.Promise.resolve
-           )
-      |> Js.Promise.then_ (fun url ->
-             dispatch (UploadedImage url) |> Js.Promise.resolve
-           )
-      |> Lwt.return
-    )
+  let open Bs_fetch in
+  fetchWithInit "/api/generate_image" (RequestInit.make
+                                         ~method_:Post
+                                         ~body:(BodyInit.makeWithFormData form_data)
+                                         ())
+  |> Js.Promise.then_ (fun res ->
+         if Response.ok res then Response.blob res else
+           res |> Response.statusText |> failwith |> Js.Promise.reject
+       )
+  |> Js.Promise.then_ (fun blob ->
+         D.URL.t |> D.URL.createObjectURL blob |> Js.Promise.resolve
+       )
+  |> Js.Promise.then_ (fun url ->
+         dispatch (UploadedImage url) |> Js.Promise.resolve
+       )
+  |> Js.Promise.then_ (fun _ ->
+         Lwt.wakeup wakeup () |> Js.Promise.resolve
+       )
+  |> Js.Promise.catch (fun _ ->
+       Lwt.(fail_with "error occured" |> ignore_result) |> Js.Promise.resolve)
+  |> ignore;
+
+  Lwt.finalize (fun () -> worker)
     (fun () -> dispatch EndImageUploading |> Lwt.return)
   |> Lwt.ignore_result;
 
