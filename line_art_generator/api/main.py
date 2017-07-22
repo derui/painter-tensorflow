@@ -91,4 +91,4 @@ if __name__ == '__main__':
         return ret
 
     app = create_app(generate)
-    run_simple('127.0.0.1', 5000, app)
+    run_simple('0.0.0.0', 5000, app)
