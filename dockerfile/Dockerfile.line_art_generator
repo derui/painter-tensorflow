@@ -1,0 +1,28 @@
+FROM debian:jessie
+
+RUN mkdir -p /data/line_art_generator \
+    && mkdir -p /data/checkpoint
+
+COPY tflib/ /data/tflib
+COPY line_art_generator/api /data/line_art_generator/api
+COPY line_art_generator/lib /data/line_art_generator/lib
+COPY line_art_generator/requirements.txt /data/line_art_generator/
+COPY line_art_generator/log_part /data/checkpoint
+
+RUN apt-get update \
+    && apt-get install -y curl gcc make xz-utils zlib1g-dev libssl-dev \
+    && curl -LO https://www.python.org/ftp/python/3.6.2/Python-3.6.2.tar.xz \
+    && unxz /Python-3.6.2.tar.xz \
+    && tar -xf /Python-3.6.2.tar \
+    && cd /Python-3.6.2 \
+    && ./configure && make -j && make install \
+    && pip3 install -r /data/line_art_generator/requirements.txt \
+    && apt-get purge -y curl gcc make xz-utils \
+    && apt-get autoremove -y \
+    && apt-get clean -y
+
+EXPOSE 5000
+
+WORKDIR /data
+
+CMD ["python3", "-m", "line_art_generator.api.main", "--train_dir", "/data/checkpoint"]
