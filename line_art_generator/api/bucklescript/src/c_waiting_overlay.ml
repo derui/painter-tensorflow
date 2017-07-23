@@ -32,9 +32,16 @@ let spinner_class_name props =
 
 let render props _ _ =
   R.div (R.props ~className:(overlay_class_name props) ()) [|
-      R.div (R.props ~className:"tp-WaitingOverlay_Spacer" ()) [||];
-      R.div (R.props ~className:(spinner_class_name props) ()) [||];
-      R.div (R.props ~className:"tp-WaitingOverlay_Spacer" ()) [||];
+      R.div (R.props ~className:"tp-WaitingOverlay_ProgressContainer" ()) [|
+          R.div (R.props ~className:"tp-WaitingOverlay_Spacer" ()) [||];
+          R.div (R.props ~className:"tp-WaitingOverlay_Progress" ()) [|
+              R.div (R.props ~className:(spinner_class_name props) ()) [||];
+            |];
+          R.div (R.props ~className:"tp-WaitingOverlay_Message" ()) [|
+              R.text "Now extracting..."
+            |];
+          R.div (R.props ~className:"tp-WaitingOverlay_Spacer" ()) [||];
+        |];
     |]
 
 let t = R.createComponent render () (React.make_class_config ())
