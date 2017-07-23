@@ -33,7 +33,7 @@ def train():
             gradient_factor = tf.random_uniform([ARGS.batch_size, 1], 0.0, 1.0)
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
-            original, x = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size)
+            original, x = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size, distorted=False)
             original = tf.image.resize_images(original, (SIZE, SIZE))
             x = tf.image.resize_images(x, (SIZE, SIZE))
 
