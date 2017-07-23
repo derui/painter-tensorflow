@@ -55,7 +55,7 @@ def GenerateConfig(context):
       'type': 'compute.v1.httpHealthCheck',
       'properties': {
           'port': context.properties['port'],
-          'requestPath': '/'
+          'requestPath': '/static/index.html'
       }
   }, {
       'name': name + '-tp',
