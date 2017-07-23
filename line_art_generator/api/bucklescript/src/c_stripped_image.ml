@@ -54,9 +54,11 @@ let update_canvas canvas state prop =
      I.setOnload img (fun _ ->
          let size = calc_original_size im in
          let x,y = calc_original_pos im in
+         let paint_width = Reducer.(min size.Size.width prop.width)
+         and paint_height = Reducer.(min size.Size.height prop.height) in 
 
          context |> Reducer.(C.drawImageWithSSize img x y size.Size.width size.Size.height
-                               0 0 prop.width prop.height);
+                               0 0 paint_width paint_height);
          if not prop.state.Reducer.dragging then
            (* Update stripped image *)
            Lwt.async (fun () -> 

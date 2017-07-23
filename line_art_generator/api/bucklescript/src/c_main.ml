@@ -11,6 +11,11 @@ type state = unit
 
 let render prop _ _ =
   R.div (R.props ()) [|
+      R.component C_waiting_overlay.t {
+          C_waiting_overlay.state = prop.state;
+          dispatcher = prop.dispatcher;
+        } [||];
+
       R.component C_uploader.t {
           C_uploader.state = prop.state;
           dispatcher = prop.dispatcher;
