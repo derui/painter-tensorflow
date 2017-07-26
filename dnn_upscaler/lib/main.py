@@ -37,10 +37,10 @@ def main():
 
     with tf.device('/cpu:0'):
         x = tf.placeholder(tf.float32, shape=[1, width, height])
-        with tf.variable_scope('generator'):
+        with tf.variable_scope('upscaler'):
             construction_op = model.generator(tf.reshape(x, [1, width, height, 1]))
 
-            var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
+            var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='upscaler')
 
         with tf.Session() as sess:
             saver = tf.train.Saver(var_list=var_list)

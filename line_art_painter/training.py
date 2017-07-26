@@ -6,7 +6,7 @@ import time
 from datetime import datetime
 from tensorflow.python.client import timeline
 import tensorflow as tf
-from model import model
+from .lib.model import model
 
 import tf_dataset_input
 

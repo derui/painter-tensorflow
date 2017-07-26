@@ -20,11 +20,11 @@ def load_exclude_names(excludes_dir):
     return set(excludes)
 
 
-def walk_images(image_dir, exclude_files, per_yield_files):
+def walk_files(input_dir, exclude_files, per_yield_files):
 
     return_files = []
     ignored_files = 0
-    for root, _, files in os.walk(image_dir):
+    for root, _, files in os.walk(input_dir):
         for f in files:
             n, _ = os.path.splitext(os.path.basename(f))
             if n in exclude_files:
@@ -42,7 +42,7 @@ def walk_images(image_dir, exclude_files, per_yield_files):
         yield (return_files, ignored_files)
 
 
-def make_generic_image_processor(read_func, write_func, process):
+def make_generic_processor(read_func, write_func, process):
     """make generic-image-processor funciton.
 
     generic image processor has three processes: reader, writer, and image processing.
@@ -51,9 +51,9 @@ def make_generic_image_processor(read_func, write_func, process):
     @return new generic image processor
     """
     def func(in_path, out_path):
-        img = read_func(in_path)
-        img = process(img)
-        write_func(img, out_path)
+        item = read_func(in_path)
+        item = process(item)
+        write_func(item, out_path)
 
     return func
 

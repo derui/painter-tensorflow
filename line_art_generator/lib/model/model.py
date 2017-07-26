@@ -52,14 +52,10 @@ class AutoEncoder(object):
         self.bnd1_f1 = op.BatchNormalization(name='bnd1_flat1')
 
 
-def autoencoder(images):
+def autoencoder(images, scale=1.0):
     """make autoencoder network"""
 
     AE = AutoEncoder()
-    _, height, width, _ = images.shape.as_list()
-
-    def div(v, d):
-        return max(1, v // d)
 
     relu = tf.nn.relu
     net = relu(AE.bnc1(AE.conv1(images)))

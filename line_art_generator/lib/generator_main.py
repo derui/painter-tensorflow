@@ -9,7 +9,7 @@ import tensorflow as tf
 import concurrent.futures
 from .model import model
 import cv2
-from .generator import generator
+from .generator import init_sess, generate
 
 
 if __name__ == '__main__':
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     rest_input_files = input_files[-1]
     input_files = input_files[:-1]
 
-    sess, op, ps = generator.init_sess(ARGS.batch_size, ARGS.image_size, ARGS.image_size,
+    sess, op, ps = init_sess(ARGS.batch_size, ARGS.image_size, ARGS.image_size,
                              ARGS.train_dir)
     for i in range(len(input_files)):
         files = input_files[i]
@@ -86,13 +86,13 @@ if __name__ == '__main__':
         images = [image.astype(np.float32) for image in images]
         images = [np.multiply(image, 1 / 255.0) for image in images]
 
-        images = generator.generate(sess, op, ps, images)
+        images = generate(sess, op, ps, images)
         write_images(zip(images, files), ARGS.output_dir)
         print("{}: Finished batch {}".format(datetime.now(), i+1))
 
     sess.close()
 
-    sess, op, ps = generator.init_sess(len(rest_input_files), ARGS.image_size, ARGS.image_size,
+    sess, op, ps = init_sess(len(rest_input_files), ARGS.image_size, ARGS.image_size,
                              ARGS.train_dir,
                              reuse=True)
     images = [cv2.imread(f) for f in rest_input_files]
@@ -100,6 +100,6 @@ if __name__ == '__main__':
     images = [image.astype(np.float32) for image in images]
     images = [np.multiply(image, 1 / 255.0) for image in images]
 
-    images = generator.generate(sess, op, ps, images)
+    images = generate(sess, op, ps, images)
 
     write_images(zip(images, rest_input_files), ARGS.output_dir)

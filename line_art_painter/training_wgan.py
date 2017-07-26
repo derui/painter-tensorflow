@@ -5,9 +5,9 @@ import time
 from datetime import datetime
 from tensorflow.python.client import timeline
 import tensorflow as tf
-from .model import model_wgan as model
+from .lib.model import model_wgan as model
 
-from . import tf_dataset_input
+from .lib import tf_dataset_input
 
 argparser = argparse.ArgumentParser(description='Learning painter model')
 argparser.add_argument('--batch_size', default=5, type=int, help='Batch size')

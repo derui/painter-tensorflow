@@ -16,17 +16,26 @@ argparser.add_argument(
     default='./log',
     type=str,
     help='Directory will have been saving checkpoint')
+argparser.add_argument(
+    '--simplify',
+    default=1.0,
+    type=float,
+    help='measure of simplification to extract of line art')
 
 ARGS = argparser.parse_args()
 
 
-def init_sess(height, width):
+def init_sess(height, width, scale):
 
+    s_height = int(height * scale)
+    s_width = int(width * scale)
     # image size to put in convolution should be able to divide 2
     work_h = int(math.pow(2, math.ceil(math.log2(height))))
     work_w = int(math.pow(2, math.ceil(math.log2(width))))
     x = tf.placeholder(tf.float32, [1, height, width, 3])
-    x_ = tf.image.resize_image_with_crop_or_pad(x, work_h, work_w)
+    x_ = tf.image.resize_images(x, (s_height, s_width), method=tf.ResizeMethod.AREA)
+    x_ = tf.image.resize_images(x_, (height, width))
+    x_ = tf.image.resize_image_with_crop_or_pad(x_, work_h, work_w)
 
     with tf.variable_scope('classifier'):
         generate_op = model.autoencoder(x_)
@@ -58,7 +67,7 @@ if __name__ == '__main__':
     image = image.astype(np.float32)
     image = np.multiply(image, 1 / 255.0)
 
-    sess, op, ps = init_sess(h, w)
+    sess, op, ps = init_sess(h, w, ARGS.simplify)
 
     image = generate(sess, op, ps, image)
 
