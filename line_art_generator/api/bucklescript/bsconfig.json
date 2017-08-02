@@ -5,7 +5,7 @@
     {"dir": "src", "public": "all"}
   ],
   "bs-dependencies" : [
-    "bs-fetch", "bs-dom-wrapper", "bs-lwt"
+    "bs-fetch", "bs-lwt", "bs-dom-wrapper", "bs-webapi"
   ],
 
   "generate-merlin": true,

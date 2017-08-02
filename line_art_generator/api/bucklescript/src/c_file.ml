@@ -18,8 +18,8 @@ external make_prop :
   unit -> _ = "" [@@bs.obj]
 
 let on_change props e =
-  let target: D.Html.Input.input Dom.htmlElement_like = e##target in
-  let file = D.Html.Input.files target in
+  let target: D.Dom.HtmlInputElement.input Dom.htmlElement_like = e##target in
+  let file = D.Dom.HtmlInputElement.files target in
   let file = file.(0) in
   let dispatch = Dispatch.dispatch props.dispatcher in
   Actions.load_file dispatch file

@@ -1,6 +1,7 @@
 (* Define image map *)
 
 module R = React
+module B = Bs_webapi
 module D = Bs_dom_wrapper
 
 type prop = {
@@ -12,9 +13,9 @@ type prop = {
 
 external make_prop :
   ?className: string ->
-  ?onMouseDown: (('a, D.Events.Mouse_event.base) R.SyntheticEvent.t -> unit) ->
-  ?onMouseUp: (('a, D.Events.Mouse_event.base) R.SyntheticEvent.t -> unit) ->
-  ?onMouseMove: ((Dom._baseClass, D.Events.Mouse_event.base) R.SyntheticEvent.t -> unit) ->
+  ?onMouseDown: (('a, B.Dom.MouseEvent.t) R.SyntheticEvent.t -> unit) ->
+  ?onMouseUp: (('a, B.Dom.MouseEvent.t) R.SyntheticEvent.t -> unit) ->
+  ?onMouseMove: (('a, B.Dom.MouseEvent.t) R.SyntheticEvent.t -> unit) ->
   ?ref: ('a -> unit) ->
   ?width: int ->
   ?height: int ->
@@ -25,7 +26,7 @@ type state = {
   }
 
 type inner_state = {
-    mutable canvas: D.Html.Canvas.t option;
+    mutable canvas: D.Dom.HtmlCanvasElement.t option;
   }
 
 let on_mousedown props _ =
@@ -36,9 +37,9 @@ let on_mouseup props _ =
 
 let on_mousemove props e =
   if props.state.Reducer.dragging then
-    let rect = D.Html.Element.getBoundingClientRect e##target in
-    let x = e##clientX - (D.Dom_rect.left rect)
-    and y = e##clientY - (D.Dom_rect.top rect) in 
+    let rect = D.Dom.HtmlCanvasElement.getBoundingClientRect e##target in
+    let x = e##clientX - (B.Dom.DomRect.left rect)
+    and y = e##clientY - (B.Dom.DomRect.top rect) in 
     let module A = Actions in  A.move_image x y |> Dispatch.dispatch props.dispatcher 
   else ()
 
@@ -46,14 +47,14 @@ let update_canvas canvas state =
   let open Option.Monad_infix in
   (canvas >>= fun c ->
    state.image_map >>= fun im ->
-   let module H = D.Html in
-   let module C = H.Canvas.Context in
-   let ctx = c |> H.Canvas.getContext H.Types.Context_type.Context2D in
+   let module Canvas = D.Dom.HtmlCanvasElement in
+   let module C = D.Dom.HtmlCanvasElement.Context in
+   let ctx = c |> Canvas.getContext D.Dom.HtmlTypes.Context_type.Context2D in
    C.setStrokeStyle ctx "rgb(0,255,0)";
-   let rect = H.Canvas.getBoundingClientRect c in
+   let rect = Canvas.getBoundingClientRect c in
    let s = im.Reducer.selector_size in
    let x, y = im.Reducer.selector_position in
-   ctx |> C.clearRect 0 0 (D.Dom_rect.width rect) (D.Dom_rect.height rect);
+   ctx |> C.clearRect 0 0 (B.Dom.DomRect.width rect) (B.Dom.DomRect.height rect);
    ctx |> C.strokeRect x y s.Reducer.Size.width s.Reducer.Size.height;
    Option.return ()
   ) |> ignore

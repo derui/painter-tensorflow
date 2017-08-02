@@ -1,5 +1,6 @@
 (* Define drag&drop component *)
 
+module B = Bs_webapi
 module D = Bs_dom_wrapper
 module R = React
 
@@ -11,14 +12,14 @@ type prop = {
 
 external dandd_prop :
   ?className: string ->
-  ?onDrop: ((D.Html.Input.t, D.Events.Drag_event.base) R.SyntheticEvent.t -> unit) ->
+  ?onDrop: ((D.Dom.HtmlInputElement.t, B.Dom.DragEvent.t) R.SyntheticEvent.t -> unit) ->
   unit -> _ = "" [@@bs.obj]
 
 type state = unit
 
 let on_drop props e =
   e##stopPropagation ();
-  let files = D.Events.Drag_event.dataTransfer e##nativeEvent
+  let files = B.Dom.DragEvent.dataTransfer e##nativeEvent
               |> D.Data_transfer.files
   in
   match files |> Array.to_list with

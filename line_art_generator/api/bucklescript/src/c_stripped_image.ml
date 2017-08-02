@@ -2,7 +2,6 @@
 
 module R = React
 module D = Bs_dom_wrapper
-module H = D.Html
 
 (* Property for file component *)
 type prop = {
@@ -24,7 +23,7 @@ type state = {
     image_map: Reducer.image_map option;
   }
 type inner_state = {
-    mutable canvas: D.Html.Canvas.t option
+    mutable canvas: D.Dom.HtmlCanvasElement.t option
   }
 
 let calc_original_scale v image_map =
@@ -47,26 +46,26 @@ let update_canvas canvas state prop =
      fun image -> state.image_map >>=
      fun im -> 
 
-     let module I = H.Image in
-     let module C = H.Canvas.Context in
-     let context = c |> H.Canvas.getContext H.Types.Context_type.Context2D in 
+     let module I = D.Dom.HtmlImageElement in
+     let module C = D.Dom.HtmlCanvasElement in
+     let context = c |> C.getContext D.Dom.HtmlTypes.Context_type.Context2D in 
      let img = I.create () in 
-     I.setOnload img (fun _ ->
+     I.addEventListener "load" (fun _ ->
          let size = calc_original_size im in
          let x,y = calc_original_pos im in
          let paint_width = Reducer.(min size.Size.width prop.width)
          and paint_height = Reducer.(min size.Size.height prop.height) in 
 
-         context |> Reducer.(C.drawImageWithSSize img x y size.Size.width size.Size.height
+         context |> Reducer.(C.Context.drawImageWithSSize img x y size.Size.width size.Size.height
                                0 0 paint_width paint_height);
          if not prop.state.Reducer.dragging then
            (* Update stripped image *)
            Lwt.async (fun () -> 
-               let data = c |> H.Canvas.toDataURL "image/png" in
+               let data = c |> C.toDataURL "image/png" in
                Dispatch.dispatch prop.dispatcher (Actions.save_stripped_image data) |> Lwt.return
              )
          else ()
-       );
+       ) img;
      I.setSrc img image |> Option.return
   ) |> ignore
 

@@ -2,7 +2,6 @@
 
 module R = React
 module D = Bs_dom_wrapper
-module H = D.Html
 
 type prop = {
   state: Reducer.state;
@@ -23,7 +22,7 @@ type state = {
     image_map: Reducer.image_map option;
   }
 type inner_state = {
-    mutable canvas: D.Html.Canvas.t option;
+    mutable canvas: D.Dom.HtmlCanvasElement.t option;
   }
 
 let update_canvas canvas props state =
@@ -32,16 +31,16 @@ let update_canvas canvas props state =
      state.image_map >>= fun im ->
      state.image >>= fun image ->
 
-     let module I = H.Image in
-     let module C = H.Canvas.Context in
-     let context = v |> H.Canvas.getContext H.Types.Context_type.Context2D in 
+     let module I = D.Dom.HtmlImageElement in
+     let module C = D.Dom.HtmlCanvasElement in
+     let context = v |> C.getContext D.Dom.HtmlTypes.Context_type.Context2D in 
      let img = I.create () in 
-     I.setOnload img (fun _ ->
+     I.addEventListener "load" (fun _ ->
          let size = im.Reducer.scaled_size in
 
-         context |> C.clearRect 0 0 props.width props.height;
-         context |> Reducer.(C.drawImageWithDSize img 0 0 size.Size.width size.Size.height)
-       );
+         context |> C.Context.clearRect 0 0 props.width props.height;
+         context |> Reducer.(C.Context.drawImageWithDSize img 0 0 size.Size.width size.Size.height)
+       ) img;
      I.setSrc img image |> Option.return
    )
   ) |> ignore

@@ -22,6 +22,7 @@
   "dependencies": {
     "bs-fetch": "^0.1.1",
     "bs-lwt": "git+https://github.com/mzp/bs-lwt.git",
+    "bs-webapi": "^0.5.0",
     "react": "^15.6.1",
     "react-dom": "^15.6.1"
   }

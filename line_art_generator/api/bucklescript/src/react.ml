@@ -69,8 +69,6 @@ function _createClass (fn, initialState, config) {
 }
 |}]
 
-module D = Bs_dom_wrapper
-
 type element
 type ('props, 'state) component
 type 'state set_state_fn = 'state -> unit
@@ -115,14 +113,14 @@ module SyntheticEvent = struct
       method stopPropagation: unit -> unit
       method bubbles: bool
       method cancelable: bool
-      method currentTarget: 'a Dom.htmlElement_like
+      method currentTarget: 'a
       method defaultPrevented: bool
       method eventPhase: int
       method isTrusted: bool
-      method nativeEvent: 'b Dom.event_like
+      method nativeEvent: 'b
       method isDefaultPrevented: unit -> bool
       method isPropagationStopped: unit -> bool
-      method target: 'a Dom.htmlElement_like
+      method target: 'a
       method timeStamp: int
       method type_: string
 
@@ -137,7 +135,7 @@ module SyntheticEvent = struct
       method metaKey: bool
       method pageX: int
       method pageY: int
-      method relatedTarget: 'a Dom.htmlElement_like
+      method relatedTarget: 'a
       method screenX: int
       method screenY: int
       method shiftKey: bool

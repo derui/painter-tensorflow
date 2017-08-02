@@ -1,3 +1,4 @@
+module B = Bs_webapi
 module D = Bs_dom_wrapper
 
 type t =
@@ -73,13 +74,13 @@ let load_file dispatch file =
   let reader = File_reader.create () in
   File_reader.setOnload reader (fun _ ->
       let result = File_reader.result reader in
-      let img = Html.Image.create () in
-      Html.Image.setOnload img (fun _ ->
-          let width = Html.Image.width img
-          and height = Html.Image.height img in
+      let img = D.Dom.HtmlImageElement.create () in
+      D.Dom.HtmlImageElement.addEventListener "load" (fun _ ->
+          let width = D.Dom.HtmlImageElement.width img
+          and height = D.Dom.HtmlImageElement.height img in
           dispatch (EndFileLoading (result, width, height))
-        );
-      Html.Image.setSrc img result;
+        ) img;
+      D.Dom.HtmlImageElement.setSrc img result;
     );
   reader |> File_reader.readAsDataURL file;
   dispatch (StartFileLoading name)

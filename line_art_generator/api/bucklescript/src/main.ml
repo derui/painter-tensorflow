@@ -1,3 +1,4 @@
+module B = Bs_webapi
 module D = Bs_dom_wrapper
 
 let () =
@@ -7,7 +8,7 @@ let () =
   let ready_callback = fun _ ->
     let open Option.Monad_infix in
     let _ =
-      D.document |> D.Nodes.Document.querySelector ".tp-Content" >>= (fun c ->
+      B.Dom.document |> B.Dom.Document.querySelector ".tp-Content" >>= (fun c ->
         let store = Dispatch.Store.make Reducer.empty in
         let dispatcher = Dispatch.make ~store ~reducer:Reducer.reduce in
         let render () =
@@ -22,4 +23,4 @@ let () =
     in ()
   in
 
-  D.document |> D.Nodes.Document.addEventListener "DOMContentLoaded" ready_callback
+  B.Dom.document |> B.Dom.Document.addEventListener "DOMContentLoaded" ready_callback
