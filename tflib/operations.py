@@ -18,15 +18,16 @@ def bias_variable(shape, name=None):
 class LinearEncoder(object):
     """Encoder for Linear Operation."""
 
-    def __init__(self, name='linear_encoder'):
+    def __init__(self, out_ch, name='linear_encoder'):
         self.name = name
+        self.out_ch = out_ch
 
-    def __call__(self, tensor, in_ch, out_ch):
+    def __call__(self, tensor, in_ch):
         weight = tf.get_variable(
-            "{}_weight".format(self.name)[in_ch, out_ch],
-            initializer=tf.random_uniform_initializer(stddev=0.02))
+            "{}_weight".format(self.name), [in_ch, self.out_ch],
+            initializer=tf.random_uniform_initializer())
         bias = tf.get_variable(
-            '{}_bias'.format(self.name), [out_ch],
+            '{}_bias'.format(self.name), [self.out_ch],
             initializer=tf.constant_initializer(0.0))
         conv = tf.matmul(tensor, weight)
         conv = tf.nn.bias_add(conv, bias)

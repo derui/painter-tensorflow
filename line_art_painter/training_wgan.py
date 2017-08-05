@@ -33,24 +33,24 @@ def train():
             gradient_factor = tf.random_uniform([ARGS.batch_size, 1], 0.0, 1.0)
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
-            original, x = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size, distorted=False)
+            original, x, tags = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size, distorted=False)
             original = tf.image.resize_images(original, (SIZE, SIZE))
             x = tf.image.resize_images(x, (SIZE, SIZE))
 
         with tf.variable_scope('generator'):
-            G = model.generator(x)
+            G = model.generator(x, tags)
 
         with tf.variable_scope('critic'):
-            C = model.critic(x, original)
+            C = model.critic(x, original, tags)
 
         with tf.variable_scope('critic', reuse=True):
-            C_G = model.critic(x, G)
+            C_G = model.critic(x, G, tags)
 
             _original = tf.reshape(original, [-1, DIM])
             _G = tf.reshape(G, [-1, DIM])
             penalty_image = _original + (gradient_factor * (_G - _original))
             _penalty_image = tf.reshape(penalty_image, [-1, SIZE, SIZE, 3])
-            C_P = model.critic(x, _penalty_image)
+            C_P = model.critic(x, _penalty_image, tags)
 
         gradient_penalty = model.gradient_penalty(C_P, _penalty_image, ARGS.lambda_)
         c_loss = model.c_loss(C, C_G)
@@ -60,7 +60,6 @@ def train():
         tf.summary.image('base', x, max_outputs=10)
         tf.summary.image('gen', G, max_outputs=10)
         tf.summary.image('original', original, max_outputs=10)
-        tf.summary.image('penalty', _penalty_image, max_outputs=10)
 
         with tf.name_scope('losses'):
             tf.summary.scalar("penalty", gradient_penalty)
@@ -139,7 +138,6 @@ def train():
                     sess.run([c_training], options=run_options, run_metadata=run_metadata)
 
                 sess.run([update_global_step], options=run_options, run_metadata=run_metadata)
-
 
 
 if __name__ == '__main__':

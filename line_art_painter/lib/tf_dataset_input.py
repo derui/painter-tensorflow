@@ -22,6 +22,7 @@ def read_pair(filename_queue):
     features = tf.parse_single_example(value, {
         'original': tf.FixedLenFeature([], tf.string),
         'line_art': tf.FixedLenFeature([], tf.string),
+        'tags': tf.FixedLenFeature([1000], tf.int64),
     })
 
     original = tf.image.decode_png(features['original'], channels=3)
@@ -29,6 +30,7 @@ def read_pair(filename_queue):
 
     result.original = tf.reshape(original, [128, 128, 3])
     result.line_art = tf.reshape(line_art, [128, 128, 1])
+    result.tags = tf.cast(features['tags'], tf.float32)
 
     return result
 
@@ -100,4 +102,5 @@ def inputs(data_dir, batch_size, distorted=True):
     min_fraction_of_examples_in_queue = 0.4
     min_queue_examples = int(num_examples_per_epoch * min_fraction_of_examples_in_queue)
 
-    return _generate_pair_batch([reshaped_o_image, reshaped_w_image], min_queue_examples, batch_size, shuffle=True)
+    return _generate_pair_batch([reshaped_o_image, reshaped_w_image, read_input.tags],
+                                min_queue_examples, batch_size, shuffle=True)

@@ -49,7 +49,7 @@ def to_out_path(out_dir, f):
 
 
 image_processor = util.make_generic_processor(read_image, write_image,
-                                                    process)
+                                              process)
 
 excludes = []
 if args.excludes_dir is not None:

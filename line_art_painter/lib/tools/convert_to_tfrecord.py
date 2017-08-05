@@ -1,6 +1,7 @@
 import tensorflow as tf
 import os
 import argparse
+from datetime import datetime
 
 argparser = argparse.ArgumentParser(
     description='Resize images that equals size of pair files')
@@ -32,8 +33,8 @@ def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def _bytes_features(value):
-    return tf.train.Feature(bytes_list=tf.train.BytesList(value=value))
+def _int64_features(value):
+    return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
 def convert_to(data_set, name):
     original_images = data_set.original_images
@@ -44,6 +45,9 @@ def convert_to(data_set, name):
     writer = tf.python_io.TFRecordWriter(filename)
 
     for index in range(data_set.num_images):
+
+        if index % 1000 == 0:
+            print("{}: finished {}/{}".format(datetime.now(), index, data_set.num_images))
 
         with open(original_images[index], 'rb') as f:
             original_raw = f.read()
@@ -56,7 +60,7 @@ def convert_to(data_set, name):
         example = tf.train.Example(features=tf.train.Features(feature={
             'original': _bytes_feature(original_raw),
             'line_art': _bytes_feature(line_art_raw),
-            'tags': _bytes_features(tag_list)
+            'tags': _int64_features(tag_list)
         }))
         writer.write(example.SerializeToString())
     writer.close()

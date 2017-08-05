@@ -35,7 +35,9 @@ class Generator(object):
         self.conv7 = op.Encoder(256, 512, 4, 4, strides=[1, 2, 2, 1], name='encoder7')
         self.conv8 = op.Encoder(512, 512, 3, 3, strides=[1, 1, 1, 1], name='encoder8')
 
-        self.deconv8 = op.PixelShuffler(op.Encoder(1024, 1024, 3, 3, name='decoder8'), 256, 2)
+        self.linear = op.LinearEncoder(128)
+
+        self.deconv8 = op.PixelShuffler(op.Encoder(1152, 1024, 3, 3, name='decoder8'), 256, 2)
         self.deconv7 = op.Encoder(256, 256, 3, 3, name='decoder7')
         self.deconv6 = op.PixelShuffler(op.Encoder(512, 512, 3, 3, name='decoder6'), 128, 2)
         self.deconv5 = op.Encoder(128, 128, 3, 3, name='decoder5')
@@ -46,7 +48,7 @@ class Generator(object):
         self.deconv0 = op.Encoder(64, 3, 3, 3, name='decoder0')
 
 
-def generator(image):
+def generator(image, tag):
     """Make construction layer.
     """
     channels = image.shape.as_list()[3]
@@ -64,7 +66,11 @@ def generator(image):
     conv7 = relu(gen.bnc7(gen.conv7(conv6)))
     conv8 = relu(gen.bnc8(gen.conv8(conv7)))
 
-    deconv8 = relu(gen.bnd8(gen.deconv8(tf.concat([conv8, conv7], 3))))
+    linear = gen.linear(tag, tag.shape.as_list()[1])
+    shape = conv8.shape.as_list()
+    replicated = tf.tile(tf.reshape(linear, [-1, 1, 1, 128]), [1, shape[1], shape[2], 1])
+
+    deconv8 = relu(gen.bnd8(gen.deconv8(tf.concat([conv8, conv7, replicated], 3))))
     deconv7 = relu(gen.bnd7(gen.deconv7(deconv8)))
     deconv6 = relu(gen.bnd6(gen.deconv6(tf.concat([deconv7, conv6], 3))))
     deconv5 = relu(gen.bnd5(gen.deconv5(deconv6)))
@@ -93,24 +99,29 @@ class Critic(object):
         self.conv7 = op.Encoder(256, 512, 3, 3, name='encoder7', strides=[1, 2, 2, 1])
 
         self.fully_connect = op.Dense("fully_connect1")
+        self.linear = op.LinearEncoder(128)
 
-    def __call__(self, tensor):
+    def __call__(self, tensor, tag):
         net = tf.nn.relu(self.ln1(self.conv1(tensor)))
         net = tf.nn.relu(self.ln3(self.conv3(net)))
         net = tf.nn.relu(self.ln5(self.conv5(net)))
         net = tf.nn.relu(self.ln7(self.conv7(net)))
 
-        net = self.fully_connect(net, 1)
+        shape = net.shape.as_list()
+        linear = self.linear(tag, tag.shape.as_list()[1])
+        replicated = tf.tile(tf.reshape(linear, [-1, 1, 1, 128]), [1, shape[1], shape[2], 1])
+
+        net = self.fully_connect(tf.concat([net, replicated], 3), 1)
 
         return tf.reshape(net, [-1])
 
 
-def critic(base, originals):
+def critic(base, originals, tags):
     """make critic network"""
 
     chan = originals.shape.as_list()[3] + base.shape.as_list()[3]
     C = Critic(chan)
-    logit = C(tf.concat([base, originals], 3))
+    logit = C(tf.concat([base, originals], 3), tags)
 
     return logit
 
