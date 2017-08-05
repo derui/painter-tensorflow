@@ -33,7 +33,7 @@ def init_sess(height, width, scale):
     work_h = int(math.pow(2, math.ceil(math.log2(height))))
     work_w = int(math.pow(2, math.ceil(math.log2(width))))
     x = tf.placeholder(tf.float32, [1, height, width, 3])
-    x_ = tf.image.resize_images(x, (s_height, s_width), method=tf.ResizeMethod.AREA)
+    x_ = tf.image.resize_images(x, (s_height, s_width), method=tf.image.ResizeMethod.AREA)
     x_ = tf.image.resize_images(x_, (height, width))
     x_ = tf.image.resize_image_with_crop_or_pad(x_, work_h, work_w)
 
