@@ -57,7 +57,11 @@ def GenerateConfig(context):
                   }
               ],
               'networkInterfaces': [{
-                  'network': default_network
+                # 'accessConfigs': [{
+                #   'name': 'external-nat',
+                #   'type': 'ONE_TO_ONE_NAT'
+                #   }],
+                'network': default_network
               }]
           }
       }

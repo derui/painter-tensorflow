@@ -2,8 +2,9 @@ import os
 import argparse
 import concurrent.futures
 from datetime import datetime
-from . import util
+from ....tflib import util
 import re
+import hashlib
 
 
 def read_tag(path):
@@ -42,14 +43,14 @@ def to_out_path(out_dir, f):
     name, _ = os.path.splitext(f)
     return os.path.join(out_dir, f[:2], "{}.csv".format(name))
 
+
 def is_unreliable_tag(tag):
     """check unreliable tags from tag set
     """
 
     MATCHERS = [
         lambda x: x == "...",
-        lambda x: not re.match("^[a-zA-Z]", x),
-        lambda x: re.match(".+_\(.+\)$", x)
+        lambda x: not re.match("^[a-zA-Z]", x)
     ]
 
     for matcher in MATCHERS:
@@ -58,30 +59,38 @@ def is_unreliable_tag(tag):
 
     return False
 
+
+def normalize(tag):
+    tag = tag.strip()
+    tag = tag.replace(" ", "_")
+
+    return tag
+
+
 def main(args, excludes):
     num = 0
-    tag_map = {}
+    tag_set = set()
     for files, ignored_files in util.walk_files(args.input_dir, excludes, 1000):
         for root, f in files:
             for tag in read_tag(os.path.join(root, f)):
+                tag = normalize(tag)
                 if is_unreliable_tag(tag):
                     continue
-                
-                if tag in tag_map:
-                    tag_map[tag] += 1
-                else:
-                    tag_map[tag] = 1
+
+                if tag not in tag_set:
+                    tag_set.append(tag)
 
         num += len(files)
         print("{}: merged files {}".format(datetime.now(), num))
 
-    tag_list = list([(k, tag_map[k]) for k in tag_map])
-    sorted_by_count_list = sorted(tag_list, key=lambda x: x[1], reverse=True)[:1000]
-    tag_map = {sorted_by_count_list[x][0]: x for x in range(len(sorted_by_count_list))}
-    zeros = [0 for _ in range(len(sorted_by_count_list))]
+    def hash_key(key):
+        s = hashlib.sha256()
+        s.update(key.encode("utf-8"))
+        return s.hexdigest()
 
+    tag_map = {hash_key(v): v for v in tag_set}
     image_processor = util.make_generic_processor(read_tag, write_tag,
-                                                  make_process(tag_map, zeros))
+                                                  make_process(tag_map))
 
     num = 0
     for files, ignored_files in util.walk_files(args.input_dir, excludes, 100):
@@ -90,7 +99,8 @@ def main(args, excludes):
             for root, f in files:
                 futures.append(
                     e.submit(image_processor,
-                             os.path.join(root, f), to_out_path(args.out_dir, f)))
+                             os.path.join(root, f),
+                             to_out_path(args.out_dir, f)))
 
             for future in concurrent.futures.as_completed(futures):
                 try:
@@ -99,7 +109,8 @@ def main(args, excludes):
                     print('exception: %s' % exc)
 
             num += 100
-            print('{}: Completed {} items, {} ignored.'.format(datetime.now(), num, ignored_files))
+            print('{}: Completed {} items, {} ignored.'.format(
+                datetime.now(), num, ignored_files))
 
     with open(args.mapping_file, "w") as f:
         f.write(','.join([x for x, _ in sorted_by_count_list]))
@@ -107,7 +118,8 @@ def main(args, excludes):
 
 if __name__ == "__main__":
 
-    argparser = argparse.ArgumentParser(description='merge tags and make sparse data')
+    argparser = argparse.ArgumentParser(
+        description='merge tags and make sparse data')
     argparser.add_argument(
         'input_dir',
         type=str,

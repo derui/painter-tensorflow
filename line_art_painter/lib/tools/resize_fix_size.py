@@ -4,6 +4,7 @@ import cv2 as cv
 import concurrent.futures
 from datetime import datetime
 from . import util
+from ....tflib import util as tfutil
 
 argparser = argparse.ArgumentParser(description='Resize image to fixed size')
 argparser.add_argument(
@@ -48,15 +49,15 @@ def to_out_path(out_dir, f):
     return os.path.join(out_dir, f[:2], "{}.png".format(name))
 
 
-image_processor = util.make_generic_processor(read_image, write_image,
+image_processor = tfutil.make_generic_processor(read_image, write_image,
                                               process)
 
 excludes = []
 if args.excludes_dir is not None:
-    excludes = util.load_exclude_names(args.excludes_dir)
+    excludes = tfutil.load_exclude_names(args.excludes_dir)
 
 num = 0
-for files, ignored_files in util.walk_files(args.input_dir, excludes, 100):
+for files, ignored_files in tfutil.walk_files(args.input_dir, excludes, 100):
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
         futures = []
         for root, f in files:
