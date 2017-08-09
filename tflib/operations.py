@@ -15,6 +15,29 @@ def bias_variable(shape, name=None):
         name, shape, initializer=tf.constant_initializer(0.0))
 
 
+class MaxPool(object):
+    """Max pooling"""
+
+    def __init__(self, in_ch,
+                 out_ch,
+                 ksize,
+                 strides=[1, 1, 1, 1],
+                 name='max_pool'):
+        self.name = name
+        self.in_ch = in_ch
+        self.out_ch = out_ch
+        self.ksize = ksize
+        self.strides = strides
+
+    def __call__(self, tensor):
+        """Return tensor applied max-pooling"""
+        return tf.nn.max_pool(tensor,
+                              self.ksize,
+                              self.strides,
+                              "VALID",
+                              self.name)
+
+
 class LinearEncoder(object):
     """Encoder for Linear Operation."""
 
