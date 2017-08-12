@@ -18,14 +18,11 @@ def bias_variable(shape, name=None):
 class MaxPool(object):
     """Max pooling"""
 
-    def __init__(self, in_ch,
-                 out_ch,
+    def __init__(self,
                  ksize,
                  strides=[1, 1, 1, 1],
                  name='max_pool'):
         self.name = name
-        self.in_ch = in_ch
-        self.out_ch = out_ch
         self.ksize = ksize
         self.strides = strides
 
@@ -35,7 +32,7 @@ class MaxPool(object):
                               self.ksize,
                               self.strides,
                               "VALID",
-                              self.name)
+                              name=self.name)
 
 
 class LinearEncoder(object):
@@ -120,12 +117,14 @@ class Encoder(object):
                  patch_h,
                  patch_w,
                  strides=[1, 1, 1, 1],
+                 padding="SAME",
                  name='encoder'):
         self.patch_h = patch_h
         self.patch_w = patch_w
         self.in_ch = in_ch
         self.out_ch = out_ch
         self.name = name
+        self.padding = padding
         self.strides = strides
 
     def __call__(self, tensor):
@@ -134,7 +133,7 @@ class Encoder(object):
             name="{}_weight".format(self.name))
         bias = bias_variable([self.out_ch], name='{}_bias'.format(self.name))
         conv = tf.nn.conv2d(
-            tensor, weight, strides=self.strides, padding='SAME')
+            tensor, weight, strides=self.strides, padding=self.padding)
         conv = tf.nn.bias_add(conv, bias)
 
         return conv
