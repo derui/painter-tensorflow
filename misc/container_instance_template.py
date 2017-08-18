@@ -52,8 +52,9 @@ def GenerateConfig(context):
               },
               'serviceAccounts': [
                   {
-                      'email': '874188143542-compute@developer.gserviceaccount.com',
-                      'scopes': ['https://www.googleapis.com/auth/cloud-platform.read-only']
+                      'email': 'lag-compute@hobby-174213.iam.gserviceaccount.com',
+                      'scopes': ['https://www.googleapis.com/auth/devstorage.read_only',
+                                 'https://www.googleapis.com/auth/cloud-platform.read-only']
                   }
               ],
               'networkInterfaces': [{
