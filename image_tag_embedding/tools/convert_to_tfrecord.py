@@ -38,12 +38,12 @@ args = argparser.parse_args()
 def _int64_features(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
+
 def _bytes_feature(value):
     return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
 def convert_to(data_set, name, max_document_length):
-    vocab = data_set.vocabulary_index
     tag_keys = data_set.tag_keys
     tags = data_set.tags
     images = data_set.images
@@ -57,8 +57,8 @@ def convert_to(data_set, name, max_document_length):
             print("{}: finished {}/{}".format(datetime.now(), index, len(tags)))
 
         tag_list = tags[tag_keys[index]]
-        tag_list = [vocab[tag] + 1 for tag in tag_list]
-        tag_list = np.ndarray.tolist(np.pad(tag_list, (0, max_document_length - len(tag_list)), 'constant'))
+        tag_list = [i + 1 for i in tag_list]
+        tag_list = np.ndarray.tolist(np.pad(tag_list, (0, max_document_length - len(tag_list)), 'constant').astype(np.int64))
 
         with open(images[tag_keys[index]], 'rb') as f:
             image = f.read()
@@ -77,6 +77,10 @@ def main(argv):
     if args.excludes_dir is not None:
         excludes = tfutil.load_exclude_names(args.excludes_dir)
 
+    vocab = util.Vocabulary()
+    vocab.load(str(pathlib.Path(args.vocab)))
+    vocab = vocab.filter(lambda x, y: y['freq'] >= 200)
+
     tags_list = {}
     tag_keys = []
     max_tag_count = 0
@@ -88,9 +92,9 @@ def main(argv):
             with open(str(path)) as fp:
                 tmp_tag_list = []
                 for line in fp.readlines():
-                    if not util.is_unreliable_tag(line):
-                        tmp_tag_list.extend(util.normalize(line))
+                    tmp_tag_list.append(line.strip())
 
+                tmp_tag_list = vocab.mapping(tmp_tag_list)
                 tag_count = len(tmp_tag_list)
                 max_tag_count = max(max_tag_count, tag_count)
 
@@ -107,16 +111,14 @@ def main(argv):
     class Record(object):
         pass
 
-    vocab = util.Vocabulary()
-    vocab.load(str(pathlib.Path(args.vocab)))
-
     datasets = Record()
-    datasets.vocabulary_index = vocab.as_vocab_index()
+    datasets.vocab = vocab
     datasets.tag_keys = tag_keys
     datasets.tags = tags_list
     datasets.images = image_list
 
     convert_to(datasets, 'out', max_tag_count)
+    vocab.write(str(pathlib.Path(args.out_dir) / "vocabulary.tsv"))
     print("Finish converting. Maximum tag count {}".format(max_tag_count))
 
 

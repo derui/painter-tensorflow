@@ -68,9 +68,9 @@ def train():
             lookupped = tf.expand_dims(lookupped, -1)
 
         E = model.embedding_encoder(lookupped)
-        I = model.image_encoder(images, ARGS.max_document_length)
+        D = model.embedding_decoder(E)
 
-        loss = model.loss(E, I, tags)
+        loss = model.loss(D, images)
 
         tf.summary.scalar("loss", loss)
 
@@ -116,6 +116,11 @@ def train():
         run_metadata = tf.RunMetadata()
 
         metadata_path = write_metadata(vocab)
+        sliced_embedding = tf.Variable(
+            tf.random_uniform([1000, EMBEDDING_SIZE], -1.0, 1.0),
+            trainable=False,
+            name="sliced_embedding")
+        assign = tf.assign(sliced_embedding, embedding[:1000])
 
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
@@ -134,11 +139,12 @@ def train():
                 sess.run([training], options=run_options, run_metadata=run_metadata)
 
                 step = sess.run(global_step_tensor)
-                if step % 100 == 0:
+                if step > 0 and step % 100 == 0:
+                    sess.run(assign)
                     config = projector.ProjectorConfig()
                     emb = config.embeddings.add()
-                    emb.tensor_name = embedding.name
-                    emb.metadata_path = str(metadata_path)
+                    emb.tensor_name = sliced_embedding.name
+                    emb.metadata_path = str(metadata_path.absolute())
 
                     summary_writer = tf.summary.FileWriter(ARGS.train_dir)
                     projector.visualize_embeddings(summary_writer, config)
@@ -148,8 +154,13 @@ def write_metadata(vocab):
     vocabs = vocab.as_vocab_index()
     vocab_list = [(vocabs[v]['index'], v) for v in vocabs.keys()]
     vocab_list = sorted(vocab_list, key=lambda v: v[0])
+    vocab_list = vocab_list[:1000]
 
     metadata_path = pathlib.Path(ARGS.train_dir) / "metadata.tsv"
+
+    if not metadata_path.parent.exists():
+        metadata_path.parent.mkdir(parents=True)
+
     with open(str(metadata_path), "w") as f:
         f.write("Name\tFreq\n")
         for (_, v) in vocab_list:

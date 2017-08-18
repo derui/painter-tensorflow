@@ -51,31 +51,31 @@ class EmbeddingEncoder(object):
         return self.linear_encoder(net, total_channels)
 
 
-class ImageEncoder(object):
+class EmbeddingDecoder(object):
     """Define encoder for image as description"""
 
-    def __init__(self, sequence_length):
-        self.enc1 = op.Encoder(3, 64, 4, 4, strides=[1,2,2,1], name="encoder/1")
-        self.enc2 = op.Encoder(64, 128, 4, 4, strides=[1,2,2,1], name="encoder/2")
-        self.enc3 = op.Encoder(128, 256, 4, 4, strides=[1,2,2,1], name="encoder/3")
+    def __init__(self):
+        self.linear_encoder = op.LinearEncoder(16 * 16 * 256)
+        self.dec4 = op.PixelShuffler(op.Encoder(256, 1024, 3, 3, name='decoder/4'), 256, 2)
+        self.dec3 = op.PixelShuffler(op.Encoder(256, 512, 3, 3, name='decoder/3'), 128, 2)
+        self.dec2 = op.PixelShuffler(op.Encoder(128, 256, 3, 3, name='decoder/2'), 64, 2)
+        self.dec1 = op.Encoder(64, 3, 3, 3, name='decoder/1')
         
-        self.bnc1 = op.BatchNormalization(name="bnc/1")
-        self.bnc2 = op.BatchNormalization(name="bnc/2")
-        self.bnc3 = op.BatchNormalization(name="bnc/3")
+        self.bnd1 = op.BatchNormalization(name='bnd/1')
+        self.bnd2 = op.BatchNormalization(name='bnd/2')
+        self.bnd3 = op.BatchNormalization(name='bnd/3')
 
-        self.linear_encoder = op.LinearEncoder(sequence_length)
-
-    def __call__(self, tensor):
+    def __call__(self, tensor, input_channel):
 
         relu = tf.nn.relu
-        net = self.bnc1(relu(self.enc1(tensor)))
-        net = self.bnc2(relu(self.enc2(net)))
-        net = self.bnc3(relu(self.enc3(net)))
+        net = self.linear_encoder(tensor, input_channel)
+        net = tf.reshape(net, [-1, 16, 16, 256])
+        net = self.bnd3(relu(self.dec4(net)))
+        net = self.bnd2(relu(self.dec3(net)))
+        net = self.bnd1(relu(self.dec2(net)))
+        net = tf.nn.tanh(self.dec1(net))
 
-        shape = net.shape.as_list()
-        net = tf.reshape(net, [-1, shape[1] * shape[2] * shape[3]])
-
-        return self.linear_encoder(net, shape[1] * shape[2] * shape[3])
+        return net
 
 
 def embedding_encoder(tag):
@@ -87,20 +87,19 @@ def embedding_encoder(tag):
     return net
 
 
-def image_encoder(image, sequence_length):
+def embedding_decoder(logit):
     """make image encoder network"""
-    with tf.variable_scope('image_encoder'):
-        net = ImageEncoder(sequence_length)(image)
+    with tf.variable_scope('embedding_decoder'):
+        net = EmbeddingDecoder()(logit, logit.shape.as_list()[1])
 
     return net
 
 
-def loss(emb, image, tag):
-    tag = tf.cast(tag, tf.float32)
-    e_loss = tf.nn.softmax_cross_entropy_with_logits(logits=emb, labels=tag)
-    i_loss = tf.nn.softmax_cross_entropy_with_logits(logits=image, labels=tag)
+def loss(decoded, original):
 
-    return tf.reduce_mean(e_loss + i_loss)
+    loss = tf.reduce_mean(tf.reduce_sum(tf.abs(decoded - original), 1))
+
+    return loss
 
 
 def training(loss, learning_rate, global_step, var_list):
