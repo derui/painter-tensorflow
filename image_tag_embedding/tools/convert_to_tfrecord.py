@@ -10,11 +10,7 @@ from tflib import util as tfutil
 argparser = argparse.ArgumentParser(
     description='Resize images that equals size of pair files')
 argparser.add_argument(
-    '--vocab',
-    type=str,
-    help='the vocabulary file',
-    required=True
-)
+    '--vocab', type=str, help='the vocabulary file', required=True)
 argparser.add_argument(
     '--image_dir',
     type=str,
@@ -54,11 +50,16 @@ def convert_to(data_set, name, max_document_length):
     for index in range(len(tag_keys)):
 
         if index % 1000 == 0:
-            print("{}: finished {}/{}".format(datetime.now(), index, len(tags)))
+            print(
+                "{}: finished {}/{}".format(datetime.now(), index, len(tags)))
 
         tag_list = tags[tag_keys[index]]
-        tag_list = [i + 1 for i in tag_list]
-        tag_list = np.ndarray.tolist(np.pad(tag_list, (0, max_document_length - len(tag_list)), 'constant').astype(np.int64))
+        tag_list = np.ndarray.tolist(
+            np.pad(tag_list, (0, max_document_length - len(tag_list)),
+                   'constant').astype(np.int64))
+
+        if not tag_keys[index] in images:
+            continue
 
         with open(images[tag_keys[index]], 'rb') as f:
             image = f.read()
@@ -71,6 +72,15 @@ def convert_to(data_set, name, max_document_length):
     writer.close()
 
 
+def normalize_tags(tags):
+    ret = []
+
+    for tag in tags:
+        ret.extend(util.normalize(tag))
+
+    return ret
+
+
 def main(argv):
 
     excludes = []
@@ -79,12 +89,14 @@ def main(argv):
 
     vocab = util.Vocabulary()
     vocab.load(str(pathlib.Path(args.vocab)))
-    vocab = vocab.filter(lambda x, y: y['freq'] >= 200)
+    vocab.trim(200)
+    vocab.freeze()
 
     tags_list = {}
     tag_keys = []
     max_tag_count = 0
-    for files, ignored_files in tfutil.walk_files(args.tag_dir, excludes, 1000):
+    for files, ignored_files in tfutil.walk_files(args.tag_dir, excludes,
+                                                  1000):
         for root, f in files:
             path = pathlib.Path(root) / f
             tag_keys.append(path.stem)
@@ -93,15 +105,20 @@ def main(argv):
                 tmp_tag_list = []
                 for line in fp.readlines():
                     tmp_tag_list.append(line.strip())
+                tmp_tag_list = list(
+                    filter(lambda x: not util.is_unreliable_tag(x),
+                           tmp_tag_list))
+                tmp_tag_list = normalize_tags(tmp_tag_list)
+                tmp_tag_list = list(map(vocab.get, tmp_tag_list))
 
-                tmp_tag_list = vocab.mapping(tmp_tag_list)
                 tag_count = len(tmp_tag_list)
                 max_tag_count = max(max_tag_count, tag_count)
 
             tags_list[path.stem] = tmp_tag_list
 
     image_list = {}
-    for files, ignored_files in tfutil.walk_files(args.image_dir, excludes, 1000):
+    for files, ignored_files in tfutil.walk_files(args.image_dir, excludes,
+                                                  1000):
         for root, f in files:
             image_list[pathlib.Path(f).stem] = str(pathlib.Path(root) / f)
 

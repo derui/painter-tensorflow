@@ -62,13 +62,13 @@ def train():
             tags, images = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size,
                                                    ARGS.max_document_length)
             embedding = tf.Variable(
-                tf.random_uniform([vocab.vocab_size(), EMBEDDING_SIZE], -1.0, 1.0),
+                tf.random_uniform([len(vocab), EMBEDDING_SIZE], -1.0, 1.0),
                 name="embedding")
             lookupped = tf.nn.embedding_lookup(embedding, tags)
             lookupped = tf.expand_dims(lookupped, -1)
 
         E = model.embedding_encoder(lookupped)
-        D = model.embedding_decoder(E)
+        D = model.image_autoencoder(images, E)
 
         loss = model.loss(D, images)
 
@@ -117,10 +117,10 @@ def train():
 
         metadata_path = write_metadata(vocab)
         sliced_embedding = tf.Variable(
-            tf.random_uniform([1000, EMBEDDING_SIZE], -1.0, 1.0),
+            tf.random_uniform([100, EMBEDDING_SIZE], -1.0, 1.0),
             trainable=False,
             name="sliced_embedding")
-        assign = tf.assign(sliced_embedding, embedding[:1000])
+        assign = tf.assign(sliced_embedding, embedding[:100])
 
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
@@ -154,7 +154,7 @@ def write_metadata(vocab):
     vocabs = vocab.as_vocab_index()
     vocab_list = [(vocabs[v]['index'], v) for v in vocabs.keys()]
     vocab_list = sorted(vocab_list, key=lambda v: v[0])
-    vocab_list = vocab_list[:1000]
+    vocab_list = vocab_list[:100]
 
     metadata_path = pathlib.Path(ARGS.train_dir) / "metadata.tsv"
 

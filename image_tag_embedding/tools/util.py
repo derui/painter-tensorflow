@@ -2,65 +2,71 @@ import re
 
 
 class Vocabulary(object):
-    def __init__(self, vocab={}):
-        self._vocab_index = vocab
+    def __init__(self, vocab={}, unknown_token="<UNK>"):
+        self._unknown_token = unknown_token
+        self._vocab_index = {unknown_token: 0}
+        self._freq = {}
+        self._freeze = True
 
-    def vocab_size(self):
-        return len(self._vocab_index.keys())
+    def __len__(self):
+        return len(self._vocab_index)
 
-    def as_vocab_index(self):
-        return self._vocab_index.copy()
+    def freeze(self, freeze=True):
+        self._freeze = freeze
 
-    def is_contains(self, tag):
-        if is_unreliable_tag(tag):
-            return False
-        tag = normalize(tag)
+    def trim(self, min_frequency):
+        """trimming vocabulary for minimum frequency
+        """
+        self._freq = sorted(self._freq.items(), key=lambda x: x[0])
+        self._freq = sorted(self._freq, key=lambda x: x[1], reverse=True)
 
-        ret = filter(lambda x: x, map(lambda x: x in self._vocab_index, tag))
-        return len(list(ret)) != 0
+        self._vocab_index = {self._unknown_token: 0}
+        idx = 1
 
-    def filter(self, f):
-        ret = {}
-        for k in self._vocab_index.keys():
-            if f(k, self._vocab_index[k]):
-                ret[k] = self._vocab_index[k].copy()
-                ret[k]['index'] = len(ret) - 1
+        for tag, count in self._freq:
+            if count <= min_frequency:
+                break
 
-        return Vocabulary(ret)
+            self._vocab_index[tag] = idx
+            idx += 1
 
-    def mapping(self, tags):
-        ret = []
+        self._freq = dict(self._freq[:idx - 1])
 
-        for tag in filter(lambda x: not is_unreliable_tag(x), tags):
-            tag = normalize(tag)
-            for v in tag:
-                if v in self._vocab_index:
-                    ret.append(self._vocab_index[v]['index'])
+    def get(self, tag):
+        """Returns word's id in the vocabulary
 
-        return ret
+        If tag is new, return new id for it.
+        """
+        if tag not in self._vocab_index:
+            if self._freeze:
+                return 0
+
+            self._vocab_index[tag] = len(self._vocab_index)
+
+        return self._vocab_index[tag]
 
     def append(self, tag):
-        if is_unreliable_tag(tag):
+
+        tag_id = self.get(tag)
+        if tag_id <= 0:
             return
 
-        tags = normalize(tag)
+        if tag not in self._freq:
+            self._freq[tag] = 0
+        self._freq[tag] += 1
 
-        for tag in tags:
-            if tag not in self._vocab_index:
-                self._vocab_index[tag] = {
-                    'index': len(self._vocab_index),
-                    'freq': 1
-                }
-            else:
-                self._vocab_index[tag]['freq'] += 1
 
     def write(self, out_file):
 
         with open(out_file, "w") as f:
             vocab = []
             for k in self._vocab_index:
-                data = self._vocab_index[k]
-                vocab.append("{}\t{}\t{}\n".format(data['index'], k, data['freq']))
+                if k not in self._freq:
+                    continue
+
+                index = self._vocab_index[k]
+                freq = self._freq[k]
+                vocab.append("{}\t{}\t{}\n".format(index, k, freq))
 
             f.writelines(vocab)
 
@@ -70,8 +76,8 @@ class Vocabulary(object):
             lines = f.readlines()
             lines = list(map(lambda x: x.strip().split('\t'), lines))
 
-            self._vocab_index = {v[1]: {'index': int(v[0]),
-                                        'freq': int(v[2])} for v in lines}
+            self._vocab_index = {v[1]: int(v[0]) for v in lines}
+            self._freq = {v[1]: int(v[2]) for v in lines}
 
 
 def is_unreliable_tag(tag):
@@ -79,8 +85,7 @@ def is_unreliable_tag(tag):
     """
 
     MATCHERS = [
-        lambda x: x == "..." or x == "commentary_request",
-        lambda x: not re.match("^[a-zA-Z]", x)
+        lambda x: x == "..." or x == "commentary_request"
     ]
 
     for matcher in MATCHERS:
@@ -95,6 +100,8 @@ def normalize(tag):
     tags = re.findall("(.+)_\((.+)\)$", tag)
 
     if len(tags) > 0:
-        return list(tags[0])
+        tags = list(tags[0])
+    else:
+        tags = [tag]
 
-    return [tag]
+    return list(filter(lambda x: not is_unreliable_tag(x), tags))

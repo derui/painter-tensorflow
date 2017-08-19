@@ -6,7 +6,6 @@ This module optimized to use filename_queue and batch
 without overhead coping data.
 """
 
-import numpy as np
 import os
 import pathlib
 import tensorflow as tf
@@ -19,6 +18,7 @@ def read_tags(filename_queue, max_document_length):
     result = Record()
 
     reader = tf.TFRecordReader()
+    print(max_document_length)
 
     result.key, value = reader.read(filename_queue)
     features = tf.parse_single_example(value, {
