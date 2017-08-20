@@ -11,6 +11,16 @@ class Vocabulary(object):
     def __len__(self):
         return len(self._vocab_index)
 
+    def retrieve(self):
+        """Retrieve vocabularies with index and frequency.
+        """
+        for tag in self._vocab_index:
+            index = self._vocab_index[tag]
+            freq = 0
+            if tag != self._unknown_token:
+                freq = self._freq[tag]
+            yield (tag, index, freq)
+
     def freeze(self, freeze=True):
         self._freeze = freeze
 
@@ -55,17 +65,15 @@ class Vocabulary(object):
             self._freq[tag] = 0
         self._freq[tag] += 1
 
-
     def write(self, out_file):
 
         with open(out_file, "w") as f:
             vocab = []
             for k in self._vocab_index:
-                if k not in self._freq:
-                    continue
-
                 index = self._vocab_index[k]
-                freq = self._freq[k]
+                freq = 0
+                if k in self._freq:
+                    freq = self._freq[k]
                 vocab.append("{}\t{}\t{}\n".format(index, k, freq))
 
             f.writelines(vocab)

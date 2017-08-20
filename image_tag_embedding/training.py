@@ -72,6 +72,8 @@ def train():
 
         loss = model.loss(D, images)
 
+        tf.summary.image("original", images)
+        tf.summary.image("decoded", D)
         tf.summary.scalar("loss", loss)
 
         with tf.name_scope('c_train'):
@@ -117,10 +119,10 @@ def train():
 
         metadata_path = write_metadata(vocab)
         sliced_embedding = tf.Variable(
-            tf.random_uniform([100, EMBEDDING_SIZE], -1.0, 1.0),
+            tf.random_uniform([500, EMBEDDING_SIZE], -1.0, 1.0),
             trainable=False,
             name="sliced_embedding")
-        assign = tf.assign(sliced_embedding, embedding[:100])
+        assign = tf.assign(sliced_embedding, embedding[:500])
 
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
@@ -151,10 +153,9 @@ def train():
 
 
 def write_metadata(vocab):
-    vocabs = vocab.as_vocab_index()
-    vocab_list = [(vocabs[v]['index'], v) for v in vocabs.keys()]
-    vocab_list = sorted(vocab_list, key=lambda v: v[0])
-    vocab_list = vocab_list[:100]
+    vocabs = [v for v in vocab.retrieve()]
+    vocab_list = sorted(vocabs, key=lambda v: v[1])
+    vocab_list = vocab_list[:500]
 
     metadata_path = pathlib.Path(ARGS.train_dir) / "metadata.tsv"
 
@@ -163,8 +164,8 @@ def write_metadata(vocab):
 
     with open(str(metadata_path), "w") as f:
         f.write("Name\tFreq\n")
-        for (_, v) in vocab_list:
-            f.write("{}\t{}\n".format(v, vocabs[v]['freq']))
+        for (tag, _, freq) in vocab_list:
+            f.write("{}\t{}\n".format(tag, freq))
 
     return metadata_path
 

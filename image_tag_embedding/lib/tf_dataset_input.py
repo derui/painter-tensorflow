@@ -18,7 +18,6 @@ def read_tags(filename_queue, max_document_length):
     result = Record()
 
     reader = tf.TFRecordReader()
-    print(max_document_length)
 
     result.key, value = reader.read(filename_queue)
     features = tf.parse_single_example(value, {
@@ -62,7 +61,9 @@ def inputs(data_dir, batch_size, max_document_length):
     file_names = []
     for (root, _, files) in os.walk(data_dir):
         for f in files:
-            file_names.append(str(pathlib.Path(root) / f))
+            name = pathlib.Path(root) / f
+            if name.suffix == '.tfrecords':
+                file_names.append(str(name))
 
     filename_queue = tf.train.string_input_producer(file_names)
     num_examples_per_epoch = 100
