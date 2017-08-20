@@ -2,7 +2,6 @@ import argparse
 from datetime import datetime
 from . import util
 from tflib import util as tfutil
-import hashlib
 import pathlib
 
 
@@ -34,11 +33,6 @@ def main(args, excludes):
 
         num += len(files)
         print("{}: merged files {}".format(datetime.now(), num))
-
-    def hash_key(key):
-        s = hashlib.sha256()
-        s.update(key.encode("utf-8"))
-        return s.hexdigest()
 
     vocab.write(str(pathlib.Path(args.out_dir) / args.out_file))
 
