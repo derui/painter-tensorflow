@@ -8,6 +8,7 @@ class EmbeddingEncoder(object):
     """Define encoder for embedding"""
 
     def __init__(self, sequence_length, embedding_size,
+                 trainable=True,
                  filter_sizes=[2, 3, 4]):
         self.sequence_length = sequence_length
         self.embedding_size = embedding_size
@@ -22,6 +23,7 @@ class EmbeddingEncoder(object):
                 embedding_size,
                 strides=[1, 1, 1, 1],
                 padding='VALID',
+                trainable=trainable,
                 name='encoder/{}'.format(index))
 
             max_pool = op.MaxPool(
@@ -38,7 +40,7 @@ class EmbeddingEncoder(object):
             for i in range(len(filter_sizes))
         ]
 
-        self.linear_encoder = op.LinearEncoder(sequence_length)
+        self.linear_encoder = op.LinearEncoder(sequence_length, trainable=trainable)
 
     def __call__(self, tensor):
 
@@ -101,11 +103,12 @@ class ImageAutoEncoder(object):
 
         return net
 
-def embedding_encoder(tag):
+
+def embedding_encoder(tag, trainable=True):
     """make embedding encoder network"""
     shape = tag.shape.as_list()
     with tf.variable_scope('embedding_encoder'):
-        net = EmbeddingEncoder(shape[1], shape[2])(tag)
+        net = EmbeddingEncoder(shape[1], shape[2], trainable=trainable)(tag)
 
     return net
 

@@ -72,15 +72,6 @@ def convert_to(data_set, name, max_document_length):
     writer.close()
 
 
-def normalize_tags(tags):
-    ret = []
-
-    for tag in tags:
-        ret.extend(util.normalize(tag))
-
-    return ret
-
-
 def main(argv):
 
     excludes = []
@@ -89,8 +80,6 @@ def main(argv):
 
     vocab = util.Vocabulary()
     vocab.load(str(pathlib.Path(args.vocab)))
-    vocab.trim(200)
-    vocab.freeze()
 
     tags_list = {}
     tag_keys = []
@@ -104,12 +93,7 @@ def main(argv):
             with open(str(path)) as fp:
                 tmp_tag_list = []
                 for line in fp.readlines():
-                    tmp_tag_list.append(line.strip())
-                tmp_tag_list = list(
-                    filter(lambda x: not util.is_unreliable_tag(x),
-                           tmp_tag_list))
-                tmp_tag_list = normalize_tags(tmp_tag_list)
-                tmp_tag_list = list(map(vocab.get, tmp_tag_list))
+                    tmp_tag_list.append(int(line.strip()))
 
                 tag_count = len(tmp_tag_list)
                 max_tag_count = max(max_tag_count, tag_count)

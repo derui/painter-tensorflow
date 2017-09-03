@@ -6,7 +6,7 @@ class Vocabulary(object):
         self._unknown_token = unknown_token
         self._vocab_index = {unknown_token: 0}
         self._freq = {}
-        self._freeze = True
+        self._freeze = False
 
     def __len__(self):
         return len(self._vocab_index)
