@@ -1,7 +1,9 @@
+import pathlib
 import tensorflow as tf
 import os
 import argparse
 from datetime import datetime
+import numpy as np
 
 argparser = argparse.ArgumentParser(
     description='Resize images that equals size of pair files')
@@ -21,6 +23,7 @@ argparser.add_argument(
     help='the directory is contained images',
     required=True)
 argparser.add_argument('--out_dir', type=str, required=True)
+argparser.add_argument('--max_document_length', type=int, required=True)
 
 args = argparser.parse_args()
 
@@ -36,13 +39,13 @@ def _bytes_feature(value):
 def _int64_features(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
-def convert_to(data_set, name):
+def convert_to(data_set, name, max_document_length):
     original_images = data_set.original_images
     line_art_images = data_set.line_art_images
     tags = data_set.tags
 
-    filename = os.path.join(args.out_dir, name + ".tfrecords")
-    writer = tf.python_io.TFRecordWriter(filename)
+    filename = pathlib.Path(args.out_dir) / (name + ".tfrecords")
+    writer = tf.python_io.TFRecordWriter(str(filename))
 
     for index in range(data_set.num_images):
 
@@ -54,8 +57,11 @@ def convert_to(data_set, name):
         with open(line_art_images[index], 'rb') as f:
             line_art_raw = f.read()
         with open(tags[index]) as f:
-            tag_list = f.read().split(',')
+            tag_list = list(map(lambda x: x.strip(), f.readlines()))
             tag_list = list(map(lambda x: int(x), tag_list))
+            tag_list = np.ndarray.tolist(
+                np.pad(tag_list, (0, max_document_length - len(tag_list)),
+                       'constant').astype(np.int64))
 
         example = tf.train.Example(features=tf.train.Features(feature={
             'original': _bytes_feature(original_raw),
@@ -73,17 +79,17 @@ def main(argv):
     tags_list = []
     for (root, _, files) in os.walk(args.original_dir):
         for f in files:
-            original_list.append(os.path.join(root, f))
+            original_list.append(str(pathlib.Path(root) / f))
 
     for (root, _, files) in os.walk(args.line_art_dir):
         for f in files:
-            line_art_list.append(os.path.join(root, f))
+            line_art_list.append(str(pathlib.Path(root) / f))
 
     for (root, _, files) in os.walk(args.tag_dir):
         for f in files:
-            tags_list.append(os.path.join(root, f))
+            tags_list.append(str(pathlib.Path(root) / f))
 
-    if not os.path.exists(args.out_dir):
+    if not pathlib.Path(args.out_dir).exists():
         os.makedirs(args.out_dir, mode=0o755)
 
     class Record(object):
@@ -96,7 +102,7 @@ def main(argv):
     datasets.tag_classes = 1000
     datasets.num_images = len(original_list)
 
-    convert_to(datasets, 'out')
+    convert_to(datasets, 'out', args.max_document_length)
 
 
 if __name__ == '__main__':

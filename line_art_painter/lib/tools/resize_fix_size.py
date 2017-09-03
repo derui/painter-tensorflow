@@ -4,7 +4,7 @@ import cv2 as cv
 import concurrent.futures
 from datetime import datetime
 from . import util
-from ....tflib import util as tfutil
+from tflib import util as tfutil
 
 argparser = argparse.ArgumentParser(description='Resize image to fixed size')
 argparser.add_argument(

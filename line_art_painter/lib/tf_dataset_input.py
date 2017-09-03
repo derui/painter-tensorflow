@@ -10,7 +10,7 @@ import os
 import tensorflow as tf
 
 
-def read_pair(filename_queue):
+def read_pair(filename_queue, max_document_length):
     class Record(object):
         pass
 
@@ -22,7 +22,7 @@ def read_pair(filename_queue):
     features = tf.parse_single_example(value, {
         'original': tf.FixedLenFeature([], tf.string),
         'line_art': tf.FixedLenFeature([], tf.string),
-        'tags': tf.FixedLenFeature([1000], tf.int64),
+        'tags': tf.FixedLenFeature([max_document_length], tf.int64),
     })
 
     original = tf.image.decode_png(features['original'], channels=3)
@@ -30,7 +30,7 @@ def read_pair(filename_queue):
 
     result.original = tf.reshape(original, [128, 128, 3])
     result.line_art = tf.reshape(line_art, [128, 128, 1])
-    result.tags = tf.cast(features['tags'], tf.float32)
+    result.tags = features['tags']
 
     return result
 
@@ -78,7 +78,7 @@ def _generate_pair_batch(pair, min_queue_examples, batch_size, shuffle):
     return images
 
 
-def inputs(data_dir, batch_size, distorted=True):
+def inputs(data_dir, batch_size, max_document_length, distorted=True):
     file_names = []
     for (root, _, files) in os.walk(data_dir):
         for f in files:
@@ -87,7 +87,7 @@ def inputs(data_dir, batch_size, distorted=True):
     filename_queue = tf.train.string_input_producer(file_names)
     num_examples_per_epoch = 100
 
-    read_input = read_pair(filename_queue)
+    read_input = read_pair(filename_queue, max_document_length)
     reshaped_o_image = tf.cast(read_input.original, tf.float32)
     reshaped_o_image = tf.multiply(reshaped_o_image, 1 / 255.0)
     reshaped_o_image = tf.multiply(reshaped_o_image, 2) - 1.0

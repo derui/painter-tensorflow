@@ -4,15 +4,17 @@ import math
 
 
 # Define weight variable
-def weight_variable(shape, name=None):
+def weight_variable(shape, name=None, trainable=True):
     return tf.get_variable(
-        name, shape, initializer=tf.truncated_normal_initializer(stddev=0.02))
+        name, shape, trainable=trainable,
+        initializer=tf.truncated_normal_initializer(stddev=0.02))
 
 
 # Define bias variable
-def bias_variable(shape, name=None):
+def bias_variable(shape, name=None, trainable=True):
     return tf.get_variable(
-        name, shape, initializer=tf.constant_initializer(0.0))
+        name, shape, trainable=trainable,
+        initializer=tf.constant_initializer(0.0))
 
 
 class MaxPool(object):
@@ -38,16 +40,19 @@ class MaxPool(object):
 class LinearEncoder(object):
     """Encoder for Linear Operation."""
 
-    def __init__(self, out_ch, name='linear_encoder'):
+    def __init__(self, out_ch, trainable=True, name='linear_encoder'):
         self.name = name
         self.out_ch = out_ch
+        self.trainable = trainable
 
     def __call__(self, tensor, in_ch):
         weight = tf.get_variable(
             "{}_weight".format(self.name), [in_ch, self.out_ch],
+            trainable=self.trainable,
             initializer=tf.random_uniform_initializer())
         bias = tf.get_variable(
             '{}_bias'.format(self.name), [self.out_ch],
+            trainable=self.trainable,
             initializer=tf.constant_initializer(0.0))
         conv = tf.matmul(tensor, weight)
         conv = tf.nn.bias_add(conv, bias)
@@ -118,6 +123,7 @@ class Encoder(object):
                  patch_w,
                  strides=[1, 1, 1, 1],
                  padding="SAME",
+                 trainable=True,
                  name='encoder'):
         self.patch_h = patch_h
         self.patch_w = patch_w
@@ -126,12 +132,16 @@ class Encoder(object):
         self.name = name
         self.padding = padding
         self.strides = strides
+        self.trainable = trainable
 
     def __call__(self, tensor):
         weight = weight_variable(
             [self.patch_h, self.patch_w, self.in_ch, self.out_ch],
+            trainable=self.trainable,
             name="{}_weight".format(self.name))
-        bias = bias_variable([self.out_ch], name='{}_bias'.format(self.name))
+        bias = bias_variable([self.out_ch],
+                             trainable=self.trainable,
+                             name='{}_bias'.format(self.name))
         conv = tf.nn.conv2d(
             tensor, weight, strides=self.strides, padding=self.padding)
         conv = tf.nn.bias_add(conv, bias)
@@ -151,6 +161,7 @@ class Decoder(object):
                  patch_w,
                  batch_size,
                  strides=[1, 1, 1, 1],
+                 trainable=True,
                  name='decoder'):
         self.batch_size = batch_size
         self.patch_h = patch_h
@@ -159,13 +170,17 @@ class Decoder(object):
         self.out_ch = out_ch
         self.name = name
         self.strides = strides
+        self.trainable = trainable
 
     def __call__(self, tensor, output_shape):
         weight = weight_variable(
             [self.patch_h, self.patch_w, self.out_ch, self.in_ch],
+            trainable=self.trainable,
             name='{}_weight'.format(self.name))
 
-        bias = bias_variable([self.out_ch], name="{}_bias".format(self.name))
+        bias = bias_variable([self.out_ch],
+                             trainable=self.trainable,
+                             name="{}_bias".format(self.name))
 
         conv = tf.nn.conv2d_transpose(
             tensor,
