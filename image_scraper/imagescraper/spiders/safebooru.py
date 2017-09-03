@@ -8,9 +8,13 @@ class SafebooruSpider(scrapy.Spider):
     name = "safebooru"
     allowed_domains = ["safebooru.org"]
 
+    def __init__(self, offset=None, *args, **kwargs):
+        self.offset = int(offset)
+        super(SafebooruSpider, self).__init__(*args, **kwargs)
+
     def start_requests(self):
         initial_offset = 0 if 'offset' not in self.state else self.state['offset']
-        for offset in range(initial_offset, initial_offset+3000):
+        for offset in range(initial_offset, initial_offset+self.offset):
             self.state['offset'] = offset
             print('http://safebooru.org/index.php?page=dapi&s=post&q=index&pid={}'.format(offset))
 

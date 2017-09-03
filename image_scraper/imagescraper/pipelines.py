@@ -6,20 +6,29 @@
 # See: http://doc.scrapy.org/en/latest/topics/item-pipeline.html
 import numpy as np
 import os
+import re
 from scrapy.exceptions import DropItem
 from scrapy.pipelines.files import FilesPipeline, FileException
 import cv2 as cv
 
 ITEM_MIN_SIZES = {'w': 300, 'h': 300}
 IGNORE_TAGS = [
-    'comic', 'monochrome', 'tagme', 'translation request', 'greyscale'
+    re.compile('comic'),
+    re.compile('monochrome'),
+    re.compile('tagme'),
+    re.compile('translation request'),
+    re.compile('greyscale'),
+    re.compile('text'),
+    re.compile('commentary'),
+    re.compile('4coma'),
 ]
 
 
 def _include_ignoreable_tags(tags):
     for tag in tags:
-        if tag in IGNORE_TAGS:
-            return True
+        for pattern in IGNORE_TAGS:
+            if pattern.match(tag):
+                return True
 
     return False
 
