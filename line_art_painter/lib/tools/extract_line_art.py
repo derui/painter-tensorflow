@@ -1,11 +1,13 @@
 import os
 import argparse
-import threading
+import pathlib
+from datetime import datetime
 import numpy as np
 import cv2 as cv
 import concurrent.futures
 import queue
 from . import util
+from tflib import util as tfutil
 
 argparser = argparse.ArgumentParser(description='Extract edge layer of a color image')
 argparser.add_argument('input_dir', type=str, help='the directory included images to extract edge layer')
@@ -23,13 +25,7 @@ class Ignore(Exception):
     pass
 
 
-def extract_edge(rq, wq):
-
-    try:
-        img, path = rq.get_nowait()
-    except queue.Empty:
-        raise Ignore()
-    rq.task_done()
+def extract_edge(img):
 
     img_dilate = cv.dilate(img, neiborhood8, iterations=1)
     img_diff = cv.absdiff(img, img_dilate)
@@ -49,7 +45,7 @@ def extract_edge(rq, wq):
 
     img_diff_not = cv.cvtColor(img_diff_not, cv.COLOR_GRAY2RGB)
 
-    wq.put((img_diff_not, path))
+    return img_diff_not
 
 
 def read_image(path):
@@ -59,18 +55,9 @@ def read_image(path):
     return img
 
 
-def write_image(info, out_dir):
-    img, path = info
+def write_image(img, out_path):
 
-    dirname, fname = os.path.split(os.path.abspath(path))
-    fname, ext = os.path.splitext(fname)
-    d = os.path.join(out_dir, fname[0:2])
-    if not os.path.exists(d):
-        os.makedirs(d, 0o755, exist_ok=True)
-
-    writefname = os.path.join(d, "{}{}".format(fname, ext))
-
-    cv.imwrite(writefname, img)
+    cv.imwrite(out_path, img)
 
 
 excludes = []
@@ -78,75 +65,29 @@ if args.excludes_dir is not None:
     for r, _, files in os.walk(args.excludes_dir):
         excludes.extend(files)
 
-path_queue = util.make_sequential_queue(args.input_dir, excludes)
-
-image_queue = queue.LifoQueue(300)
-write_queue = queue.LifoQueue(300)
-
-reader_event = threading.Event()
-readerExecutor = concurrent.futures.ThreadPoolExecutor(8)
-read_thread = [
-    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image, reader_event)),
-    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image, reader_event)),
-    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image, reader_event)),
-    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image, reader_event)),
-    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image, reader_event)),
-    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image, reader_event)),
-    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image, reader_event)),
-    readerExecutor.submit(util.sequential_read_dir(path_queue, image_queue, read_image, reader_event))
-]
-
-writer_event = threading.Event()
-writerExecutor = concurrent.futures.ThreadPoolExecutor(8)
-write_thread = [
-    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image, writer_event)),
-    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image, writer_event)),
-    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image, writer_event)),
-    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image, writer_event)),
-    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image, writer_event)),
-    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image, writer_event)),
-    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image, writer_event)),
-    writerExecutor.submit(util.queue_writer(args.out_dir, write_queue, write_image, writer_event))
-]
-
-executor = concurrent.futures.ThreadPoolExecutor(max_workers=16)
+if not pathlib.Path(args.out_dir).exists():
+    os.makedirs(str(pathlib.Path(args.out_dir)), exist_ok=True)
 
 
-def reader_process(event):
-    num = 0
+image_processor = tfutil.make_generic_processor(read_image, write_image,
+                                                extract_edge)
 
-    while not event.is_set():
+num = 0
+for files, ignored_files in tfutil.walk_files(args.input_dir, excludes, 100):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
         futures = []
-        for _ in range(14):
-            futures.append(executor.submit(extract_edge, image_queue, write_queue))
+        for root, f in files:
+            futures.append(
+                e.submit(image_processor,
+                         str(pathlib.Path(root) / f),
+                         str(pathlib.Path(args.out_dir) / f)))
 
         for future in concurrent.futures.as_completed(futures):
             try:
                 future.result()
-            except Ignore:
-                pass
             except Exception as exc:
                 print('exception: %s' % exc)
-            else:
-                num += 1
-                if num % 100 == 0:
-                    print('Completed {} items'.format(num))
 
+    num += 100
+    print('{}: Completed {} items, {} ignored.'.format(datetime.now(), num, ignored_files))
 
-processor_event = threading.Event()
-main_processor = executor.submit(reader_process, processor_event)
-
-path_queue.join()
-print('Finish reading all paths')
-
-image_queue.join()
-reader_event.set()
-readerExecutor.shutdown()
-print('Finish to read all pathes from queue')
-
-write_queue.join()
-writer_event.set()
-writerExecutor.shutdown()
-print('Finish to write all images converted')
-
-processor_event.set()

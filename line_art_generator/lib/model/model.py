@@ -40,7 +40,8 @@ class AutoEncoder(object):
         self.deconv2_f2 = op.Encoder(48, 48, 3, 3, name='decoder2_flat2')
         self.deconv1 = op.PixelShuffler(op.Encoder(48, 192, 3, 3, name='decoder1'), 48, 2)
         self.deconv1_f1 = op.Encoder(48, 24, 3, 3, name='decoder1_flat1')
-        self.deconv1_f2 = op.Encoder(24, 1, 3, 3, name='decoder1_flat2')
+        self.deconv1_f2 = op.Encoder(24, 24, 3, 3, name='decoder1_flat2')
+        self.deconv0 = op.Encoder(24, 1, 3, 3, name='decoder0')
 
         self.bnd3 = op.BatchNormalization(name='bnd3')
         self.bnd3_f1 = op.BatchNormalization(name='bnd3_flat1')
@@ -50,6 +51,7 @@ class AutoEncoder(object):
         self.bnd2_f2 = op.BatchNormalization(name='bnd2_flat2')
         self.bnd1 = op.BatchNormalization(name='bnd1')
         self.bnd1_f1 = op.BatchNormalization(name='bnd1_flat1')
+        self.bnd1_f2 = op.BatchNormalization(name='bnd1_flat2')
 
 
 def autoencoder(images, scale=1.0):
@@ -77,8 +79,9 @@ def autoencoder(images, scale=1.0):
     net = relu(AE.bnd2_f2(AE.deconv2_f2(net)))
     net = relu(AE.bnd1(AE.deconv1(net)))
     net = relu(AE.bnd1_f1(AE.deconv1_f1(net)))
+    net = relu(AE.bnd1_f2(AE.deconv1_f2(net)))
 
-    net = tf.nn.sigmoid(AE.deconv1_f2(net))
+    net = tf.nn.sigmoid(AE.deconv0(net))
 
     return net
 

@@ -13,8 +13,9 @@ def resize_image(img, fixed_size):
     else:
         img_resized = cv.resize(img, correct_size, interpolation=cv.INTER_CUBIC)
 
-    img_cropped = img_resized[0:fixed_size, 0:fixed_size]
-    return img_cropped
+    # img_cropped = img_resized[0:fixed_size, 0:fixed_size]
+    # return img_cropped
+    return img_resized
 
 
 def get_corrected_size(fixed_size, width, height):

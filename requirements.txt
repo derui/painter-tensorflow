@@ -3,4 +3,4 @@ numpy
 tensorflow-gpu
 msgpack-python
 msgpack-numpy
-
+scrapy

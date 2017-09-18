@@ -1,6 +1,7 @@
 import pathlib
 import tensorflow as tf
 import os
+import random
 import argparse
 from datetime import datetime
 import numpy as np
@@ -24,6 +25,7 @@ argparser.add_argument(
     required=True)
 argparser.add_argument('--out_dir', type=str, required=True)
 argparser.add_argument('--max_document_length', type=int, required=True)
+argparser.add_argument('--validation_size', type=float, default=0.3)
 
 args = argparser.parse_args()
 
@@ -39,24 +41,22 @@ def _bytes_feature(value):
 def _int64_features(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
-def convert_to(data_set, name, max_document_length):
-    original_images = data_set.original_images
-    line_art_images = data_set.line_art_images
-    tags = data_set.tags
 
+def convert_to(data_set, name, max_document_length):
     filename = pathlib.Path(args.out_dir) / (name + ".tfrecords")
     writer = tf.python_io.TFRecordWriter(str(filename))
 
-    for index in range(data_set.num_images):
+    for index in range(len(data_set.data)):
 
         if index % 1000 == 0:
-            print("{}: finished {}/{}".format(datetime.now(), index, data_set.num_images))
+            print("{}: finished {}/{}".format(datetime.now(), index,
+                                              data_set.num_images))
 
-        with open(original_images[index], 'rb') as f:
+        with open(data_set.data[index]['original'], 'rb') as f:
             original_raw = f.read()
-        with open(line_art_images[index], 'rb') as f:
+        with open(data_set.data[index]['line_art'], 'rb') as f:
             line_art_raw = f.read()
-        with open(tags[index]) as f:
+        with open(data_set.data[index]['tag']) as f:
             tag_list = list(map(lambda x: x.strip(), f.readlines()))
             tag_list = list(map(lambda x: int(x), tag_list))
             tag_list = np.ndarray.tolist(
@@ -102,7 +102,26 @@ def main(argv):
     datasets.tag_classes = 1000
     datasets.num_images = len(original_list)
 
-    convert_to(datasets, 'out', args.max_document_length)
+    merged_dataset = []
+    train_set = Record()
+    train_set.data = []
+    validation_set = Record()
+    validation_set.data = []
+
+    for i in range(len(original_list)):
+        merged_dataset.append({
+            'original': datasets.original_images[i],
+            'line_art': datasets.line_art_images[i],
+            'tag': datasets.tags[i],
+        })
+
+    random.shuffle(merged_dataset)
+    validation_num = int(argv.validation_size * len(merged_dataset))
+    train_set.data = merged_dataset[validation_num:]
+    validation_set.data = merged_dataset[:validation_num]
+
+    convert_to(train_set, 'train', args.max_document_length)
+    convert_to(validation_set, 'validation', args.max_document_length)
 
 
 if __name__ == '__main__':
