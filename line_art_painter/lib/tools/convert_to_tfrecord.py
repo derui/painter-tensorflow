@@ -46,11 +46,12 @@ def convert_to(data_set, name, max_document_length):
     filename = pathlib.Path(args.out_dir) / (name + ".tfrecords")
     writer = tf.python_io.TFRecordWriter(str(filename))
 
-    for index in range(len(data_set.data)):
+    num_images = len(data_set.data)
+    for index in range(num_images):
 
-        if index % 1000 == 0:
+        if index % 1000 == 0 and index > 0:
             print("{}: finished {}/{}".format(datetime.now(), index,
-                                              data_set.num_images))
+                                              num_images))
 
         with open(data_set.data[index]['original'], 'rb') as f:
             original_raw = f.read()
@@ -116,7 +117,7 @@ def main(argv):
         })
 
     random.shuffle(merged_dataset)
-    validation_num = int(argv.validation_size * len(merged_dataset))
+    validation_num = int(args.validation_size * len(merged_dataset))
     train_set.data = merged_dataset[validation_num:]
     validation_set.data = merged_dataset[:validation_num]
 
