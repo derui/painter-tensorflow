@@ -21,15 +21,11 @@ def read_pair(filename_queue):
     result.key, value = reader.read(filename_queue)
     features = tf.parse_single_example(value, {
         'original': tf.FixedLenFeature([], tf.string),
-        'line_art': tf.FixedLenFeature([], tf.string),
     })
 
     original = tf.image.decode_png(features['original'], channels=3)
-    line_art = tf.image.decode_png(features['line_art'], channels=1)
 
-    result.original = tf.reshape(original, [256, 256, 3])
-    result.line_art = tf.reshape(line_art, [256, 256, 1])
-
+    result.original = original
     return result
 
 
@@ -49,6 +45,12 @@ def distorted_image(origin, wire):
     wire = tf.where(ud_cond, wire, tf.image.flip_up_down(wire))
 
     return origin, wire
+
+
+def cropped_image(origin, size):
+    cropped = tf.random_crop(origin, size + [3])
+
+    return cropped
 
 
 def _generate_pair_batch(pair, min_queue_examples, batch_size, shuffle):
@@ -76,7 +78,7 @@ def _generate_pair_batch(pair, min_queue_examples, batch_size, shuffle):
     return images
 
 
-def inputs(data_dir, batch_size, distorted=True):
+def inputs(data_dir, batch_size, size, distorted=True):
     file_names = []
     for (root, _, files) in os.walk(data_dir):
         for f in files:
@@ -89,11 +91,9 @@ def inputs(data_dir, batch_size, distorted=True):
     reshaped_o_image = tf.cast(read_input.original, tf.float32)
     reshaped_o_image = tf.multiply(reshaped_o_image, 1 / 255.0)
     reshaped_o_image = tf.multiply(reshaped_o_image, 2) - 1.0
-    reshaped_w_image = tf.cast(read_input.line_art, tf.float32)
-    reshaped_w_image = tf.multiply(reshaped_w_image, 1 / 255.0)
-    reshaped_w_image = tf.multiply(reshaped_w_image, 2) - 1.0
+    reshaped_o_image = cropped_image(reshaped_o_image, [size, size])
 
     min_fraction_of_examples_in_queue = 0.4
     min_queue_examples = int(num_examples_per_epoch * min_fraction_of_examples_in_queue)
 
-    return _generate_pair_batch([reshaped_o_image, reshaped_w_image], min_queue_examples, batch_size, shuffle=True)
+    return _generate_pair_batch([reshaped_o_image], min_queue_examples, batch_size, shuffle=True)

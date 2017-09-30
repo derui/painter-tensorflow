@@ -3,14 +3,9 @@ import os
 import argparse
 
 argparser = argparse.ArgumentParser(
-    description='Resize images that equals size of pair files')
+    description='Resize images')
 argparser.add_argument(
-    '--original_dir',
-    type=str,
-    help='the directory is contained images',
-    required=True)
-argparser.add_argument(
-    '--line_art_dir',
+    '--image_dir',
     type=str,
     help='the directory is contained images',
     required=True)
@@ -29,7 +24,6 @@ def _bytes_feature(value):
 
 def convert_to(data_set, name):
     original_images = data_set.original_images
-    line_art_images = data_set.line_art_images
 
     filename = os.path.join(args.out_dir, name + ".tfrecords")
     writer = tf.python_io.TFRecordWriter(filename)
@@ -38,12 +32,9 @@ def convert_to(data_set, name):
 
         with open(original_images[index], 'rb') as f:
             original_raw = f.read()
-        with open(line_art_images[index], 'rb') as f:
-            line_art_raw = f.read()
 
         example = tf.train.Example(features=tf.train.Features(feature={
             'original': _bytes_feature(original_raw),
-            'line_art': _bytes_feature(line_art_raw),
         }))
         writer.write(example.SerializeToString())
     writer.close()
@@ -52,14 +43,9 @@ def convert_to(data_set, name):
 def main(argv):
 
     original_list = []
-    line_art_list = []
     for (root, _, files) in os.walk(args.original_dir):
         for f in files:
             original_list.append(os.path.join(root, f))
-
-    for (root, _, files) in os.walk(args.line_art_dir):
-        for f in files:
-            line_art_list.append(os.path.join(root, f))
 
     if not os.path.exists(args.out_dir):
         os.makedirs(args.out_dir, mode=0o755)
@@ -69,7 +55,6 @@ def main(argv):
 
     datasets = Record()
     datasets.original_images = original_list
-    datasets.line_art_images = line_art_list
     datasets.num_images = len(original_list)
 
     convert_to(datasets, 'out')

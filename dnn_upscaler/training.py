@@ -5,9 +5,9 @@ import time
 from datetime import datetime
 from tensorflow.python.client import timeline
 import tensorflow as tf
-from .model import model
 
-from . import tf_dataset_input
+from .lib import model
+from .lib import tf_dataset_input
 
 argparser = argparse.ArgumentParser(description='Learning supervised painting model')
 argparser.add_argument('--batch_size', default=5, type=int, help='Batch size')
@@ -24,25 +24,20 @@ ARGS = argparser.parse_args()
 
 def train():
     with tf.Graph().as_default():
-        SIZE = 256
+        SIZE = 512
 
         with tf.device('/cpu:0'):
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
-            original, line_art = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size)
-            original = tf.image.resize_images(original, (SIZE, SIZE))
-            line_art = tf.image.resize_images(line_art, (SIZE, SIZE))
+            original = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size, SIZE)
             small = tf.image.resize_images(original, (SIZE // 4, SIZE // 4))
 
-        with tf.variable_scope('painter'):
+        with tf.variable_scope('upsampler'):
             S = model.upsampler(small)
-            G = model.generator(line_art, S)
 
-        l1_loss = model.l1_loss(original, G)
+        l1_loss = model.l1_loss(original, S)
 
-        tf.summary.image('base', line_art, max_outputs=10)
         tf.summary.image('small', small, max_outputs=10)
-        tf.summary.image('gen', G, max_outputs=10)
         tf.summary.image('original', original, max_outputs=10)
 
         with tf.name_scope('losses'):
@@ -104,7 +99,6 @@ def train():
 
                 # Update generator
                 sess.run([g_training, update_global_step], options=run_options, run_metadata=run_metadata)
-
 
 
 if __name__ == '__main__':

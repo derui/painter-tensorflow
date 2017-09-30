@@ -243,3 +243,26 @@ class Dense(object):
             tf.matmul(tf.reshape(tensor, [-1, in_ch]), weight), bias)
 
         return conv
+
+
+class ResNet(object):
+    def __init__(self, channels, name, layers=2, activation=tf.nn.relu):
+        self._net_list = []
+
+        for i in range(layers):
+            v = {}
+            v['conv'] = Encoder(channels, channels, 1, 1, name='{}')
+            v['activation'] = activation
+
+        self.normalization = BatchNormalization(name='{}.bnc'.format(name))
+
+    def __call__(self, tensor):
+
+        net = shortcut = tensor
+        for layer in self._net_list:
+            net = layer['activation'](layer['conv'](net))
+
+        net = self.normalization(net)
+        return shortcut + net
+
+
