@@ -44,7 +44,7 @@ def train():
                                    minval=-1.0, maxval=1.0,
                                    dtype=tf.float32)
 
-            original, x = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size, distorted=False)
+            original, x = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, ARGS.batch_size, distorted=False)
             original = tf.image.resize_images(original, (SIZE, SIZE))
             x = tf.image.resize_images(x, (SIZE, SIZE))
 

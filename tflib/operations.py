@@ -4,10 +4,11 @@ import math
 
 
 # Define weight variable
-def weight_variable(shape, name=None, trainable=True):
+def weight_variable(shape, name=None, trainable=True,
+                    initializer=tf.truncated_normal_initializer(stddev=0.02)):
     return tf.get_variable(
         name, shape, trainable=trainable,
-        initializer=tf.truncated_normal_initializer(stddev=0.02))
+        initializer=initializer)
 
 
 # Define bias variable
@@ -124,7 +125,8 @@ class Encoder(object):
                  strides=[1, 1, 1, 1],
                  padding="SAME",
                  trainable=True,
-                 name='encoder'):
+                 name='encoder',
+                 initializer=None):
         self.patch_h = patch_h
         self.patch_w = patch_w
         self.in_ch = in_ch
@@ -133,11 +135,13 @@ class Encoder(object):
         self.padding = padding
         self.strides = strides
         self.trainable = trainable
+        self.initializer = initializer
 
     def __call__(self, tensor):
         weight = weight_variable(
             [self.patch_h, self.patch_w, self.in_ch, self.out_ch],
             trainable=self.trainable,
+            initializer=self.initializer,
             name="{}_weight".format(self.name))
         bias = bias_variable([self.out_ch],
                              trainable=self.trainable,
@@ -217,12 +221,12 @@ class PixelShuffler(object):
         if self.conv is not None:
             net = self.conv(tensor)
 
-        batch_size, h, w, ic = tensor.shape.as_list()
+        _, h, w, ic = tensor.shape.as_list()
         r = self.scale
         f_h, f_w = math.floor(h * r), math.floor(w * r)
-        net = tf.reshape(net, [batch_size, w, h, r, r, self.out_ch])
+        net = tf.reshape(net, [-1, w, h, r, r, self.out_ch])
         net = tf.transpose(net, [0, 1, 3, 2, 4, 5])
-        net = tf.reshape(net, [batch_size, f_h, f_w, self.out_ch])
+        net = tf.reshape(net, [-1, f_h, f_w, self.out_ch])
 
         return net
 
@@ -251,7 +255,7 @@ class ResNet(object):
 
         for i in range(layers):
             v = {}
-            v['conv'] = Encoder(channels, channels, 1, 1, name='{}')
+            v['conv'] = Encoder(channels, channels, 1, 1, name='layer.{}'.format(i))
             v['activation'] = activation
 
         self.normalization = BatchNormalization(name='{}.bnc'.format(name))

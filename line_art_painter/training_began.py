@@ -32,8 +32,8 @@ def train():
         gain = tf.Variable(initial_value=0, trainable=False, dtype=tf.float32)
 
         with tf.device('/cpu:0'):
-            original, x = tf_dataset_input.inputs(ARGS.dataset_dir,
-                                                  ARGS.batch_size)
+            original, x = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir,
+                                                            ARGS.batch_size)
             # original = tf.image.resize_images(original, [128, 128])
             # x = tf.image.resize_images(x, [128, 128])
 

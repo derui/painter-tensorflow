@@ -47,9 +47,9 @@ def train():
             embedding = tf.get_variable("embedding", [len(vocab), EMBEDDING_SIZE],
                                         trainable=False, dtype=tf.float32)
 
-            original, x, tags = tf_dataset_input.inputs(ARGS.dataset_dir, ARGS.batch_size,
-                                                        ARGS.max_document_length,
-                                                        distorted=False)
+            original, x, tags = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, ARGS.batch_size,
+                                                                  ARGS.max_document_length,
+                                                                  distorted=False)
             lookupped = tf.nn.embedding_lookup(embedding, tags)
             lookupped = tf.expand_dims(lookupped, -1)
 

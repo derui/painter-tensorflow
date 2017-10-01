@@ -3,22 +3,27 @@
 import argparse
 import time
 from datetime import datetime
+
 from tensorflow.python.client import timeline
 import tensorflow as tf
 
-from .lib.model import basic as model
+from .lib.model import recursive as model
 from .lib import tf_dataset_input
 from .lib import util
+from tflib import parameter
 
 argparser = argparse.ArgumentParser(description='Learning supervised painting model')
 argparser.add_argument('--batch_size', default=5, type=int, help='Batch size')
-argparser.add_argument('--beta1', default=0.5, type=float, help="beta1 value for optimizer [0.5]")
-argparser.add_argument('--learning_rate', default=0.0001, type=float, help="learning rate[0.00005]")
+argparser.add_argument('--beta1', default=0.9, type=float, help="beta1 value for optimizer [0.5]")
+argparser.add_argument('--learning_rate', default=0.01, type=float, help="learning rate[0.00005]")
 argparser.add_argument('--train_dir', default='./log', type=str, help='Directory will have been saving checkpoint')
 argparser.add_argument('--dataset_dir', default='./datasets', type=str, help='Directory contained datasets')
 argparser.add_argument('--max_steps', default=200000, type=int, help='number of maximum steps')
 argparser.add_argument('--full_trace', default=False, type=bool, help='Enable full trace of gpu')
 argparser.add_argument('--log_device_placement', default=False, type=bool, help='manage logging log_device_placement')
+argparser.add_argument('--alpha', default=1.0, type=float, help="beta1 value for optimizer [0.5]")
+argparser.add_argument('--beta_loss', default=0.0001, type=float, help="beta for weight decay [0.0001]")
+argparser.add_argument('--terminate_learning_rate', type=float, default=1.0e-6)
 
 ARGS = argparser.parse_args()
 
@@ -26,17 +31,25 @@ ARGS = argparser.parse_args()
 def train():
     with tf.Graph().as_default():
         SIZE = 512
+        BASE_FACTOR = 2
+        FACTOR = 4
 
         with tf.device('/cpu:0'):
+            alpha_v = parameter.UpdatableParameter(ARGS.alpha, 0.5)
+            learning_rate_v = parameter.UpdatableParameter(ARGS.learning_rate, 0.1)
+
+            alpha = tf.placeholder(tf.float32, shape=[])
+            learning_rate = tf.placeholder(tf.float32, shape=[])
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
             original = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, "train.tfrecords", ARGS.batch_size, SIZE)
-            small = tf.image.resize_images(original, (SIZE // 4, SIZE // 4), method=tf.image.ResizeMethod.AREA)
+            original = tf.image.resize_images(original, (SIZE // BASE_FACTOR, SIZE // BASE_FACTOR), method=tf.image.ResizeMethod.AREA)
+            small = tf.image.resize_images(original, (SIZE // (BASE_FACTOR * FACTOR), SIZE // (BASE_FACTOR * FACTOR)), method=tf.image.ResizeMethod.AREA)
 
         with tf.variable_scope('upsampler'):
-            S = model.upsampler(small)
+            S, intermediates = model.upsample(small, 11)
 
-        l1_loss = model.l1_loss(original, S)
+        upsample_loss = model.upsample_loss(original, intermediates, S, alpha, ARGS.beta_loss, "upsampler")
         psnr_loss = util.psnr_loss(original, S)
 
         tf.summary.image('upscaled', S, max_outputs=10)
@@ -44,15 +57,19 @@ def train():
         tf.summary.image('original', original, max_outputs=10)
 
         with tf.name_scope('losses'):
-            tf.summary.scalar("l1_loss", l1_loss)
+            tf.summary.scalar("upsample_loss", upsample_loss)
             tf.summary.scalar("psnr", psnr_loss)
+
+        with tf.name_scope("variables"):
+            tf.summary.scalar("alpha", alpha)
+            tf.summary.scalar("learning rate", learning_rate)
 
         with tf.name_scope('g_train'):
             g_trainer = model.AdamTrainer()
             g_training = g_trainer(
-                l1_loss,
+                upsample_loss,
                 beta1=ARGS.beta1,
-                learning_rate=ARGS.learning_rate)
+                learning_rate=learning_rate)
 
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime """
@@ -62,7 +79,7 @@ def train():
 
             def before_run(self, run_context):
                 self._start_time = time.time()
-                return tf.train.SessionRunArgs([l1_loss, psnr_loss])
+                return tf.train.SessionRunArgs([upsample_loss, psnr_loss])
 
             def after_run(self, run_context, run_values):
                 self.step += 1
@@ -90,19 +107,29 @@ def train():
             run_options.trace_level = tf.RunOptions.FULL_TRACE
         run_metadata = tf.RunMetadata()
 
+        alpha_updater = parameter.PerEpochConstantlyUpdater(alpha_v, steps_per_epoch=1000)
+        lr_updater = parameter.PerEpochLossUpdater(learning_rate_v, steps_per_epoch=1000)
+
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
                 hooks=[tf.train.StopAtStepHook(num_steps=ARGS.max_steps),
-                       tf.train.NanTensorHook(l1_loss), _LoggerHook()],
+                       tf.train.NanTensorHook(upsample_loss), _LoggerHook()],
                 save_checkpoint_secs=60,
                 config=tf.ConfigProto(
                     gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.85),
                     log_device_placement=ARGS.log_device_placement)) as sess:
 
+            loss = 1000.0
             while not sess.should_stop():
 
                 # Update generator
-                sess.run([g_training, update_global_step], options=run_options, run_metadata=run_metadata)
+                ret = sess.run([g_training, update_global_step, upsample_loss],
+                               options=run_options, run_metadata=run_metadata,
+                               feed_dict={alpha: alpha_v(), learning_rate: learning_rate_v()})
+
+                loss = ret[-1]
+                alpha_updater(loss)
+                lr_updater(loss)
 
 
 if __name__ == '__main__':

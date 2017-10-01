@@ -6,7 +6,7 @@ from datetime import datetime
 from tensorflow.python.client import timeline
 import tensorflow as tf
 
-from .lib import model
+from .lib.model import basic as model
 from .lib import tf_dataset_input
 
 argparser = argparse.ArgumentParser(description='Learning supervised painting model')
@@ -27,7 +27,7 @@ def varidation():
         with tf.device('/cpu:0'):
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
-            original = tf_dataset_input.inputs(ARGS.dataset_dir, "validation.tfrecords", ARGS.batch_size, SIZE)
+            original = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, "validation.tfrecords", ARGS.batch_size, SIZE)
             small = tf.image.resize_images(original, (SIZE // 4, SIZE // 4), method=tf.image.ResizeMethod.AREA)
 
         with tf.variable_scope('upsampler'):
