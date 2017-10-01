@@ -6,7 +6,7 @@ This module optimized to use filename_queue and batch
 without overhead coping data.
 """
 
-import os
+import pathlib
 import tensorflow as tf
 
 
@@ -78,11 +78,10 @@ def _generate_pair_batch(pair, min_queue_examples, batch_size, shuffle):
     return images
 
 
-def inputs(data_dir, batch_size, size, distorted=True):
-    file_names = []
-    for (root, _, files) in os.walk(data_dir):
-        for f in files:
-            file_names.append(os.path.join(root, f))
+def inputs(data_dir, tfrecord, batch_size, size, distorted=True):
+    file_names = [
+        str(pathlib.Path(data_dir) / tfrecord)
+    ]
 
     filename_queue = tf.train.string_input_producer(file_names)
     num_examples_per_epoch = 100

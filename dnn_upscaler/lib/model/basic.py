@@ -20,7 +20,6 @@ class Upsampler(object):
         self.resnet3 = op.ResNet(32, name='upsampler/resnet3')
         self.conv4 = op.Encoder(32, 3, 3, 3, name='upsampler/encoder4')
 
-
     def __call__(self, tensor):
 
         net = tensor

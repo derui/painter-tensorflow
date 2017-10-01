@@ -1,6 +1,9 @@
-import tensorflow as tf
 import os
 import argparse
+import random
+from datetime import datetime
+
+import tensorflow as tf
 
 argparser = argparse.ArgumentParser(
     description='Resize images')
@@ -10,6 +13,7 @@ argparser.add_argument(
     help='the directory is contained images',
     required=True)
 argparser.add_argument('--out_dir', type=str, required=True)
+argparser.add_argument('--validation_size', type=float, default=0.3)
 
 args = argparser.parse_args()
 
@@ -23,12 +27,15 @@ def _bytes_feature(value):
 
 
 def convert_to(data_set, name):
-    original_images = data_set.original_images
+    original_images = data_set.data
 
     filename = os.path.join(args.out_dir, name + ".tfrecords")
     writer = tf.python_io.TFRecordWriter(filename)
 
     for index in range(data_set.num_images):
+
+        if index > 0 and index % 1000 == 0:
+            print("{}: finished {}/{}".format(datetime.now(), index, data_set.num_images))
 
         with open(original_images[index], 'rb') as f:
             original_raw = f.read()
@@ -43,7 +50,7 @@ def convert_to(data_set, name):
 def main(argv):
 
     original_list = []
-    for (root, _, files) in os.walk(args.original_dir):
+    for (root, _, files) in os.walk(args.image_dir):
         for f in files:
             original_list.append(os.path.join(root, f))
 
@@ -53,11 +60,17 @@ def main(argv):
     class Record(object):
         pass
 
-    datasets = Record()
-    datasets.original_images = original_list
-    datasets.num_images = len(original_list)
+    train_set = Record()
+    validation_set = Record()
+    random.shuffle(original_list)
+    validation_num = int(args.validation_size * len(original_list))
+    train_set.data = original_list[validation_num:]
+    train_set.num_images = len(train_set.data)
+    validation_set.data = original_list[:validation_num]
+    validation_set.num_images = len(validation_set.data)
 
-    convert_to(datasets, 'out')
+    convert_to(train_set, 'train')
+    convert_to(validation_set, 'validation')
 
 
 if __name__ == '__main__':
