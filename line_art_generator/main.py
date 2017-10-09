@@ -7,20 +7,11 @@ import tensorflow as tf
 from . import model
 import cv2
 
-argparser = argparse.ArgumentParser(
-    description='Generate line art from the image')
+argparser = argparse.ArgumentParser(description='Generate line art from the image')
 argparser.add_argument('input', type=str, help='input image')
 argparser.add_argument('output', type=str, help='name of output image')
-argparser.add_argument(
-    '--train_dir',
-    default='./log',
-    type=str,
-    help='Directory will have been saving checkpoint')
-argparser.add_argument(
-    '--simplify',
-    default=1.0,
-    type=float,
-    help='measure of simplification to extract of line art')
+argparser.add_argument('--train_dir', default='./log', type=str, help='Directory will have been saving checkpoint')
+argparser.add_argument('--simplify', default=1.0, type=float, help='measure of simplification to extract of line art')
 
 ARGS = argparser.parse_args()
 
@@ -42,8 +33,7 @@ def init_sess(height, width, scale):
 
     generate_op = tf.image.resize_image_with_crop_or_pad(generate_op[0], height, width)
 
-    var_list = tf.get_collection(
-        tf.GraphKeys.TRAINABLE_VARIABLES, scope='classifier')
+    var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='classifier')
 
     sess = tf.Session()
     saver = tf.train.Saver(var_list=var_list)

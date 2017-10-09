@@ -23,8 +23,7 @@ class EmbeddingNet(object):
 class InferenceNet(object):
     def __init__(self, channels, recursives=5):
 
-        self.encoder = op.Encoder(channels, channels, 3, 3, name="encoder",
-                                  initializer=tf.constant_initializer(0.0))
+        self.encoder = op.Encoder(channels, channels, 3, 3, name="encoder", initializer=tf.constant_initializer(0.0))
 
         self.recursives = recursives
         self.bn = op.BatchNormalization(name="normalization")
@@ -63,8 +62,7 @@ class Upsampler(object):
         outputs = self.recursives * [None]
         reuse = True
         weight_sum = None
-        self.weights = op.weight_variable([self.recursives], name="decay",
-                                          initializer=tf.constant_initializer(0.2))
+        self.weights = op.weight_variable([self.recursives], name="decay", initializer=tf.constant_initializer(0.2))
 
         with tf.variable_scope("upsampler") as scope:
             weight_sum = tf.reduce_sum(self.weights)
@@ -146,8 +144,8 @@ class AdamTrainer(object):
 
     def __call__(self, loss, learning_rate, beta1, var_list=None):
         optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta1)
-        train_step = optimizer.minimize(loss, global_step=self.global_step, var_list=var_list,
-                                        colocate_gradients_with_ops=True)
+        train_step = optimizer.minimize(
+            loss, global_step=self.global_step, var_list=var_list, colocate_gradients_with_ops=True)
 
         return train_step
 
@@ -164,7 +162,7 @@ class RMSPropTrainer(object):
 
     def __call__(self, loss, learning_rate, var_list=None):
         optimizer = tf.train.RMSPropOptimizer(learning_rate)
-        train_step = optimizer.minimize(loss, global_step=self.global_step, var_list=var_list,
-                                        colocate_gradients_with_ops=True)
+        train_step = optimizer.minimize(
+            loss, global_step=self.global_step, var_list=var_list, colocate_gradients_with_ops=True)
 
         return train_step

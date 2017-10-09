@@ -37,7 +37,6 @@ def distorted_image(origin, wire):
 
 
 def inputs(directory, batch_size, size, distorted=True):
-
     def read_pair(record):
         features = tf.parse_single_example(record, {
             'painted': tf.FixedLenFeature([], tf.string),
@@ -58,9 +57,7 @@ def inputs(directory, batch_size, size, distorted=True):
 
         return {'painted': painted, 'line_arg': line_art}
 
-    file_names = [
-        str(pathlib.Path(directory) / "train.tfrecords")
-    ]
+    file_names = [str(pathlib.Path(directory) / "train.tfrecords")]
 
     dataset = tf.contrib.data.TFRecordDataset(file_names)
     dataset = dataset.map(read_pair)

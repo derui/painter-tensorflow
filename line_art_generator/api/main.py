@@ -16,10 +16,8 @@ from werkzeug.wsgi import SharedDataMiddleware, wrap_file
 class LineArtConverter(object):
     def __init__(self, config):
         self.config = config
-        self.url_map = Map([
-            Rule('/', endpoint='index'),
-            Rule('/api/generate_image', endpoint='generate_image', methods=["POST"])
-        ])
+        self.url_map = Map(
+            [Rule('/', endpoint='index'), Rule('/api/generate_image', endpoint='generate_image', methods=["POST"])])
 
     def dispatch_request(self, request):
         adapter = self.url_map.bind_to_environ(request.environ)
@@ -64,20 +62,15 @@ def create_app(generate_func, with_static=True):
     app = LineArtConverter({'generate': generate_func})
 
     if with_static:
-        app.wsgi_app = SharedDataMiddleware(app.wsgi_app, {
-            '/static': os.path.join(os.path.dirname(__file__), 'static')
-        })
+        app.wsgi_app = SharedDataMiddleware(app.wsgi_app,
+                                            {'/static': os.path.join(os.path.dirname(__file__), 'static')})
 
     return app
 
 
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser(description='Serve api')
-    argparser.add_argument(
-        '--train_dir',
-        default='./log',
-        type=str,
-        help='Directory will have been saving checkpoint')
+    argparser.add_argument('--train_dir', default='./log', type=str, help='Directory will have been saving checkpoint')
 
     ARGS = argparser.parse_args()
 

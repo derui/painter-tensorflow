@@ -27,7 +27,8 @@ def varidation():
         with tf.device('/cpu:0'):
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
-            original = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, "validation.tfrecords", ARGS.batch_size, SIZE)
+            original = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, "validation.tfrecords", ARGS.batch_size,
+                                                         SIZE)
             small = tf.image.resize_images(original, (SIZE // 4, SIZE // 4), method=tf.image.ResizeMethod.AREA)
 
         with tf.variable_scope('upsampler'):
@@ -81,8 +82,9 @@ def varidation():
         with tf.train.MonitoredTrainingSession(
                 save_checkpoint_secs=None,
                 checkpoint_dir=ARGS.train_dir,
-                hooks=[tf.train.StopAtStepHook(num_steps=ARGS.max_steps),
-                       tf.train.NanTensorHook(l1_loss), _LoggerHook()],
+                hooks=[
+                    tf.train.StopAtStepHook(num_steps=ARGS.max_steps), tf.train.NanTensorHook(l1_loss), _LoggerHook()
+                ],
                 config=tf.ConfigProto(
                     gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.85),
                     log_device_placement=ARGS.log_device_placement)) as sess:

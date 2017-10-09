@@ -24,9 +24,13 @@ argparser.add_argument('--max_steps', default=200000, type=int, help='number of 
 argparser.add_argument('--full_trace', default=False, type=bool, help='Enable full trace of gpu')
 argparser.add_argument('--log_device_placement', default=False, type=bool, help='manage logging log_device_placement')
 
-argparser.add_argument('--embedding_dir', default='./checkpoints/image_tag_embedding', type=str, help='Directory contained embedding dataset ')
-argparser.add_argument('--max_document_length',type=int, help='max document length')
-argparser.add_argument('--vocab',type=str, help='vocabulary file')
+argparser.add_argument(
+    '--embedding_dir',
+    default='./checkpoints/image_tag_embedding',
+    type=str,
+    help='Directory contained embedding dataset ')
+argparser.add_argument('--max_document_length', type=int, help='max document length')
+argparser.add_argument('--vocab', type=str, help='vocabulary file')
 
 ARGS = argparser.parse_args()
 
@@ -44,12 +48,10 @@ def train():
         with tf.device('/cpu:0'):
             gradient_factor = tf.random_uniform([ARGS.batch_size, 1], 0.0, 1.0)
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
-            embedding = tf.get_variable("embedding", [len(vocab), EMBEDDING_SIZE],
-                                        trainable=False, dtype=tf.float32)
+            embedding = tf.get_variable("embedding", [len(vocab), EMBEDDING_SIZE], trainable=False, dtype=tf.float32)
 
-            original, x, tags = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, ARGS.batch_size,
-                                                                  ARGS.max_document_length,
-                                                                  distorted=False)
+            original, x, tags = tf_dataset_input.dataset_input_fn(
+                ARGS.dataset_dir, ARGS.batch_size, ARGS.max_document_length, distorted=False)
             lookupped = tf.nn.embedding_lookup(embedding, tags)
             lookupped = tf.expand_dims(lookupped, -1)
 
@@ -142,13 +144,13 @@ def train():
 
         saver = tf.train.Saver(var_list=[embedding])
         ckpt = tf.train.get_checkpoint_state(ARGS.embedding_dir)
-        embedding_saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
-                                                                    "embedding_encoder"))
+        embedding_saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, "embedding_encoder"))
 
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
-                hooks=[tf.train.StopAtStepHook(num_steps=ARGS.max_steps),
-                       tf.train.NanTensorHook(c_loss), _LoggerHook()],
+                hooks=[
+                    tf.train.StopAtStepHook(num_steps=ARGS.max_steps), tf.train.NanTensorHook(c_loss), _LoggerHook()
+                ],
                 save_checkpoint_secs=60,
                 config=tf.ConfigProto(
                     gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.85),

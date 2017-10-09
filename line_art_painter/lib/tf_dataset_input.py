@@ -60,16 +60,16 @@ def inputs(data_dir, batch_size, max_document_length, distorted=True):
             file_names.append(os.path.join(root, f))
 
     def read_pair(record):
-    
+
         features = tf.parse_single_example(record, {
             'original': tf.FixedLenFeature([], tf.string),
             'line_art': tf.FixedLenFeature([], tf.string),
             'tags': tf.FixedLenFeature([max_document_length], tf.int64),
         })
-    
+
         original = tf.image.decode_png(features['original'], channels=3)
         line_art = tf.image.decode_png(features['line_art'], channels=1)
-    
+
         original = tf.reshape(original, [128, 128, 3])
         line_art = tf.reshape(line_art, [128, 128, 1])
 
@@ -81,7 +81,7 @@ def inputs(data_dir, batch_size, max_document_length, distorted=True):
         line_art = tf.cast(line_art, tf.float32)
         line_art = tf.multiply(line_art, 1 / 255.0)
         line_art = tf.multiply(line_art, 2) - 1.0
-    
+
         return {'original': original, 'line_art': line_art, 'tags': features['tags']}
 
     dataset = tf.contrib.data.TFRecordDataset(file_names)

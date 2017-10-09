@@ -36,13 +36,9 @@ def train():
 
         with tf.device('/cpu:0'):
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
-            noise_base = tf.random_uniform([ARGS.batch_size, NOISE_SIZE],
-                                           minval=-1.0, maxval=1.0,
-                                           dtype=tf.float32)
+            noise_base = tf.random_uniform([ARGS.batch_size, NOISE_SIZE], minval=-1.0, maxval=1.0, dtype=tf.float32)
 
-            z0 = tf.random_uniform([ARGS.batch_size, NOISE_SIZE],
-                                   minval=-1.0, maxval=1.0,
-                                   dtype=tf.float32)
+            z0 = tf.random_uniform([ARGS.batch_size, NOISE_SIZE], minval=-1.0, maxval=1.0, dtype=tf.float32)
 
             original, x = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, ARGS.batch_size, distorted=False)
             original = tf.image.resize_images(original, (SIZE, SIZE))
@@ -75,21 +71,13 @@ def train():
         with tf.name_scope('d_train'):
             d_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator')
             d_trainer = model.AdamTrainer()
-            d_training = d_trainer(
-                d_loss,
-                beta1=ARGS.beta1,
-                learning_rate=ARGS.learning_rate,
-                var_list=d_vars)
+            d_training = d_trainer(d_loss, beta1=ARGS.beta1, learning_rate=ARGS.learning_rate, var_list=d_vars)
 
         with tf.name_scope('g_train'):
             g_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope="generator")
 
             g_trainer = model.AdamTrainer()
-            g_training = g_trainer(
-                g_loss,
-                beta1=ARGS.beta1,
-                learning_rate=ARGS.learning_rate,
-                var_list=g_vars)
+            g_training = g_trainer(g_loss, beta1=ARGS.beta1, learning_rate=ARGS.learning_rate, var_list=g_vars)
 
         update_gain = gain.assign(tf.clip_by_value(gain + ARGS.gain * balance_d_loss, 0, 1.0))
 
@@ -120,9 +108,7 @@ def train():
                     sec_per_batch = float(duration)
 
                     format_str = '{}: step {}, loss = {:.3f} ({:.1f} examples/sec; {:.3f} sec/batch)'
-                    print(format_str.format(datetime.now(), self._step,
-                                            d_loss_value,
-                                            examples_per_step, sec_per_batch))
+                    print(format_str.format(datetime.now(), self._step, d_loss_value, examples_per_step, sec_per_batch))
 
         update_global_step = tf.assign(global_step_tensor, global_step_tensor + 1)
 
@@ -133,9 +119,9 @@ def train():
 
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
-                hooks=[tf.train.StopAtStepHook(num_steps=ARGS.max_steps),
-                       tf.train.NanTensorHook(d_loss),
-                       _LoggerHook()],
+                hooks=[
+                    tf.train.StopAtStepHook(num_steps=ARGS.max_steps), tf.train.NanTensorHook(d_loss), _LoggerHook()
+                ],
                 save_checkpoint_secs=60,
                 config=tf.ConfigProto(
                     gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.85),
@@ -143,8 +129,10 @@ def train():
 
             while not sess.should_stop():
 
-                sess.run([d_training, g_training, update_gain, update_global_step],
-                         options=run_options, run_metadata=run_metadata)
+                sess.run(
+                    [d_training, g_training, update_gain, update_global_step],
+                    options=run_options,
+                    run_metadata=run_metadata)
 
 
 if __name__ == '__main__':

@@ -9,7 +9,6 @@ def resize_image(img, size):
     if size < img_size:
         img_resized = cv.resize(img, tuple(size), interpolation=cv.INTER_AREA)
     else:
-        img_resized = cv.resize(
-            img, tuple(size), interpolation=cv.INTER_CUBIC)
+        img_resized = cv.resize(img, tuple(size), interpolation=cv.INTER_CUBIC)
 
     return img_resized

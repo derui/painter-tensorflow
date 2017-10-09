@@ -124,8 +124,8 @@ def d_loss(real, real_pred, gen, gen_pred, gain):
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
-    real_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1,2,3])
-    gen_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1,2,3])
+    real_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1, 2, 3])
+    gen_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1, 2, 3])
 
     loss = tf.reduce_mean(real_loss - gen_loss * gain)
     return loss
@@ -136,8 +136,8 @@ def g_loss(gen, gen_pred, original):
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
-    original_loss = tf.reduce_mean(tf.abs(gen - original), axis=[1,2,3])
-    g_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1,2,3])
+    original_loss = tf.reduce_mean(tf.abs(gen - original), axis=[1, 2, 3])
+    g_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1, 2, 3])
 
     loss = tf.reduce_mean(g_loss + original_loss)
     return loss
@@ -146,8 +146,8 @@ def g_loss(gen, gen_pred, original):
 def balanced_d_loss(real, real_pred, gen, gen_pred, balance):
     """Calculate balanced D loss.
     """
-    real_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1,2,3])
-    gen_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1,2,3])
+    real_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1, 2, 3])
+    gen_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1, 2, 3])
 
     loss = tf.reduce_mean(balance * real_loss - gen_loss)
     return loss
@@ -165,9 +165,7 @@ class AdamTrainer(object):
 
     def __call__(self, loss, learning_rate, beta1, var_list):
         optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta1)
-        train_step = optimizer.minimize(loss, global_step=self.global_step, var_list=var_list,
-                                        colocate_gradients_with_ops=True)
+        train_step = optimizer.minimize(
+            loss, global_step=self.global_step, var_list=var_list, colocate_gradients_with_ops=True)
 
         return train_step
-
-

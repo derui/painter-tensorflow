@@ -6,14 +6,12 @@ from . import operations as op
 
 # Define weight variable
 def weight_variable(shape, name=None):
-    return tf.get_variable(
-        name, shape, initializer=tf.truncated_normal_initializer(stddev=0.02))
+    return tf.get_variable(name, shape, initializer=tf.truncated_normal_initializer(stddev=0.02))
 
 
 # Define bias variable
 def bias_variable(shape, name=None):
-    return tf.get_variable(
-        name, shape, initializer=tf.constant_initializer(0.0))
+    return tf.get_variable(name, shape, initializer=tf.constant_initializer(0.0))
 
 
 class Encoder(object):
@@ -21,13 +19,7 @@ class Encoder(object):
     this class that are defined convolutional layer.
     """
 
-    def __init__(self,
-                 in_ch,
-                 out_ch,
-                 patch_h,
-                 patch_w,
-                 strides=[1, 1, 1, 1],
-                 name='encoder'):
+    def __init__(self, in_ch, out_ch, patch_h, patch_w, strides=[1, 1, 1, 1], name='encoder'):
         self.patch_h = patch_h
         self.patch_w = patch_w
         self.in_ch = in_ch
@@ -37,11 +29,9 @@ class Encoder(object):
 
     def __call__(self, tensor, input_shape):
         weight = weight_variable(
-            [self.patch_h, self.patch_w, self.in_ch, self.out_ch],
-            name="{}_weight".format(self.name))
+            [self.patch_h, self.patch_w, self.in_ch, self.out_ch], name="{}_weight".format(self.name))
         bias = bias_variable([self.out_ch], name='{}_bias'.format(self.name))
-        conv = tf.nn.conv2d(
-            tensor, weight, strides=self.strides, padding='SAME')
+        conv = tf.nn.conv2d(tensor, weight, strides=self.strides, padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
 
         return conv
@@ -52,14 +42,7 @@ class Decoder(object):
     this class that are defined convolutional layer.
     """
 
-    def __init__(self,
-                 in_ch,
-                 out_ch,
-                 patch_h,
-                 patch_w,
-                 batch_size,
-                 strides=[1, 1, 1, 1],
-                 name='decoder'):
+    def __init__(self, in_ch, out_ch, patch_h, patch_w, batch_size, strides=[1, 1, 1, 1], name='decoder'):
         self.batch_size = batch_size
         self.patch_h = patch_h
         self.patch_w = patch_w
@@ -70,15 +53,13 @@ class Decoder(object):
 
     def __call__(self, tensor, output_shape):
         weight = weight_variable(
-            [self.patch_h, self.patch_w, self.out_ch, self.in_ch],
-            name='{}_weight'.format(self.name))
+            [self.patch_h, self.patch_w, self.out_ch, self.in_ch], name='{}_weight'.format(self.name))
 
         bias = bias_variable([self.out_ch], name="{}_bias".format(self.name))
 
         conv = tf.nn.conv2d_transpose(
             tensor,
-            weight,
-            [self.batch_size, output_shape[0], output_shape[1], self.out_ch],
+            weight, [self.batch_size, output_shape[0], output_shape[1], self.out_ch],
             strides=self.strides,
             padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
@@ -152,8 +133,7 @@ class Dense(object):
         self.name = name
 
     def __call__(self, tensor, in_ch, out_ch):
-        weight = weight_variable(
-            [in_ch, out_ch], name="{}_weight".format(self.name))
+        weight = weight_variable([in_ch, out_ch], name="{}_weight".format(self.name))
         bias = bias_variable([out_ch], name='{}_bias'.format(self.name))
         conv = tf.matmul(tf.reshape(tensor, [-1, in_ch]), weight) + bias
 
@@ -192,9 +172,9 @@ def discriminator(img, height, width, channels, batch_size):
     net = relu(D.conv2(net, [height // 2, width // 2]))
     net = relu(D.conv3(net, [height // 4, width // 4]))
 
-    _, h,w,c = net.get_shape().as_list()
-    net = D.fully_connect(net, h*w*c, 512)
-    net = D.fully_unconnect(net, 512, h*w*c)
+    _, h, w, c = net.get_shape().as_list()
+    net = D.fully_connect(net, h * w * c, 512)
+    net = D.fully_unconnect(net, 512, h * w * c)
     net = tf.reshape(net, [-1, h, w, c])
 
     l1 = relu(D.deconv1(net, [height // 4, width // 4]))
@@ -221,8 +201,8 @@ def d_loss(real, real_pred, gen, gen_pred, gain):
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
-    real_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1,2,3])
-    gen_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1,2,3])
+    real_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1, 2, 3])
+    gen_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1, 2, 3])
 
     loss = tf.reduce_mean(real_loss - gen_loss * gain)
     return loss
@@ -233,8 +213,8 @@ def g_loss(gen, gen_pred, original):
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
-    original_loss = tf.reduce_mean(tf.square(gen - original), axis=[1,2,3])
-    g_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1,2,3])
+    original_loss = tf.reduce_mean(tf.square(gen - original), axis=[1, 2, 3])
+    g_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1, 2, 3])
 
     loss = tf.reduce_mean(g_loss + original_loss)
     return loss
@@ -243,8 +223,8 @@ def g_loss(gen, gen_pred, original):
 def balanced_d_loss(real, real_pred, gen, gen_pred, balance):
     """Calculate balanced D loss.
     """
-    real_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1,2,3])
-    gen_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1,2,3])
+    real_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1, 2, 3])
+    gen_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1, 2, 3])
 
     loss = tf.reduce_mean(balance * real_loss - gen_loss)
     return loss
@@ -252,7 +232,7 @@ def balanced_d_loss(real, real_pred, gen, gen_pred, balance):
 
 def global_measure(real, real_pred, balanced_loss):
     # global convergence is calculated by |D(v) - D(G(v))|
-    d_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1,2,3])
+    d_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1, 2, 3])
     measure = tf.reduce_mean(d_loss + tf.abs(balanced_loss))
 
     return measure
@@ -270,7 +250,6 @@ class Trainer(object):
 
     def __call__(self, loss, learning_rate, beta1, var_list):
         optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta1)
-        train_step = optimizer.minimize(
-            loss, global_step=self.global_step, var_list=var_list)
+        train_step = optimizer.minimize(loss, global_step=self.global_step, var_list=var_list)
 
         return train_step

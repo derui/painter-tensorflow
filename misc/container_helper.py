@@ -11,20 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Helper methods for working with containers in config."""
 
+
 def GenerateUserData(context):
-  """Generate a Userdata for cos image given a Template context
+    """Generate a Userdata for cos image given a Template context
   """
 
-  env_list = []
+    env_list = []
 
-  if 'dockerEnv' in context.properties:
-    for key, value in context.properties['dockerEnv'].iteritems():
-      env_list.append({'name': key, 'value': str(value)})
+    if 'dockerEnv' in context.properties:
+        for key, value in context.properties['dockerEnv'].iteritems():
+            env_list.append({'name': key, 'value': str(value)})
 
-  return """
+    return """
   #cloud-config
 
 users:
@@ -48,6 +48,7 @@ write_files:
 runcmd:
 - systemctl daemon-reload
 - systemctl start cloudservice.service
-""".format(image=context.properties['dockerImage'],
-           hostPort=context.properties['port'],
-           containerPort=context.properties['containerPort'])
+""".format(
+        image=context.properties['dockerImage'],
+        hostPort=context.properties['port'],
+        containerPort=context.properties['containerPort'])

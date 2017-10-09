@@ -4,17 +4,21 @@ import math
 import argparse
 import numpy as np
 import tensorflow as tf
-from .lib.model import model_wgan as model
-from ..dnn_upscaler.lib.model import model as upscaler
+from dnn_upscaler.lib.model import model as upscaler
 import cv2
 
 argparser = argparse.ArgumentParser(description='Learning painter model')
 argparser.add_argument('image', type=str, help='image to paint')
 argparser.add_argument('output', type=str, help='the name of image painted')
-argparser.add_argument('--painter_checkpoint_dir', default='./log', type=str, help='Directory will have been saving checkpoint')
-argparser.add_argument('--scaler_checkpoint_dir', default='./log', type=str, help='Directory will have been saving checkpoint')
+argparser.add_argument('--model', type=str, help='model type')
+argparser.add_argument(
+    '--painter_checkpoint_dir', default='./log', type=str, help='Directory will have been saving checkpoint')
+argparser.add_argument(
+    '--scaler_checkpoint_dir', default='./log', type=str, help='Directory will have been saving checkpoint')
 
 ARGS = argparser.parse_args()
+
+NOISE_SIZE = 128
 
 
 def normalize_image(img):
@@ -24,6 +28,12 @@ def normalize_image(img):
 
 
 def main():
+
+    if ARGS.model == "wgan":
+        from .lib.model import model_wgan as model
+    elif ARGS.model == "began":
+        from .lib.model import model_sd_began as model
+
     image = cv2.imread(ARGS.image)
 
     image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -35,13 +45,16 @@ def main():
 
     work_h = int(math.pow(2, math.ceil(math.log2(s_height))))
     work_w = int(math.pow(2, math.ceil(math.log2(s_width))))
+
+    noise = tf.random_uniform([1, NOISE_SIZE], minval=-1.0, maxval=1.0, dtype=tf.float32)
+
     original_size = tf.placeholder(tf.float32, shape=[1, height, width, 1])
     x = tf.placeholder(tf.float32, shape=[1, height, width])
     x_ = tf.reshape(x, [1, height, width, 1])
     x_ = tf.image.resize_images(x_, (s_height, s_width), method=tf.image.ResizeMethod.AREA)
     x_ = tf.image.resize_image_with_crop_or_pad(x_, work_h, work_w)
     with tf.variable_scope('generator'):
-        construction_op = model.generator(x_)
+        construction_op = model.generator(x_, noise)
 
         construction_op = tf.image.resize_image_with_crop_or_pad(construction_op, s_height, s_width)
 

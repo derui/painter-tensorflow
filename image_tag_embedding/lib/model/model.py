@@ -7,9 +7,7 @@ from tflib import operations as op
 class EmbeddingEncoder(object):
     """Define encoder for embedding"""
 
-    def __init__(self, sequence_length, embedding_size,
-                 trainable=True,
-                 filter_sizes=[2, 3, 4]):
+    def __init__(self, sequence_length, embedding_size, trainable=True, filter_sizes=[2, 3, 4]):
         self.sequence_length = sequence_length
         self.embedding_size = embedding_size
         self.filter_sizes = filter_sizes
@@ -26,9 +24,7 @@ class EmbeddingEncoder(object):
                 trainable=trainable,
                 name='encoder/{}'.format(index))
 
-            max_pool = op.MaxPool(
-                [1, sequence_length - filter_size + 1, 1, 1],
-                name="max_pooling/{}".format(index))
+            max_pool = op.MaxPool([1, sequence_length - filter_size + 1, 1, 1], name="max_pooling/{}".format(index))
 
             def encode(tensor):
                 return max_pool(tf.nn.relu(encoder(tensor)))
@@ -36,8 +32,7 @@ class EmbeddingEncoder(object):
             return encode
 
         self.encoders = [
-            gen_encoder(i, filter_sizes[i], embedding_size, sequence_length)
-            for i in range(len(filter_sizes))
+            gen_encoder(i, filter_sizes[i], embedding_size, sequence_length) for i in range(len(filter_sizes))
         ]
 
         self.linear_encoder = op.LinearEncoder(sequence_length, trainable=trainable)
@@ -57,22 +52,14 @@ class ImageAutoEncoder(object):
     """Define autoencoder for image as description"""
 
     def __init__(self, embedding_channels):
-        self.enc1 = op.Encoder(
-            3, 64, 3, 3, strides=[1, 2, 2, 1], name='encoder/1')
-        self.enc2 = op.Encoder(
-            64, 128, 3, 3, strides=[1, 2, 2, 1], name='encoder/2')
-        self.enc3 = op.Encoder(
-            128, 256, 3, 3, strides=[1, 2, 2, 1], name='encoder/3')
-        self.enc4 = op.Encoder(
-            256, 512, 3, 3, strides=[1, 1, 1, 1], name='encoder/4')
+        self.enc1 = op.Encoder(3, 64, 3, 3, strides=[1, 2, 2, 1], name='encoder/1')
+        self.enc2 = op.Encoder(64, 128, 3, 3, strides=[1, 2, 2, 1], name='encoder/2')
+        self.enc3 = op.Encoder(128, 256, 3, 3, strides=[1, 2, 2, 1], name='encoder/3')
+        self.enc4 = op.Encoder(256, 512, 3, 3, strides=[1, 1, 1, 1], name='encoder/4')
 
-        self.dec4 = op.PixelShuffler(
-            op.Encoder(512 + embedding_channels, 1024, 3, 3, name='decoder/4'),
-            256, 2)
-        self.dec3 = op.PixelShuffler(
-            op.Encoder(256, 512, 3, 3, name='decoder/3'), 128, 2)
-        self.dec2 = op.PixelShuffler(
-            op.Encoder(128, 256, 3, 3, name='decoder/2'), 64, 2)
+        self.dec4 = op.PixelShuffler(op.Encoder(512 + embedding_channels, 1024, 3, 3, name='decoder/4'), 256, 2)
+        self.dec3 = op.PixelShuffler(op.Encoder(256, 512, 3, 3, name='decoder/3'), 128, 2)
+        self.dec2 = op.PixelShuffler(op.Encoder(128, 256, 3, 3, name='decoder/2'), 64, 2)
         self.dec1 = op.Encoder(64, 3, 3, 3, name='decoder/1')
 
         self.bnd1 = op.BatchNormalization(name='bnd/1')
@@ -132,7 +119,6 @@ def loss(decoded, original):
 def training(loss, learning_rate, global_step, var_list):
     with tf.name_scope('optimizer'):
         optimizer = tf.train.AdamOptimizer(learning_rate)
-        train_step = optimizer.minimize(
-            loss, global_step=global_step, var_list=var_list)
+        train_step = optimizer.minimize(loss, global_step=global_step, var_list=var_list)
 
     return train_step

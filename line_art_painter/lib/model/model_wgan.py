@@ -135,7 +135,7 @@ def gradient_penalty(diff, interpolates, lambda_):
     # compute gradient ∇xtDw(tx)
     gradients = tf.gradients(diff, [interpolates])[0]
     # compute l2-norm of gradients
-    delta = tf.sqrt(tf.reduce_sum(tf.square(gradients), axis=[1,2,3]))
+    delta = tf.sqrt(tf.reduce_sum(tf.square(gradients), axis=[1, 2, 3]))
     penalty = tf.reduce_mean(tf.square(delta - 1))
 
     return lambda_ * penalty
@@ -175,7 +175,7 @@ class AdamTrainer(object):
 
     def __call__(self, loss, learning_rate, beta1, var_list):
         optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta1)
-        train_step = optimizer.minimize(loss, global_step=self.global_step, var_list=var_list,
-                                        colocate_gradients_with_ops=True)
+        train_step = optimizer.minimize(
+            loss, global_step=self.global_step, var_list=var_list, colocate_gradients_with_ops=True)
 
         return train_step

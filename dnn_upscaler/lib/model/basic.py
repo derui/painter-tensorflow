@@ -60,7 +60,7 @@ class AdamTrainer(object):
 
     def __call__(self, loss, learning_rate, beta1, var_list=None):
         optimizer = tf.train.AdamOptimizer(learning_rate, beta1=beta1)
-        train_step = optimizer.minimize(loss, global_step=self.global_step, var_list=var_list,
-                                        colocate_gradients_with_ops=True)
+        train_step = optimizer.minimize(
+            loss, global_step=self.global_step, var_list=var_list, colocate_gradients_with_ops=True)
 
         return train_step

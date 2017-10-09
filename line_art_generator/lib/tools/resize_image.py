@@ -5,20 +5,17 @@ import cv2 as cv
 import numpy as np
 from . import util
 
-argparser = argparse.ArgumentParser(
-    description='Resize images that equals size of pair files')
-argparser.add_argument(
-    '--original_dir', type=str, help='the directory of original images')
-argparser.add_argument(
-    '--line_art_dir', type=str, help='the directory of line art images')
+argparser = argparse.ArgumentParser(description='Resize images that equals size of pair files')
+argparser.add_argument('--original_dir', type=str, help='the directory of original images')
+argparser.add_argument('--line_art_dir', type=str, help='the directory of line art images')
 argparser.add_argument('-d', dest='out_dir', type=str, required=True)
 
 args = argparser.parse_args()
 MINIMUM_SIZE = 128
 
 resize_factors = [
-    6 / 7, 6 / 8, 6 / 9, 6 / 10, 6 / 11, 6 / 12, 6 / 13, 6 / 14, 6 / 15, 6 / 16,
-    6 / 17, 6 / 18, 6 / 19, 6 / 20, 6 / 21, 6 / 22, 6 / 23, 6 / 24
+    6 / 7, 6 / 8, 6 / 9, 6 / 10, 6 / 11, 6 / 12, 6 / 13, 6 / 14, 6 / 15, 6 / 16, 6 / 17, 6 / 18, 6 / 19, 6 / 20, 6 / 21,
+    6 / 22, 6 / 23, 6 / 24
 ]
 
 

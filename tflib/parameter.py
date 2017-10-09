@@ -2,7 +2,6 @@
 
 
 class PerEpochConstantlyUpdater(object):
-
     def __init__(self, parameter, steps_per_epoch=100, per_epoch=5):
 
         self._parameter = parameter
@@ -25,7 +24,6 @@ class PerEpochConstantlyUpdater(object):
 
 
 class PerEpochLossUpdater(object):
-
     def __init__(self, parameter, steps_per_epoch=100, per_epoch=5):
 
         self._parameter = parameter
@@ -55,7 +53,6 @@ class PerEpochLossUpdater(object):
 
 
 class UpdatableParameter(object):
-
     def __init__(self, initial, update_rate, dtype=None):
 
         self._update_rate = update_rate

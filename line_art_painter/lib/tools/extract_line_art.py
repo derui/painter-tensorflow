@@ -68,19 +68,14 @@ if args.excludes_dir is not None:
 if not pathlib.Path(args.out_dir).exists():
     os.makedirs(str(pathlib.Path(args.out_dir)), exist_ok=True)
 
-
-image_processor = tfutil.make_generic_processor(read_image, write_image,
-                                                extract_edge)
+image_processor = tfutil.make_generic_processor(read_image, write_image, extract_edge)
 
 num = 0
 for files, ignored_files in tfutil.walk_files(args.input_dir, excludes, 100):
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
         futures = []
         for root, f in files:
-            futures.append(
-                e.submit(image_processor,
-                         str(pathlib.Path(root) / f),
-                         str(pathlib.Path(args.out_dir) / f)))
+            futures.append(e.submit(image_processor, str(pathlib.Path(root) / f), str(pathlib.Path(args.out_dir) / f)))
 
         for future in concurrent.futures.as_completed(futures):
             try:
@@ -90,4 +85,3 @@ for files, ignored_files in tfutil.walk_files(args.input_dir, excludes, 100):
 
     num += 100
     print('{}: Completed {} items, {} ignored.'.format(datetime.now(), num, ignored_files))
-

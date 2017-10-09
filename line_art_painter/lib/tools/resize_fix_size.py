@@ -7,10 +7,7 @@ from . import util
 from tflib import util as tfutil
 
 argparser = argparse.ArgumentParser(description='Resize image to fixed size')
-argparser.add_argument(
-    'input_dir',
-    type=str,
-    help='the directory of image to resize and crop to fixed size')
+argparser.add_argument('input_dir', type=str, help='the directory of image to resize and crop to fixed size')
 argparser.add_argument('-d', dest='out_dir', type=str, required=True)
 argparser.add_argument('-e', dest='excludes_dir', type=str)
 argparser.add_argument('-s', '--size', dest='size', type=int)
@@ -49,8 +46,7 @@ def to_out_path(out_dir, f):
     return os.path.join(out_dir, f[:2], "{}.png".format(name))
 
 
-image_processor = tfutil.make_generic_processor(read_image, write_image,
-                                                process)
+image_processor = tfutil.make_generic_processor(read_image, write_image, process)
 
 excludes = []
 if args.excludes_dir is not None:
@@ -61,9 +57,7 @@ for files, ignored_files in tfutil.walk_files(args.input_dir, excludes, 100):
     with concurrent.futures.ThreadPoolExecutor(max_workers=16) as e:
         futures = []
         for root, f in files:
-            futures.append(
-                e.submit(image_processor,
-                         os.path.join(root, f), to_out_path(args.out_dir, f)))
+            futures.append(e.submit(image_processor, os.path.join(root, f), to_out_path(args.out_dir, f)))
 
         for future in concurrent.futures.as_completed(futures):
             try:

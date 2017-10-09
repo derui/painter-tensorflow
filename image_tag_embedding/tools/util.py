@@ -92,9 +92,7 @@ def is_unreliable_tag(tag):
     """check unreliable tags from tag set
     """
 
-    MATCHERS = [
-        lambda x: x == "..." or x == "commentary_request"
-    ]
+    MATCHERS = [lambda x: x == "..." or x == "commentary_request"]
 
     for matcher in MATCHERS:
         if matcher(tag):

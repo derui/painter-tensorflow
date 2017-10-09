@@ -5,13 +5,8 @@ from datetime import datetime
 
 import tensorflow as tf
 
-argparser = argparse.ArgumentParser(
-    description='Resize images')
-argparser.add_argument(
-    '--image_dir',
-    type=str,
-    help='the directory is contained images',
-    required=True)
+argparser = argparse.ArgumentParser(description='Resize images')
+argparser.add_argument('--image_dir', type=str, help='the directory is contained images', required=True)
 argparser.add_argument('--out_dir', type=str, required=True)
 argparser.add_argument('--validation_size', type=float, default=0.3)
 
@@ -40,9 +35,7 @@ def convert_to(data_set, name):
         with open(original_images[index], 'rb') as f:
             original_raw = f.read()
 
-        example = tf.train.Example(features=tf.train.Features(feature={
-            'original': _bytes_feature(original_raw),
-        }))
+        example = tf.train.Example(features=tf.train.Features(feature={'original': _bytes_feature(original_raw), }))
         writer.write(example.SerializeToString())
     writer.close()
 

@@ -36,7 +36,8 @@ def train():
         global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
         with tf.device('/cpu:0'):
-            painted, line_art = dataset.dataset_input_fn(ARGS.dataset_dir, ARGS.batch_size, ARGS.image_size, distorted=ARGS.distorted)
+            painted, line_art = dataset.dataset_input_fn(
+                ARGS.dataset_dir, ARGS.batch_size, ARGS.image_size, distorted=ARGS.distorted)
 
         with tf.variable_scope('classifier'):
             encoded = model.autoencoder(painted)
@@ -48,8 +49,7 @@ def train():
         lmap = model.loss_map(line_art, ARGS.bins, ARGS.alpha, ARGS.beta)
         loss = model.loss(line_art, encoded, lmap)
 
-        training = model.training(loss, learning_rate=learning_rate,
-                                  global_step=global_step_tensor, var_list=None)
+        training = model.training(loss, learning_rate=learning_rate, global_step=global_step_tensor, var_list=None)
 
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime """

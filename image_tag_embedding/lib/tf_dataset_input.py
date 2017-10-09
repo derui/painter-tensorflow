@@ -25,8 +25,7 @@ def read_tags(filename_queue, max_document_length):
         'image': tf.FixedLenFeature([], tf.string),
     })
 
-    result.image = tf.reshape(
-        tf.image.decode_png(features['image'], 3), [128, 128, 3])
+    result.image = tf.reshape(tf.image.decode_png(features['image'], 3), [128, 128, 3])
     result.tags = features['tags']
 
     return result
@@ -75,8 +74,6 @@ def inputs(data_dir, batch_size, max_document_length):
     image = tf.multiply(image, 2) - 1.0
 
     min_fraction_of_examples_in_queue = 0.4
-    min_queue_examples = int(num_examples_per_epoch *
-                             min_fraction_of_examples_in_queue)
+    min_queue_examples = int(num_examples_per_epoch * min_fraction_of_examples_in_queue)
 
-    return _generate_batch([tags, image],
-                           min_queue_examples, batch_size, shuffle=True)
+    return _generate_batch([tags, image], min_queue_examples, batch_size, shuffle=True)

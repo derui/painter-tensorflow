@@ -47,6 +47,7 @@ def make_generic_processor(read_func, write_func, process):
 
     @return new generic image processor
     """
+
     def func(in_path, out_path):
         item = read_func(in_path)
         item = process(item)

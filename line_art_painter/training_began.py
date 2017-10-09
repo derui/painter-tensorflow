@@ -32,8 +32,7 @@ def train():
         gain = tf.Variable(initial_value=0, trainable=False, dtype=tf.float32)
 
         with tf.device('/cpu:0'):
-            original, x = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir,
-                                                            ARGS.batch_size)
+            original, x = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, ARGS.batch_size)
             # original = tf.image.resize_images(original, [128, 128])
             # x = tf.image.resize_images(x, [128, 128])
 
@@ -71,8 +70,7 @@ def train():
                 d_loss,
                 learning_rate=ARGS.learning_rate,
                 beta1=ARGS.beta1,
-                var_list=tf.get_collection(
-                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator'))
+                var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator'))
 
         with tf.name_scope('g_train'):
             g_trainer = model.Trainer()
@@ -80,8 +78,7 @@ def train():
                 g_loss,
                 learning_rate=ARGS.learning_rate,
                 beta1=ARGS.beta1,
-                var_list=tf.get_collection(
-                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
+                var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
 
         update_gain = gain.assign(tf.clip_by_value(gain + ARGS.gain * balance_d_loss, 0, 1.0))
 
@@ -113,14 +110,10 @@ def train():
 
                     format_str = '{}: step {}, loss = {:.3f} ({:.1f} examples/sec; {:.3f} sec/batch)'
                     print(
-                        format_str.format(datetime.now(), self._step,
-                                          measure_value, examples_per_step,
-                                          sec_per_batch))
+                        format_str.format(datetime.now(), self._step, measure_value, examples_per_step, sec_per_batch))
 
-        global_step_tensor = tf.Variable(
-            0, trainable=False, name='global_step')
-        update_global_step = tf.assign(global_step_tensor,
-                                       global_step_tensor + 1)
+        global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
+        update_global_step = tf.assign(global_step_tensor, global_step_tensor + 1)
 
         run_options = tf.RunOptions()
         if ARGS.full_trace:
@@ -130,12 +123,10 @@ def train():
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
                 hooks=[
-                    tf.train.StopAtStepHook(num_steps=ARGS.max_steps),
-                    tf.train.NanTensorHook(measure), _LoggerHook()
+                    tf.train.StopAtStepHook(num_steps=ARGS.max_steps), tf.train.NanTensorHook(measure), _LoggerHook()
                 ],
                 save_checkpoint_secs=60,
-                config=tf.ConfigProto(
-                    log_device_placement=ARGS.log_device_placement)) as sess:
+                config=tf.ConfigProto(log_device_placement=ARGS.log_device_placement)) as sess:
 
             while not sess.should_stop():
 

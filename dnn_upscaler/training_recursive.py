@@ -43,8 +43,11 @@ def train():
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
             original = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, "train.tfrecords", ARGS.batch_size, SIZE)
-            original = tf.image.resize_images(original, (SIZE // BASE_FACTOR, SIZE // BASE_FACTOR), method=tf.image.ResizeMethod.AREA)
-            small = tf.image.resize_images(original, (SIZE // (BASE_FACTOR * FACTOR), SIZE // (BASE_FACTOR * FACTOR)), method=tf.image.ResizeMethod.AREA)
+            original = tf.image.resize_images(
+                original, (SIZE // BASE_FACTOR, SIZE // BASE_FACTOR), method=tf.image.ResizeMethod.AREA)
+            small = tf.image.resize_images(
+                original, (SIZE // (BASE_FACTOR * FACTOR), SIZE // (BASE_FACTOR * FACTOR)),
+                method=tf.image.ResizeMethod.AREA)
 
         with tf.variable_scope('upsampler'):
             S, intermediates = model.upsample(small, 11)
@@ -66,10 +69,7 @@ def train():
 
         with tf.name_scope('g_train'):
             g_trainer = model.AdamTrainer()
-            g_training = g_trainer(
-                upsample_loss,
-                beta1=ARGS.beta1,
-                learning_rate=learning_rate)
+            g_training = g_trainer(upsample_loss, beta1=ARGS.beta1, learning_rate=learning_rate)
 
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime """
@@ -98,7 +98,9 @@ def train():
                     sec_per_batch = float(duration)
 
                     format_str = '{}: step {}, loss = {:.3f}, psnr = {:.3f} ({:.1f} examples/sec; {:.3f} sec/batch)'
-                    print(format_str.format(datetime.now(), self.step, c_loss_value, psnr_value, examples_per_step, sec_per_batch))
+                    print(
+                        format_str.format(datetime.now(), self.step, c_loss_value, psnr_value, examples_per_step,
+                                          sec_per_batch))
 
         update_global_step = tf.assign(global_step_tensor, global_step_tensor + 1)
 
@@ -112,8 +114,10 @@ def train():
 
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
-                hooks=[tf.train.StopAtStepHook(num_steps=ARGS.max_steps),
-                       tf.train.NanTensorHook(upsample_loss), _LoggerHook()],
+                hooks=[
+                    tf.train.StopAtStepHook(num_steps=ARGS.max_steps), tf.train.NanTensorHook(upsample_loss),
+                    _LoggerHook()
+                ],
                 save_checkpoint_secs=60,
                 config=tf.ConfigProto(
                     gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.85),
@@ -123,9 +127,12 @@ def train():
             while not sess.should_stop():
 
                 # Update generator
-                ret = sess.run([g_training, update_global_step, upsample_loss],
-                               options=run_options, run_metadata=run_metadata,
-                               feed_dict={alpha: alpha_v(), learning_rate: learning_rate_v()})
+                ret = sess.run(
+                    [g_training, update_global_step, upsample_loss],
+                    options=run_options,
+                    run_metadata=run_metadata,
+                    feed_dict={alpha: alpha_v(),
+                               learning_rate: learning_rate_v()})
 
                 loss = ret[-1]
                 alpha_updater(loss)

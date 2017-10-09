@@ -13,8 +13,7 @@ def init_sess(batch_size, height, width, train_dir, reuse=False):
     with tf.variable_scope('classifier', reuse=reuse):
         generate_op = model.autoencoder(x)
 
-    var_list = tf.get_collection(
-        tf.GraphKeys.TRAINABLE_VARIABLES, scope='classifier')
+    var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='classifier')
 
     sess = tf.Session()
     saver = tf.train.Saver(var_list=var_list)

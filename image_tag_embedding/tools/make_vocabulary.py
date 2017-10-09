@@ -29,7 +29,7 @@ def write_tag(tags, out_path, vocab):
     with open(str(out_path), "w") as f:
         tmp_tag_list = list(map(vocab.get, tags))
 
-        tmp_tag_list = list(map(lambda x: str(x)+"\n", tmp_tag_list))
+        tmp_tag_list = list(map(lambda x: str(x) + "\n", tmp_tag_list))
         f.writelines(tmp_tag_list)
 
 
@@ -40,8 +40,7 @@ def make_process(all_tags, origin):
 def main(args, excludes):
     vocab = util.Vocabulary()
     num = 0
-    for files, ignored_files in tfutil.walk_files(args.input_dir, excludes,
-                                                  1000):
+    for files, ignored_files in tfutil.walk_files(args.input_dir, excludes, 1000):
         for root, f in files:
             for tag in read_tag(str(pathlib.Path(root) / f)):
                 vocab.append(tag)
@@ -57,8 +56,7 @@ def main(args, excludes):
     vocab.write(str(pathlib.Path(args.out_dir) / ("small_" + args.out_file)))
 
     num = 0
-    for files, ignored_files in tfutil.walk_files(args.input_dir, excludes,
-                                                  1000):
+    for files, ignored_files in tfutil.walk_files(args.input_dir, excludes, 1000):
         for root, f in files:
             tags = read_tag(str(pathlib.Path(root) / f))
 
@@ -72,10 +70,7 @@ def main(args, excludes):
 if __name__ == "__main__":
 
     argparser = argparse.ArgumentParser(description='make vocabulary of tags')
-    argparser.add_argument(
-        'input_dir',
-        type=str,
-        help='the directory of image to resize and crop to fixed size')
+    argparser.add_argument('input_dir', type=str, help='the directory of image to resize and crop to fixed size')
     argparser.add_argument('-d', dest='out_dir', type=str, required=True)
     argparser.add_argument('-o', dest='out_file', type=str, required=True)
     argparser.add_argument('-e', dest='excludes_dir', type=str)

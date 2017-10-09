@@ -4,38 +4,26 @@ import math
 
 
 # Define weight variable
-def weight_variable(shape, name=None, trainable=True,
-                    initializer=tf.truncated_normal_initializer(stddev=0.02)):
-    return tf.get_variable(
-        name, shape, trainable=trainable,
-        initializer=initializer)
+def weight_variable(shape, name=None, trainable=True, initializer=tf.truncated_normal_initializer(stddev=0.02)):
+    return tf.get_variable(name, shape, trainable=trainable, initializer=initializer)
 
 
 # Define bias variable
 def bias_variable(shape, name=None, trainable=True):
-    return tf.get_variable(
-        name, shape, trainable=trainable,
-        initializer=tf.constant_initializer(0.0))
+    return tf.get_variable(name, shape, trainable=trainable, initializer=tf.constant_initializer(0.0))
 
 
 class MaxPool(object):
     """Max pooling"""
 
-    def __init__(self,
-                 ksize,
-                 strides=[1, 1, 1, 1],
-                 name='max_pool'):
+    def __init__(self, ksize, strides=[1, 1, 1, 1], name='max_pool'):
         self.name = name
         self.ksize = ksize
         self.strides = strides
 
     def __call__(self, tensor):
         """Return tensor applied max-pooling"""
-        return tf.nn.max_pool(tensor,
-                              self.ksize,
-                              self.strides,
-                              "VALID",
-                              name=self.name)
+        return tf.nn.max_pool(tensor, self.ksize, self.strides, "VALID", name=self.name)
 
 
 class LinearEncoder(object):
@@ -72,14 +60,10 @@ class BatchNormalization(object):
 
         shape = x.get_shape().as_list()
         with tf.variable_scope(self.name) as scope:
-            self.beta = tf.get_variable(
-                "beta", [shape[-1]], initializer=tf.constant_initializer(0.))
-            self.gamma = tf.get_variable(
-                "gamma", [shape[-1]],
-                initializer=tf.random_normal_initializer(1.0, 0.1))
+            self.beta = tf.get_variable("beta", [shape[-1]], initializer=tf.constant_initializer(0.))
+            self.gamma = tf.get_variable("gamma", [shape[-1]], initializer=tf.random_normal_initializer(1.0, 0.1))
 
-            y, _, _ = tf.nn.fused_batch_norm(
-                x, self.gamma, self.beta, epsilon=self.epsilon)
+            y, _, _ = tf.nn.fused_batch_norm(x, self.gamma, self.beta, epsilon=self.epsilon)
 
         return y
 
@@ -99,10 +83,8 @@ class LayerNormalization(object):
             # 1/HΣi=>H ai , resulting only one value each input.
             mean, var = tf.nn.moments(x, [1, 2, 3], keep_dims=True)
 
-            self.beta = tf.get_variable("beta", [neurons],
-                                        initializer=tf.constant_initializer(0.))
-            self.gamma = tf.get_variable("gamma", [neurons],
-                                         initializer=tf.constant_initializer(1.))
+            self.beta = tf.get_variable("beta", [neurons], initializer=tf.constant_initializer(0.))
+            self.gamma = tf.get_variable("gamma", [neurons], initializer=tf.constant_initializer(1.))
             # broadcasting dims for [BHWC]
             self.beta = tf.reshape(self.beta, [1, 1, -1])
             self.gamma = tf.reshape(self.gamma, [1, 1, -1])
@@ -143,11 +125,8 @@ class Encoder(object):
             trainable=self.trainable,
             initializer=self.initializer,
             name="{}_weight".format(self.name))
-        bias = bias_variable([self.out_ch],
-                             trainable=self.trainable,
-                             name='{}_bias'.format(self.name))
-        conv = tf.nn.conv2d(
-            tensor, weight, strides=self.strides, padding=self.padding)
+        bias = bias_variable([self.out_ch], trainable=self.trainable, name='{}_bias'.format(self.name))
+        conv = tf.nn.conv2d(tensor, weight, strides=self.strides, padding=self.padding)
         conv = tf.nn.bias_add(conv, bias)
 
         return conv
@@ -182,14 +161,11 @@ class Decoder(object):
             trainable=self.trainable,
             name='{}_weight'.format(self.name))
 
-        bias = bias_variable([self.out_ch],
-                             trainable=self.trainable,
-                             name="{}_bias".format(self.name))
+        bias = bias_variable([self.out_ch], trainable=self.trainable, name="{}_bias".format(self.name))
 
         conv = tf.nn.conv2d_transpose(
             tensor,
-            weight,
-            [self.batch_size, output_shape[0], output_shape[1], self.out_ch],
+            weight, [self.batch_size, output_shape[0], output_shape[1], self.out_ch],
             strides=self.strides,
             padding='SAME')
         conv = tf.nn.bias_add(conv, bias)
@@ -240,11 +216,9 @@ class Dense(object):
     def __call__(self, tensor, out_ch):
         _, w, h, c = tensor.shape.as_list()
         in_ch = w * h * c
-        weight = weight_variable(
-            [in_ch, out_ch], name="{}_weight".format(self.name))
+        weight = weight_variable([in_ch, out_ch], name="{}_weight".format(self.name))
         bias = bias_variable([out_ch], name='{}_bias'.format(self.name))
-        conv = tf.nn.bias_add(
-            tf.matmul(tf.reshape(tensor, [-1, in_ch]), weight), bias)
+        conv = tf.nn.bias_add(tf.matmul(tf.reshape(tensor, [-1, in_ch]), weight), bias)
 
         return conv
 
@@ -268,5 +242,3 @@ class ResNet(object):
 
         net = self.normalization(net)
         return shortcut + net
-
-

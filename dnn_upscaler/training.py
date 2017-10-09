@@ -49,10 +49,7 @@ def train():
 
         with tf.name_scope('g_train'):
             g_trainer = model.AdamTrainer()
-            g_training = g_trainer(
-                l1_loss,
-                beta1=ARGS.beta1,
-                learning_rate=ARGS.learning_rate)
+            g_training = g_trainer(l1_loss, beta1=ARGS.beta1, learning_rate=ARGS.learning_rate)
 
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime """
@@ -81,7 +78,9 @@ def train():
                     sec_per_batch = float(duration)
 
                     format_str = '{}: step {}, loss = {:.3f}, psnr = {:.3f} ({:.1f} examples/sec; {:.3f} sec/batch)'
-                    print(format_str.format(datetime.now(), self.step, c_loss_value, psnr_value, examples_per_step, sec_per_batch))
+                    print(
+                        format_str.format(datetime.now(), self.step, c_loss_value, psnr_value, examples_per_step,
+                                          sec_per_batch))
 
         update_global_step = tf.assign(global_step_tensor, global_step_tensor + 1)
 
@@ -92,8 +91,9 @@ def train():
 
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
-                hooks=[tf.train.StopAtStepHook(num_steps=ARGS.max_steps),
-                       tf.train.NanTensorHook(l1_loss), _LoggerHook()],
+                hooks=[
+                    tf.train.StopAtStepHook(num_steps=ARGS.max_steps), tf.train.NanTensorHook(l1_loss), _LoggerHook()
+                ],
                 save_checkpoint_secs=60,
                 config=tf.ConfigProto(
                     gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.85),

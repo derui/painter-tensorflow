@@ -8,25 +8,13 @@ import concurrent.futures
 import cv2
 from .generator import init_sess, generate
 
-
 if __name__ == '__main__':
-    argparser = argparse.ArgumentParser(
-        description='Generate line art from the image')
+    argparser = argparse.ArgumentParser(description='Generate line art from the image')
     argparser.add_argument('input_dir', type=str, help='input image')
     argparser.add_argument('output_dir', type=str, help='name of output image')
-    argparser.add_argument(
-        '--train_dir',
-        default='./log',
-        type=str,
-        help='Directory will have been saving checkpoint')
-    argparser.add_argument(
-        '--image_size',
-        default=128,
-        type=int)
-    argparser.add_argument(
-        '--batch_size',
-        default=30,
-        type=int)
+    argparser.add_argument('--train_dir', default='./log', type=str, help='Directory will have been saving checkpoint')
+    argparser.add_argument('--image_size', default=128, type=int)
+    argparser.add_argument('--batch_size', default=30, type=int)
 
     ARGS = argparser.parse_args()
 
@@ -74,8 +62,7 @@ if __name__ == '__main__':
     rest_input_files = input_files[-1]
     input_files = input_files[:-1]
 
-    sess, op, ps = init_sess(ARGS.batch_size, ARGS.image_size, ARGS.image_size,
-                             ARGS.train_dir)
+    sess, op, ps = init_sess(ARGS.batch_size, ARGS.image_size, ARGS.image_size, ARGS.train_dir)
     for i in range(len(input_files)):
         files = input_files[i]
         images = [cv2.imread(f) for f in files]
@@ -85,13 +72,11 @@ if __name__ == '__main__':
 
         images = generate(sess, op, ps, images)
         write_images(zip(images, files), ARGS.output_dir)
-        print("{}: Finished batch {}".format(datetime.now(), i+1))
+        print("{}: Finished batch {}".format(datetime.now(), i + 1))
 
     sess.close()
 
-    sess, op, ps = init_sess(len(rest_input_files), ARGS.image_size, ARGS.image_size,
-                             ARGS.train_dir,
-                             reuse=True)
+    sess, op, ps = init_sess(len(rest_input_files), ARGS.image_size, ARGS.image_size, ARGS.train_dir, reuse=True)
     images = [cv2.imread(f) for f in rest_input_files]
     images = [cv2.cvtColor(image, cv2.COLOR_BGR2RGB) for image in images]
     images = [image.astype(np.float32) for image in images]

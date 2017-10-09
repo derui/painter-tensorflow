@@ -17,15 +17,11 @@ def cropped_image(origin, size):
 
 
 def dataset_input_fn(data_dir, tfrecord, batch_size, size, distorted=True):
-    file_names = [
-        str(pathlib.Path(data_dir) / tfrecord)
-    ]
+    file_names = [str(pathlib.Path(data_dir) / tfrecord)]
 
     def read_pair(record):
 
-        features = tf.parse_single_example(record, {
-            'original': tf.FixedLenFeature([], tf.string),
-        })
+        features = tf.parse_single_example(record, {'original': tf.FixedLenFeature([], tf.string), })
 
         original = tf.image.decode_png(features['original'], channels=3)
 
