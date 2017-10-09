@@ -4,7 +4,7 @@ import math
 import numpy as np
 import argparse
 import tensorflow as tf
-from .model import model
+from . import model
 import cv2
 
 argparser = argparse.ArgumentParser(

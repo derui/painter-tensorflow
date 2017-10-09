@@ -2,12 +2,9 @@
 
 import os
 from datetime import datetime
-import math
 import numpy as np
 import argparse
-import tensorflow as tf
 import concurrent.futures
-from .model import model
 import cv2
 from .generator import init_sess, generate
 

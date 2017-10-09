@@ -5,9 +5,10 @@ import time
 from datetime import datetime
 from tensorflow.python.client import timeline
 import tensorflow as tf
-from .model import model
+from . import model
 
-from . import tf_dataset_input as dataset
+from .lib import tf_dataset_input as dataset
+from tflib import parameter
 
 argparser = argparse.ArgumentParser(description='Learning painter model')
 argparser.add_argument('--batch_size', default=15, type=int, help='Batch size')
@@ -29,6 +30,9 @@ ARGS = argparser.parse_args()
 def train():
 
     with tf.Graph().as_default():
+        learning_rate_v = parameter.UpdatableParameter(ARGS.learning_rate, 0.1)
+
+        learning_rate = tf.placeholder(tf.float32, shape=[])
         global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
         with tf.device('/cpu:0'):
@@ -44,7 +48,8 @@ def train():
         lmap = model.loss_map(line_art, ARGS.bins, ARGS.alpha, ARGS.beta)
         loss = model.loss(line_art, encoded, lmap)
 
-        training = model.training(loss, learning_rate=ARGS.learning_rate, global_step=global_step_tensor, var_list=None)
+        training = model.training(loss, learning_rate=learning_rate,
+                                  global_step=global_step_tensor, var_list=None)
 
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime """
@@ -80,6 +85,8 @@ def train():
             run_options.trace_level = tf.RunOptions.FULL_TRACE
         run_metadata = tf.RunMetadata()
 
+        lr_updater = parameter.PerEpochLossUpdater(learning_rate_v, steps_per_epoch=1000)
+
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
                 hooks=[tf.train.StopAtStepHook(num_steps=ARGS.max_steps), tf.train.NanTensorHook(loss), _LoggerHook()],
@@ -88,7 +95,9 @@ def train():
                     gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.85),
                     log_device_placement=ARGS.log_device_placement)) as sess:
             while not sess.should_stop():
-                sess.run(training, options=run_options, run_metadata=run_metadata)
+                _, loss_v = sess.run([training, loss], options=run_options, run_metadata=run_metadata)
+
+                lr_updater(loss_v)
 
 
 if __name__ == '__main__':
