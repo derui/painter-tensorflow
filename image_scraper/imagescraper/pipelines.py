@@ -15,12 +15,13 @@ ITEM_MIN_SIZES = {'w': 300, 'h': 300}
 IGNORE_TAGS = [
     re.compile('comic'),
     re.compile('monochrome'),
-    re.compile('tagme'),
     re.compile('translation request'),
     re.compile('greyscale'),
     re.compile('text'),
     re.compile('commentary'),
     re.compile('4coma'),
+    re.compile('^photo$'),
+    re.compile('^real$'),
 ]
 
 
