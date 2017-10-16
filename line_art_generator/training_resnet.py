@@ -5,14 +5,14 @@ import time
 from datetime import datetime
 from tensorflow.python.client import timeline
 import tensorflow as tf
-from .lib.model import basic as model
+from .lib.model import resnet as model
 
 from .lib import tf_dataset_input as dataset
 from tflib import parameter
 
 argparser = argparse.ArgumentParser(description='Learning painter model')
 argparser.add_argument('--batch_size', default=15, type=int, help='Batch size')
-argparser.add_argument('--learning_rate', default=0.0002, type=float, help="learning rate[0.0002]")
+argparser.add_argument('--learning_rate', default=0.0001, type=float, help="learning rate[0.0002]")
 argparser.add_argument('--dataset_dir', type=str, required=True, help='Directory contained datasets')
 argparser.add_argument('--train_dir', default='./log', type=str, help='Directory will have been saving checkpoint')
 argparser.add_argument('--max_steps', default=20000, type=int, help='number of maximum steps')
@@ -45,6 +45,8 @@ def train():
         tf.summary.image('encoded', encoded)
         tf.summary.image('painted', painted)
         tf.summary.image('line_art', line_art)
+
+        tf.summary.scalar('learning_rate', learning_rate_v())
 
         lmap = model.loss_map(line_art, ARGS.bins, ARGS.alpha, ARGS.beta)
         loss = model.loss(line_art, encoded, lmap)
@@ -95,7 +97,8 @@ def train():
                     gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.85),
                     log_device_placement=ARGS.log_device_placement)) as sess:
             while not sess.should_stop():
-                _, loss_v = sess.run([training, loss], options=run_options, run_metadata=run_metadata)
+                _, loss_v = sess.run([training, loss], options=run_options, run_metadata=run_metadata,
+                                     feed_dict={learning_rate: learning_rate_v()})
 
                 lr_updater(loss_v)
 

@@ -4,7 +4,7 @@ import math
 import numpy as np
 import argparse
 import tensorflow as tf
-from . import model
+from .lib.model import basic as model
 import cv2
 
 argparser = argparse.ArgumentParser(description='Generate line art from the image')

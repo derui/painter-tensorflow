@@ -36,7 +36,7 @@ def distorted_image(origin, wire):
     return origin, wire
 
 
-def inputs(directory, batch_size, size, distorted=True):
+def dataset_input_fn(directory, batch_size, size, distorted=True):
     def read_pair(record):
         features = tf.parse_single_example(record, {
             'painted': tf.FixedLenFeature([], tf.string),
@@ -46,18 +46,18 @@ def inputs(directory, batch_size, size, distorted=True):
         painted = tf.image.decode_png(features['painted'], channels=3)
         line_art = tf.image.decode_png(features['line_art'], channels=1)
 
-        reshaped_o_image, reshaped_w_image = cropped_image(painted, line_art, [size, size])
+        painted, line_art = cropped_image(painted, line_art, [size, size])
         if distorted:
-            reshaped_o_image, reshaped_w_image = distorted_image(reshaped_o_image, reshaped_w_image)
+            painted, line_art = distorted_image(painted, line_art)
 
-        reshaped_o_image = tf.cast(reshaped_o_image, tf.float32)
-        reshaped_o_image = tf.multiply(reshaped_o_image, 1 / 255.0)
-        reshaped_w_image = tf.cast(reshaped_w_image, tf.float32)
-        reshaped_w_image = tf.multiply(reshaped_w_image, 1 / 255.0)
+        painted = tf.cast(painted, tf.float32)
+        painted = tf.multiply(painted, 1 / 255.0)
+        line_art = tf.cast(line_art, tf.float32)
+        line_art = tf.multiply(line_art, 1 / 255.0)
 
-        return {'painted': painted, 'line_arg': line_art}
+        return {'painted': painted, 'line_art': line_art}
 
-    file_names = [str(pathlib.Path(directory) / "train.tfrecords")]
+    file_names = [str(pathlib.Path(directory) / "out.tfrecords")]
 
     dataset = tf.contrib.data.TFRecordDataset(file_names)
     dataset = dataset.map(read_pair)

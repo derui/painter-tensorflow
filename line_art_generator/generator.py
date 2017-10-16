@@ -2,7 +2,7 @@
 
 import math
 import tensorflow as tf
-from . import model
+from .lib.model import basic as model
 
 
 def init_sess(batch_size, height, width, train_dir, reuse=False):

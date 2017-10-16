@@ -98,7 +98,7 @@ def loss_map(target, bins, alpha, beta):
         normalized = tf.floor(patches * bins) / bins
 
         # make histogram and suppress illegal histogram
-        hist = tf.reshape(normalized[:, :, :, 12], target.get_shape())
+        hist = tf.reshape(normalized[:, :, :, 12], [-1] + target.shape.as_list[1:])
         hist = tf.where(tf.equal(minimum, maximum), minimum, hist)
 
         ones = tf.ones_like(target)
