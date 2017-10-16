@@ -1,14 +1,11 @@
 # coding: utf-8
 
 import argparse
-import pathlib
 import time
 from datetime import datetime
 from tensorflow.python.client import timeline
 import tensorflow as tf
 from .lib.model import model_wgan as model
-from image_tag_embedding.tools import util as vocabutil
-from image_tag_embedding.lib.model import model as embmodel
 
 from .lib import tf_dataset_input
 
@@ -24,22 +21,12 @@ argparser.add_argument('--max_steps', default=200000, type=int, help='number of 
 argparser.add_argument('--full_trace', default=False, type=bool, help='Enable full trace of gpu')
 argparser.add_argument('--log_device_placement', default=False, type=bool, help='manage logging log_device_placement')
 
-argparser.add_argument(
-    '--embedding_dir',
-    default='./checkpoints/image_tag_embedding',
-    type=str,
-    help='Directory contained embedding dataset ')
-argparser.add_argument('--max_document_length', type=int, help='max document length')
-argparser.add_argument('--vocab', type=str, help='vocabulary file')
-
 ARGS = argparser.parse_args()
 
-EMBEDDING_SIZE = 300
+NOISE_SIZE = 128
 
 
 def train():
-    vocab = vocabutil.Vocabulary()
-    vocab.load(str(pathlib.Path(ARGS.vocab)))
 
     with tf.Graph().as_default():
         SIZE = 128
@@ -48,32 +35,29 @@ def train():
         with tf.device('/cpu:0'):
             gradient_factor = tf.random_uniform([ARGS.batch_size, 1], 0.0, 1.0)
             global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
-            embedding = tf.get_variable("embedding", [len(vocab), EMBEDDING_SIZE], trainable=False, dtype=tf.float32)
 
-            original, x, tags = tf_dataset_input.dataset_input_fn(
-                ARGS.dataset_dir, ARGS.batch_size, ARGS.max_document_length, distorted=False)
-            lookupped = tf.nn.embedding_lookup(embedding, tags)
-            lookupped = tf.expand_dims(lookupped, -1)
+            noise_base = tf.random_uniform([ARGS.batch_size, NOISE_SIZE], minval=-1.0, maxval=1.0, dtype=tf.float32)
+
+            original, x = tf_dataset_input.dataset_input_fn(
+                ARGS.dataset_dir, ARGS.batch_size, distorted=False)
 
             original = tf.image.resize_images(original, (SIZE, SIZE))
             x = tf.image.resize_images(x, (SIZE, SIZE))
 
-        encoded_emb = embmodel.embedding_encoder(lookupped, False)
-
         with tf.variable_scope('generator'):
-            G = model.generator(x, encoded_emb)
+            G = model.generator(x, noise_base)
 
         with tf.variable_scope('critic'):
-            C = model.critic(x, original, encoded_emb)
+            C = model.critic(x, original)
 
         with tf.variable_scope('critic', reuse=True):
-            C_G = model.critic(x, G, encoded_emb)
+            C_G = model.critic(x, G)
 
             _original = tf.reshape(original, [-1, DIM])
             _G = tf.reshape(G, [-1, DIM])
             penalty_image = _original + (gradient_factor * (_G - _original))
             _penalty_image = tf.reshape(penalty_image, [-1, SIZE, SIZE, 3])
-            C_P = model.critic(x, _penalty_image, encoded_emb)
+            C_P = model.critic(x, _penalty_image)
 
         gradient_penalty = model.gradient_penalty(C_P, _penalty_image, ARGS.lambda_)
         c_loss = model.c_loss(C, C_G)
@@ -142,10 +126,6 @@ def train():
             run_options.trace_level = tf.RunOptions.FULL_TRACE
         run_metadata = tf.RunMetadata()
 
-        saver = tf.train.Saver(var_list=[embedding])
-        ckpt = tf.train.get_checkpoint_state(ARGS.embedding_dir)
-        embedding_saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, "embedding_encoder"))
-
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
                 hooks=[
@@ -155,9 +135,6 @@ def train():
                 config=tf.ConfigProto(
                     gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.85),
                     log_device_placement=ARGS.log_device_placement)) as sess:
-
-            saver.restore(sess, ckpt.model_checkpoint_path)
-            embedding_saver.restore(sess, ckpt.model_checkpoint_path)
 
             while not sess.should_stop():
 

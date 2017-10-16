@@ -48,7 +48,7 @@ class Generator(object):
         self.deconv0 = op.Encoder(64, 3, 3, 3, name='decoder0')
 
 
-def generator(image, embedding):
+def generator(image, noise):
     """Make construction layer.
     """
     channels = image.shape.as_list()[3]
@@ -66,10 +66,8 @@ def generator(image, embedding):
     conv7 = relu(gen.bnc7(gen.conv7(conv6)))
     conv8 = relu(gen.bnc8(gen.conv8(conv7)))
 
-    emb_shape = embedding.shape.as_list()
-    linear = gen.linear(embedding, emb_shape[1])
     shape = conv8.shape.as_list()
-    replicated = tf.tile(tf.reshape(linear, [-1, 1, 1, 128]), [1, shape[1], shape[2], 1])
+    replicated = tf.tile(tf.reshape(noise, [-1, 1, 1, 128]), [1, shape[1], shape[2], 1])
 
     deconv8 = relu(gen.bnd8(gen.deconv8(tf.concat([conv8, conv7, replicated], 3))))
     deconv7 = relu(gen.bnd7(gen.deconv7(deconv8)))
@@ -100,30 +98,24 @@ class Critic(object):
         self.conv7 = op.Encoder(256, 512, 3, 3, name='encoder7', strides=[1, 2, 2, 1])
 
         self.fully_connect = op.Dense("fully_connect1")
-        self.linear = op.LinearEncoder(128)
 
-    def __call__(self, tensor, embedding):
+    def __call__(self, tensor):
         net = tf.nn.relu(self.ln1(self.conv1(tensor)))
         net = tf.nn.relu(self.ln3(self.conv3(net)))
         net = tf.nn.relu(self.ln5(self.conv5(net)))
         net = tf.nn.relu(self.ln7(self.conv7(net)))
 
-        shape = net.shape.as_list()
-        emb_shape = embedding.shape.as_list()
-        linear = self.linear(embedding, emb_shape[1])
-        replicated = tf.tile(tf.reshape(linear, [-1, 1, 1, 128]), [1, shape[1], shape[2], 1])
-
-        net = self.fully_connect(tf.concat([net, replicated], 3), 1)
+        net = self.fully_connect(net, 1)
 
         return tf.reshape(net, [-1])
 
 
-def critic(base, originals, embedding):
+def critic(base, originals):
     """make critic network"""
 
     chan = originals.shape.as_list()[3] + base.shape.as_list()[3]
     C = Critic(chan)
-    logit = C(tf.concat([base, originals], 3), embedding)
+    logit = C(tf.concat([base, originals], 3))
 
     return logit
 

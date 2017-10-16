@@ -53,7 +53,7 @@ def _generate_pair_batch(pair, min_queue_examples, batch_size, shuffle):
     return images
 
 
-def inputs(data_dir, batch_size, max_document_length, distorted=True):
+def dataset_input_fn(data_dir, batch_size, distorted=True):
     file_names = []
     for (root, _, files) in os.walk(data_dir):
         for f in files:
@@ -64,7 +64,6 @@ def inputs(data_dir, batch_size, max_document_length, distorted=True):
         features = tf.parse_single_example(record, {
             'original': tf.FixedLenFeature([], tf.string),
             'line_art': tf.FixedLenFeature([], tf.string),
-            'tags': tf.FixedLenFeature([max_document_length], tf.int64),
         })
 
         original = tf.image.decode_png(features['original'], channels=3)
@@ -82,7 +81,7 @@ def inputs(data_dir, batch_size, max_document_length, distorted=True):
         line_art = tf.multiply(line_art, 1 / 255.0)
         line_art = tf.multiply(line_art, 2) - 1.0
 
-        return {'original': original, 'line_art': line_art, 'tags': features['tags']}
+        return {'original': original, 'line_art': line_art}
 
     dataset = tf.contrib.data.TFRecordDataset(file_names)
     dataset = dataset.map(read_pair)
