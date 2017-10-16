@@ -4,7 +4,7 @@ import math
 import cv2 as cv
 
 
-def resize_image(img, fixed_size):
+def resize_image(img, fixed_size, crop=False):
 
     correct_size = get_corrected_size(fixed_size, img.shape[1], img.shape[0])
 
@@ -13,8 +13,9 @@ def resize_image(img, fixed_size):
     else:
         img_resized = cv.resize(img, correct_size, interpolation=cv.INTER_CUBIC)
 
-    # img_cropped = img_resized[0:fixed_size, 0:fixed_size]
-    # return img_cropped
+    if crop:
+        img_cropped = img_resized[0:fixed_size, 0:fixed_size]
+        return img_cropped
     return img_resized
 
 

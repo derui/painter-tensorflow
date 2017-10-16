@@ -11,6 +11,7 @@ argparser.add_argument('input_dir', type=str, help='the directory of image to re
 argparser.add_argument('-d', dest='out_dir', type=str, required=True)
 argparser.add_argument('-e', dest='excludes_dir', type=str)
 argparser.add_argument('-s', '--size', dest='size', type=int)
+argparser.add_argument('--crop', action='store_true')
 
 args = argparser.parse_args()
 
@@ -38,7 +39,7 @@ def write_image(img, out_path):
 
 def process(img):
 
-    return util.resize_image(img, FIXED_SIZE)
+    return util.resize_image(img, FIXED_SIZE, args.crop)
 
 
 def to_out_path(out_dir, f):

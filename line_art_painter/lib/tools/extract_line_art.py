@@ -5,7 +5,6 @@ from datetime import datetime
 import numpy as np
 import cv2 as cv
 import concurrent.futures
-import queue
 from . import util
 from tflib import util as tfutil
 
