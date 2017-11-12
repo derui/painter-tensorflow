@@ -12,7 +12,7 @@ from tflib import parameter
 
 argparser = argparse.ArgumentParser(description='Learning painter model')
 argparser.add_argument('--batch_size', default=15, type=int, help='Batch size')
-argparser.add_argument('--learning_rate', default=0.0001, type=float, help="learning rate[0.0002]")
+argparser.add_argument('--learning_rate', default=0.0002, type=float, help="learning rate[0.0002]")
 argparser.add_argument('--dataset_dir', type=str, required=True, help='Directory contained datasets')
 argparser.add_argument('--train_dir', default='./log', type=str, help='Directory will have been saving checkpoint')
 argparser.add_argument('--max_steps', default=20000, type=int, help='number of maximum steps')
@@ -30,7 +30,7 @@ ARGS = argparser.parse_args()
 def train():
 
     with tf.Graph().as_default():
-        learning_rate_v = parameter.UpdatableParameter(ARGS.learning_rate, 0.1)
+        learning_rate_v = parameter.UpdatableParameter(ARGS.learning_rate, 0.5)
 
         learning_rate = tf.placeholder(tf.float32, shape=[])
         global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
@@ -46,7 +46,7 @@ def train():
         tf.summary.image('painted', painted)
         tf.summary.image('line_art', line_art)
 
-        tf.summary.scalar('learning_rate', learning_rate_v())
+        tf.summary.scalar('learning_rate', learning_rate)
 
         lmap = model.loss_map(line_art, ARGS.bins, ARGS.alpha, ARGS.beta)
         loss = model.loss(line_art, encoded, lmap)

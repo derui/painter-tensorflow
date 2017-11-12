@@ -32,7 +32,7 @@ def distorted_image(origin, wire):
     wire = tf.where(ud_where, wire, tf.image.flip_up_down(wire))
 
     origin = tf.image.random_hue(origin, max_delta=0.5)
-    # origin = tf.image.random_contrast(origin, 0.5, 1.0)
+    origin = tf.image.random_contrast(origin, 0.5, 1.0)
     return origin, wire
 
 
