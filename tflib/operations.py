@@ -224,21 +224,22 @@ class Dense(object):
 
 
 class ResNet(object):
-    def __init__(self, channels, name, layers=2, activation=tf.nn.relu):
+    def __init__(self, channels, name, patch_size=3, layers=2, activation=tf.nn.relu):
         self._net_list = []
 
         for i in range(layers):
             v = {}
-            v['conv'] = Encoder(channels, channels, 1, 1, name='layer.{}'.format(i))
+            v['conv'] = Encoder(channels, channels, patch_size, patch_size,
+                                name='{}.layer.{}'.format(name, i))
             v['activation'] = activation
-
-        self.normalization = BatchNormalization(name='{}.bnc'.format(name))
+            v['normalization'] = BatchNormalization(name='{}.layer.{}.bnc'.format(name, i))
+            self._net_list.append(v)
 
     def __call__(self, tensor):
 
         net = shortcut = tensor
-        for layer in self._net_list:
-            net = layer['activation'](layer['conv'](net))
+        for layer in self._net_list[:-1]:
+            net = layer['activation'](layer['normalization'](layer['conv'](net)))
 
-        net = self.normalization(net)
-        return shortcut + net
+        layer = self._net_list[-1]
+        return shortcut + layer['normalization'](layer['conv'](net))
