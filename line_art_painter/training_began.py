@@ -33,8 +33,6 @@ def train():
 
         with tf.device('/cpu:0'):
             original, x = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, ARGS.batch_size)
-            # original = tf.image.resize_images(original, [128, 128])
-            # x = tf.image.resize_images(x, [128, 128])
 
         with tf.variable_scope('generator'):
             G = model.generator(x, 128, 128, 1, ARGS.batch_size)
