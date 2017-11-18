@@ -85,7 +85,7 @@ def generator(image, noise):
 
 
 class Discriminator(object):
-    def __init__(self, channels, batch_size):
+    def __init__(self, channels):
         self.bnc0 = op.BatchNormalization(name='bnc0')
         self.bnc1 = op.BatchNormalization(name='bnc1')
         self.bnc2 = op.BatchNormalization(name='bnc2')
@@ -110,11 +110,12 @@ class Discriminator(object):
         self.fully_unconnect = op.Dense('fully_unconnect')
 
 
-def discriminator(img, height, width, channels, batch_size):
+def discriminator(img):
     """Make construction layer.
     """
 
-    D = Discriminator(channels, batch_size)
+    channels = img.shape.as_list()[3]
+    D = Discriminator(channels)
 
     relu = tf.nn.relu
 
@@ -123,8 +124,9 @@ def discriminator(img, height, width, channels, batch_size):
     net = relu(D.conv3(net))
 
     _, h, w, c = net.get_shape().as_list()
-    net = D.fully_connect(net, h * w * c, 512)
-    net = D.fully_unconnect(net, 512, h * w * c)
+    net = D.fully_connect(net, 512)
+    print(net.shape.as_list())
+    net = D.fully_unconnect(net, h * w * c)
     net = tf.reshape(net, [-1, h, w, c])
 
     net = relu(D.deconv3(net))
@@ -143,8 +145,8 @@ def d_loss(real, real_pred, gen, gen_pred, gain):
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
-    real_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1, 2, 3])
-    gen_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1, 2, 3])
+    real_loss = tf.reduce_sum(tf.abs(real - real_pred), axis=[1, 2, 3])
+    gen_loss = tf.reduce_sum(tf.abs(gen - gen_pred), axis=[1, 2, 3])
 
     loss = tf.reduce_mean(real_loss - gen_loss * gain)
     return loss
@@ -155,20 +157,20 @@ def g_loss(gen, gen_pred, original):
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
-    original_loss = tf.reduce_mean(tf.square(gen - original), axis=[1, 2, 3])
-    g_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1, 2, 3])
+    original_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(gen - original), axis=[1, 2, 3]))
+    g_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(gen - gen_pred), axis=[1, 2, 3]))
 
-    loss = tf.reduce_mean(g_loss + original_loss)
+    loss = g_loss + original_loss
     return loss
 
 
 def balanced_d_loss(real, real_pred, gen, gen_pred, balance):
     """Calculate balanced D loss.
     """
-    real_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1, 2, 3])
-    gen_loss = tf.reduce_mean(tf.abs(gen - gen_pred), axis=[1, 2, 3])
+    real_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(real - real_pred), axis=[1, 2, 3]))
+    gen_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(gen - gen_pred), axis=[1, 2, 3]))
 
-    loss = tf.reduce_mean(balance * real_loss - gen_loss)
+    loss = balance * real_loss - gen_loss
     return loss
 
 

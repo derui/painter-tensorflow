@@ -8,6 +8,7 @@ import tensorflow as tf
 from .lib.model import model_began as model
 
 from .lib import tf_dataset_input
+from tflib import parameter
 
 argparser = argparse.ArgumentParser(description='Learning painter model')
 argparser.add_argument('--batch_size', default=16, type=int, help='Batch size')
@@ -25,23 +26,29 @@ argparser.add_argument('--balance', default=0.5, type=float, help="equilibrium b
 
 ARGS = argparser.parse_args()
 
+NOISE_SIZE = 128
+
 
 def train():
     with tf.Graph().as_default():
 
+        learning_rate_v = parameter.UpdatableParameter(ARGS.learning_rate, 0.1)
+
+        learning_rate = tf.placeholder(tf.float32, shape=[])
         gain = tf.Variable(initial_value=0, trainable=False, dtype=tf.float32)
 
         with tf.device('/cpu:0'):
             original, x = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, ARGS.batch_size)
+            noise_base = tf.random_uniform([ARGS.batch_size, NOISE_SIZE], minval=-1.0, maxval=1.0, dtype=tf.float32)
 
         with tf.variable_scope('generator'):
-            G = model.generator(x, 128, 128, 1, ARGS.batch_size)
+            G = model.generator(x, noise_base)
 
         with tf.variable_scope('discriminator'):
-            D = model.discriminator(original, 128, 128, 3, ARGS.batch_size)
+            D = model.discriminator(original)
 
         with tf.variable_scope('discriminator', reuse=True):
-            D_G = model.discriminator(G, 128, 128, 3, ARGS.batch_size)
+            D_G = model.discriminator(G)
 
         g_loss = model.g_loss(G, D_G, original)
         d_loss = model.d_loss(original, D, G, D_G, gain)
@@ -66,7 +73,7 @@ def train():
             d_trainer = model.Trainer()
             d_training = d_trainer(
                 d_loss,
-                learning_rate=ARGS.learning_rate,
+                learning_rate=learning_rate,
                 beta1=ARGS.beta1,
                 var_list=tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator'))
 
@@ -118,6 +125,8 @@ def train():
             run_options.trace_level = tf.RunOptions.FULL_TRACE
         run_metadata = tf.RunMetadata()
 
+        lr_updater = parameter.PerEpochLossUpdater(learning_rate_v, steps_per_epoch=1000)
+
         with tf.train.MonitoredTrainingSession(
                 checkpoint_dir=ARGS.train_dir,
                 hooks=[
@@ -128,10 +137,12 @@ def train():
 
             while not sess.should_stop():
 
-                sess.run(
-                    [d_training, g_training, update_gain, update_global_step],
+                _, _, _, _, loss_v = sess.run(
+                    [d_training, g_training, update_gain, update_global_step, d_loss],
                     options=run_options,
                     run_metadata=run_metadata)
+
+                lr_updater(loss_v)
 
 
 if __name__ == '__main__':

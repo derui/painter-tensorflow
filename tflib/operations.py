@@ -214,8 +214,10 @@ class Dense(object):
         self.name = name
 
     def __call__(self, tensor, out_ch):
-        _, w, h, c = tensor.shape.as_list()
-        in_ch = w * h * c
+        shape = tensor.shape.as_list()
+        in_ch = 1
+        for v in shape[1:]:
+            in_ch *= v
         weight = weight_variable([in_ch, out_ch], name="{}_weight".format(self.name))
         bias = bias_variable([out_ch], name='{}_bias'.format(self.name))
         conv = tf.nn.bias_add(tf.matmul(tf.reshape(tensor, [-1, in_ch]), weight), bias)
