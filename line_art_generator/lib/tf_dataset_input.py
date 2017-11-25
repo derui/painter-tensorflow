@@ -32,7 +32,7 @@ def distorted_image(origin, wire):
     wire = tf.where(ud_where, wire, tf.image.flip_up_down(wire))
 
     origin = tf.image.random_hue(origin, max_delta=0.5)
-    origin = tf.image.random_contrast(origin, 0.5, 1.0)
+    # origin = tf.image.random_contrast(origin, 0.5, 1.0)
     return origin, wire
 
 
@@ -59,8 +59,8 @@ def dataset_input_fn(directory, batch_size, size, distorted=True):
 
     file_names = [str(pathlib.Path(directory) / "out.tfrecords")]
 
-    dataset = tf.contrib.data.TFRecordDataset(file_names)
-    dataset = dataset.map(read_pair)
+    dataset = tf.data.TFRecordDataset(file_names)
+    dataset = dataset.map(read_pair, num_parallel_calls=8).prefetch(batch_size)
     dataset = dataset.shuffle(buffer_size=batch_size * 10)
     dataset = dataset.batch(batch_size)
     dataset = dataset.repeat()

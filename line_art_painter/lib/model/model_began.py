@@ -86,25 +86,34 @@ def generator(image, noise):
 
 class Discriminator(object):
     def __init__(self, channels):
-        self.bnc0 = op.BatchNormalization(name='bnc0')
         self.bnc1 = op.BatchNormalization(name='bnc1')
+        self.bnc1_f = op.BatchNormalization(name='bnc1_f')
         self.bnc2 = op.BatchNormalization(name='bnc2')
+        self.bnc2_f = op.BatchNormalization(name='bnc2_f')
+        self.bnc3 = op.BatchNormalization(name='bnc3')
+        self.bnc3_f = op.BatchNormalization(name='bnc3_f')
 
-        self.bnd1 = op.BatchNormalization(name='bnc1')
-        self.bnd2 = op.BatchNormalization(name='bnc2')
-        self.bnd3 = op.BatchNormalization(name='bnc3')
+        self.bnd1 = op.BatchNormalization(name='bnd1')
+        self.bnd1_f = op.BatchNormalization(name='bnd1_f')
+        self.bnd2 = op.BatchNormalization(name='bnd2')
+        self.bnd2_f = op.BatchNormalization(name='bnd2_f')
+        self.bnd3 = op.BatchNormalization(name='bnd3')
+        self.bnd3_f = op.BatchNormalization(name='bnd3_f')
 
         self.conv1 = op.Encoder(channels, 64, 3, 3, strides=[1, 2, 2, 1], name='encoder1')
+        self.conv1_f1 = op.Encoder(64, 64, 3, 3, name="encoder1_f1")
         self.conv2 = op.Encoder(64, 128, 3, 3, strides=[1, 2, 2, 1], name='encoder2')
+        self.conv2_f1 = op.Encoder(128, 128, 3, 3, name="encoder2_f1")
         self.conv3 = op.Encoder(128, 256, 3, 3, strides=[1, 2, 2, 1], name='encoder3')
+        self.conv3_f1 = op.Encoder(256, 256, 3, 3, name="encoder3_f1")
 
         self.deconv3 = op.PixelShuffler(op.Encoder(256, 512, 3, 3, name='decoder3'), 128, 2)
         self.deconv3_f1 = op.Encoder(128, 128, 3, 3, name="decoder3_f1")
         self.deconv2 = op.PixelShuffler(op.Encoder(128, 256, 3, 3, name='decoder2'), 64, 2)
         self.deconv2_f1 = op.Encoder(64, 64, 3, 3, name="decoder2_f1")
-        self.deconv1 = op.PixelShuffler(op.Encoder(64, 256, 3, 3, name='decoder1'), 64, 2)
-        self.deconv1_f1 = op.Encoder(64, 64, 3, 3, name="decoder1_f1")
-        self.deconv0 = op.Encoder(64, 3, 3, 3, name="decoder0")
+        self.deconv1 = op.PixelShuffler(op.Encoder(64, 128, 3, 3, name='decoder1'), 32, 2)
+        self.deconv1_f1 = op.Encoder(32, 32, 3, 3, name="decoder1_f1")
+        self.deconv0 = op.Encoder(32, 3, 3, 3, name="decoder0")
 
         self.fully_connect = op.Dense('fully_connect')
         self.fully_unconnect = op.Dense('fully_unconnect')
@@ -119,22 +128,25 @@ def discriminator(img):
 
     relu = tf.nn.relu
 
-    net = relu(D.conv1(img))
-    net = relu(D.conv2(net))
-    net = relu(D.conv3(net))
+    net = img
+    net = relu(D.bnc1(D.conv1(net)))
+    net = relu(D.bnc1_f(D.conv1_f1(net)))
+    net = relu(D.bnc2(D.conv2(net)))
+    net = relu(D.bnc2_f(D.conv2_f1(net)))
+    net = relu(D.bnc3(D.conv3(net)))
+    net = relu(D.bnc3_f(D.conv3_f1(net)))
 
     _, h, w, c = net.get_shape().as_list()
-    net = D.fully_connect(net, 512)
-    print(net.shape.as_list())
+    net = D.fully_connect(net, 128)
     net = D.fully_unconnect(net, h * w * c)
     net = tf.reshape(net, [-1, h, w, c])
 
-    net = relu(D.deconv3(net))
-    net = relu(D.deconv3_f1(net))
-    net = relu(D.deconv2(net))
-    net = relu(D.deconv2_f1(net))
-    net = relu(D.deconv1(net))
-    net = relu(D.deconv1_f1(net))
+    net = relu(D.bnd3(D.deconv3(net)))
+    net = relu(D.bnd3_f(D.deconv3_f1(net)))
+    net = relu(D.bnd2(D.deconv2(net)))
+    net = relu(D.bnd2_f(D.deconv2_f1(net)))
+    net = relu(D.bnd1(D.deconv1(net)))
+    net = relu(D.bnd1_f(D.deconv1_f1(net)))
     net = tf.nn.tanh(D.deconv0(net))
 
     return net
@@ -145,8 +157,8 @@ def d_loss(real, real_pred, gen, gen_pred, gain):
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
-    real_loss = tf.reduce_sum(tf.abs(real - real_pred), axis=[1, 2, 3])
-    gen_loss = tf.reduce_sum(tf.abs(gen - gen_pred), axis=[1, 2, 3])
+    real_loss = tf.square(real - real_pred)
+    gen_loss = tf.square(gen - gen_pred)
 
     loss = tf.reduce_mean(real_loss - gen_loss * gain)
     return loss
@@ -157,26 +169,26 @@ def g_loss(gen, gen_pred, original):
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
-    original_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(gen - original), axis=[1, 2, 3]))
-    g_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(gen - gen_pred), axis=[1, 2, 3]))
+    penalty = tf.square(gen - original)
+    g_loss = tf.square(gen - gen_pred)
 
-    loss = g_loss + original_loss
+    loss = tf.reduce_mean(g_loss + penalty)
     return loss
 
 
 def balanced_d_loss(real, real_pred, gen, gen_pred, balance):
     """Calculate balanced D loss.
     """
-    real_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(real - real_pred), axis=[1, 2, 3]))
-    gen_loss = tf.reduce_mean(tf.reduce_sum(tf.abs(gen - gen_pred), axis=[1, 2, 3]))
+    real_loss = tf.square(real - real_pred)
+    gen_loss = tf.square(gen - gen_pred)
 
-    loss = balance * real_loss - gen_loss
+    loss = tf.reduce_mean(balance * real_loss - gen_loss)
     return loss
 
 
 def global_measure(real, real_pred, balanced_loss):
     # global convergence is calculated by |D(v) - D(G(v))|
-    d_loss = tf.reduce_mean(tf.abs(real - real_pred), axis=[1, 2, 3])
+    d_loss = tf.abs(real - real_pred)
     measure = tf.reduce_mean(d_loss + tf.abs(balanced_loss))
 
     return measure

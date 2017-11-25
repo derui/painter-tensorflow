@@ -5,7 +5,6 @@ from datetime import datetime
 import numpy as np
 import cv2 as cv
 import concurrent.futures
-from . import util
 from tflib import util as tfutil
 
 argparser = argparse.ArgumentParser(description='Extract edge layer of a color image')
@@ -30,19 +29,6 @@ def extract_edge(img):
     img_diff = cv.absdiff(img, img_dilate)
     img_diff_not = cv.bitwise_not(img_diff)
     img_diff_not = cv.cvtColor(img_diff_not, cv.COLOR_RGB2GRAY)
-
-    if FIXED_SIZE is not None:
-        img_diff_not = cv.adaptiveThreshold(img_diff_not, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 7, 8)
-        img_diff_not = util.resize_image(img_diff_not, FIXED_SIZE)
-        img_dilate = cv.erode(img_diff_not, neiborhood8, iterations=1)
-        img_dilate = cv.dilate(img_diff_not, neiborhood8, iterations=1)
-        img_diff = cv.absdiff(img_diff_not, img_dilate)
-        img_diff_not = cv.bitwise_not(img_diff)
-        # img_diff_not = cv.adaptiveThreshold(img_diff_not, 255,
-        #                                 cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-        #                                 cv.THRESH_BINARY, 7, 8)
-
-    img_diff_not = cv.cvtColor(img_diff_not, cv.COLOR_GRAY2RGB)
 
     return img_diff_not
 

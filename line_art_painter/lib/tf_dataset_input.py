@@ -28,31 +28,6 @@ def distorted_image(origin, wire):
     return origin, wire
 
 
-def _generate_pair_batch(pair, min_queue_examples, batch_size, shuffle):
-    """
-    Generate image pair batch. Return images of pair as (original, base).
-    """
-
-    num_preprocess_threads = 1
-
-    if shuffle:
-        images = tf.train.shuffle_batch(
-            pair,
-            batch_size=batch_size,
-            num_threads=num_preprocess_threads,
-            capacity=min_queue_examples + 3 * batch_size,
-            min_after_dequeue=min_queue_examples)
-
-    else:
-        images = tf.train.batch(
-            pair,
-            batch_size=batch_size,
-            num_threads=num_preprocess_threads,
-            capacity=min_queue_examples + 3 * batch_size)
-
-    return images
-
-
 def dataset_input_fn(data_dir, batch_size, distorted=True):
     file_names = []
     for (root, _, files) in os.walk(data_dir):
@@ -83,12 +58,12 @@ def dataset_input_fn(data_dir, batch_size, distorted=True):
 
         return {'original': original, 'line_art': line_art}
 
-    dataset = tf.contrib.data.TFRecordDataset(file_names)
-    dataset = dataset.map(read_pair)
-    dataset = dataset.shuffle(buffer_size=100)
+    dataset = tf.data.TFRecordDataset(file_names)
+    dataset = dataset.map(read_pair, num_parallel_calls=8)
+    dataset = dataset.shuffle(buffer_size=100*batch_size)
     dataset = dataset.batch(batch_size)
     dataset = dataset.repeat()
-    iterator = dataset.make_one_shot_iterator()
+    iterator = dataset.make_initializable_iterator()
 
     next_example = iterator.get_next()
-    return next_example['original'], next_example['line_art']
+    return iterator, next_example['original'], next_example['line_art']

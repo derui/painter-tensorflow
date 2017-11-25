@@ -32,13 +32,13 @@ NOISE_SIZE = 128
 def train():
     with tf.Graph().as_default():
 
-        learning_rate_v = parameter.UpdatableParameter(ARGS.learning_rate, 0.1)
+        learning_rate_v = parameter.UpdatableParameter(ARGS.learning_rate, 0.5)
 
         learning_rate = tf.placeholder(tf.float32, shape=[])
         gain = tf.Variable(initial_value=0, trainable=False, dtype=tf.float32)
 
         with tf.device('/cpu:0'):
-            original, x = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, ARGS.batch_size)
+            iterator, original, x = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, ARGS.batch_size)
             noise_base = tf.random_uniform([ARGS.batch_size, NOISE_SIZE], minval=-1.0, maxval=1.0, dtype=tf.float32)
 
         with tf.variable_scope('generator'):
@@ -68,6 +68,7 @@ def train():
         with tf.name_scope('measures'):
             tf.summary.scalar('convergence', measure)
             tf.summary.scalar('gain', gain)
+            tf.summary.scalar('learning_rate', learning_rate)
 
         with tf.name_scope('d_train'):
             d_trainer = model.Trainer()
@@ -134,11 +135,13 @@ def train():
                 ],
                 save_checkpoint_secs=60,
                 config=tf.ConfigProto(log_device_placement=ARGS.log_device_placement)) as sess:
+            sess.run(iterator.initializer)
 
             while not sess.should_stop():
 
                 _, _, _, _, loss_v = sess.run(
-                    [d_training, g_training, update_gain, update_global_step, d_loss],
+                    [d_training, g_training, update_gain, update_global_step, g_loss],
+                    feed_dict={learning_rate: learning_rate_v()},
                     options=run_options,
                     run_metadata=run_metadata)
 
