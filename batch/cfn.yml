@@ -1,0 +1,390 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: |
+  A template to create stack for running batch
+Parameters:
+  User:
+    Type: String
+    Description: Your IAM user name
+  Bucket:
+    Type: String
+    Description: Bucket name
+  ServiceName:
+    Type: String
+    Description: The name of service
+  SSHAllowedIp:
+    Type: String
+    Description: A IP cidr block to be enabled to access instance via ssh
+
+Resources:
+  # Create VPC
+  MainVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.1.0.0/24
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      InstanceTenancy: default
+      Tags:
+      - Key: Name
+        Value: !Ref ServiceName
+
+  # Create Public RouteTable
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+      - Key: Name
+        Value: !Sub
+          - ${Service}-public-route
+          - { Service: !Ref ServiceName}
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref MainVPC
+      Tags:
+      - Key: Name
+        Value: !Sub
+          - ${Service}-private-route
+          - { Service: !Ref ServiceName}
+
+    # Create Public Subnet A
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MainVPC
+      CidrBlock: 10.1.0.0/27
+      AvailabilityZone: "ap-northeast-1c"
+      Tags:
+      - Key: Name
+        Value: !Sub
+          - ${Service}-public-subnet
+          - { Service: !Ref ServiceName}
+
+  PubSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # create public subnet C
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MainVPC
+      CidrBlock: 10.1.0.32/27
+      AvailabilityZone: "ap-northeast-1c"
+      Tags:
+      - Key: Name
+        Value: !Sub
+          - ${Service}-private-subnet
+          - { Service: !Ref ServiceName}
+
+  PriSubnetCRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  # create security group
+  BastionSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref MainVPC
+      GroupDescription: "The sample security group for VPN "
+      SecurityGroupIngress: 
+        - IpProtocol: "tcp"
+          FromPort: "22"
+          ToPort: "22"
+          CidrIp: !Ref SSHAllowedIp
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !Ref MainVPC
+      GroupDescription: "The sample security group for VPN client on AWS"
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: "22"
+          ToPort: "22"
+          SourceSecurityGroupId: !Ref BastionSecurityGroup
+
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        -
+          PolicyName: !Sub
+            - ${Service}-instance-role
+            - { Service: !Ref ServiceName}
+
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "ecs:CreateCluster"
+                  - "ecs:DeregisterContainerInstance"
+                  - "ecs:DiscoverPollEndpoint"
+                  - "ecs:Poll"
+                  - "ecs:RegisterContainerInstance"
+                  - "ecs:StartTelemetrySession"
+                  - "ecs:UpdateContainerInstancesState"
+                  - "ecs:Submit*"
+                  - "ecr:GetAuthorizationToken"
+                  - "ecr:BatchCheckLayerAvailability"
+                  - "ecr:GetDownloadUrlForLayer"
+                  - "ecr:BatchGetImage"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: '/'
+      Roles:
+        - !Ref InstanceRole
+
+  JobRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "ecs-tasks.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        -
+          PolicyName: !Sub
+            - ${Service}-job-role
+            - { Service: !Ref ServiceName}
+
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "s3:*"
+                Resource:
+                  - !Sub "arn:aws:s3:::${Bucket}"
+                  - !Sub "arn:aws:s3:::${Bucket}/*"
+
+  # # create instance
+  # Bastion:
+  #   Type: AWS::EC2::Instance
+  #   DependsOn: PublicSubnet
+  #   Properties:
+  #     ImageId: ami-f173cc91
+  #     KeyName: !Ref KeyName
+  #     SourceDestCheck: "false"
+  #     SubnetId: !Ref PublicSubnet
+  #     InstanceType: t2.micro
+  #     IamInstanceProfile: !Ref InstanceProfile
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub
+  #           - ${Service}-bastion
+  #           - { Service: !Ref ServiceName}
+  #     SecurityGroupIds:
+  #       - !Ref BastionSecurityGroup
+
+  # BastionIp:
+  #   Type: "AWS::EC2::EIP"
+  #   Properties:
+  #     InstanceId: !Ref Bastion
+  #     Domain: vpc
+
+  # Create InternetGateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: !Sub
+          - ${Service}-igw
+          - { Service: !Ref ServiceName}
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MainVPC
+      InternetGatewayId: !Ref InternetGateway
+  myRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # Enable NAT Gateway
+  NatGatewayEip:
+    Type: "AWS::EC2::EIP"
+    Properties:
+      Domain: vpc
+
+  NatGateway:
+    Type: "AWS::EC2::NatGateway"
+    Properties: 
+      AllocationId: !GetAtt NatGatewayEip.AllocationId
+      SubnetId: !Ref PublicSubnet
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  ComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      Type: MANAGED
+      ServiceRole: !Sub "arn:aws:iam::${AWS::AccountId}:role/AWSBatchServiceRole"
+      ComputeEnvironmentName: C4OnDemand
+      ComputeResources:
+        MaxvCpus: 128
+        SecurityGroupIds:
+          - !Ref InstanceSecurityGroup
+        Type: EC2
+        Subnets:
+          - !Ref PrivateSubnet
+        MinvCpus: 0
+        ImageId: ami-a1b2c3d4
+        InstanceRole: ecsInstanceRole
+        InstanceTypes:
+          - c4.large
+          - c4.xlarge
+          - c4.2xlarge
+          - c4.4xlarge
+          - c4.8xlarge
+        Ec2KeyPair: batch-compute
+        Tags: {"Name": "Batch Instance - C4OnDemand"}
+        DesiredvCpus: 48
+      State: ENABLED
+
+  MyRepository: 
+    Type: "AWS::ECR::Repository"
+    Properties: 
+      RepositoryName: "image-convert"
+      RepositoryPolicyText:
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Sid: AllowPushPull
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:user/${User}"
+            Action: 
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:PutImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+          - 
+            Sid: AllowPull
+            Effect: Allow
+            Principal:
+              AWS: !GetAtt JobRole.Arn
+            Action: 
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+              - "ecr:BatchCheckLayerAvailability"
+
+  JobDefinitionForResize:
+    Type: 'AWS::Batch::JobDefinition'
+    Properties:
+      Type: container
+      JobDefinitionName: !Sub
+          - ${Service}-resize-image
+          - { Service: !Ref ServiceName}
+      Parameters:
+        Bucket: !Ref Bucket
+        ExcludeFiles: exclude.txt
+        Size: 128
+      ContainerProperties:
+        Command:
+          - python3
+          - -m
+          - resize_fix_size
+          - -b
+          - "Ref::Bucket"
+          - -d
+          - resized
+          - -e
+          - "Ref::ExcludeFiles"
+          - -s
+          - "Ref::Size"
+          - --crop
+          - "Ref::Prefix"
+        Memory: 200
+        JobRoleArn: !Ref JobRole
+        Vcpus: 1
+        Image: !Sub
+          - "${AWS::AccountId}.dkr.ecr.ap-northeast-1.amazonaws.com/${Repository}/image-converter"
+          - {"Repository": !Ref MyRepository}
+      RetryStrategy:
+        Attempts: 1
+
+  JobDefinitionForEdgeExtraction:
+    Type: 'AWS::Batch::JobDefinition'
+    Properties:
+      Type: container
+      JobDefinitionName: !Sub
+          - ${Service}-extract-edge
+          - { Service: !Ref ServiceName}
+      Parameters:
+        Bucket: !Ref Bucket
+        ExcludeFiles: exclude.txt
+      ContainerProperties:
+        Command:
+          - python3
+          - -m
+          - extract_line_art
+          - -b
+          - "Ref::Bucket"
+          - -d
+          - extracted
+          - -e
+          - "Ref::ExcludeFiles"
+          - "Ref::Prefix"
+        Memory: 200
+        JobRoleArn: !Ref JobRole
+        Vcpus: 1
+        Image: !Sub
+          - "${AWS::AccountId}.dkr.ecr.ap-northeast-1.amazonaws.com/${Repository}/image-converter"
+          - {"Repository": !Ref MyRepository}
+      RetryStrategy:
+        Attempts: 1
+
+  JobQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      ComputeEnvironmentOrder:
+        - Order: 1
+          ComputeEnvironment: !Ref ComputeEnvironment
+      State: ENABLED
+      Priority: 1
+      JobQueueName: HighPriority
