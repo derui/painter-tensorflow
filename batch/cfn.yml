@@ -377,7 +377,7 @@ Resources:
           - "Ref::Size"
           - --crop
           - "Ref::Prefix"
-        Memory: 300
+        Memory: 1000
         JobRoleArn: !Ref JobRole
         Vcpus: 1
         Image: !Sub
@@ -409,7 +409,7 @@ Resources:
           - -e
           - "Ref::ExcludeFiles"
           - "Ref::Prefix"
-        Memory: 300
+        Memory: 1000
         JobRoleArn: !Ref JobRole
         Vcpus: 1
         Image: !Sub
@@ -426,3 +426,4 @@ Resources:
           ComputeEnvironment: !Ref ComputeEnvironment
       State: ENABLED
       Priority: 1
+
