@@ -256,21 +256,58 @@ Resources:
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway
 
+  FleetRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "spotfleet.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        -
+          PolicyName: !Sub
+            - ${Service}-fleet-role
+            - { Service: !Ref ServiceName}
+
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: "Allow"
+                Action:
+                  - "ec2:DescribeImages"
+                  - "ec2:DescribeSubnets"
+                  - "ec2:RequestSpotInstances"
+                  - "ec2:TerminateInstances"
+                  - "ec2:DescribeInstanceStatus"
+                  - "iam:PassRole"
+                Resource:
+                  - "*"
+
   ComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
       Type: MANAGED
       ServiceRole: !Sub "arn:aws:iam::${AWS::AccountId}:role/AWSBatchServiceRole"
-      ComputeEnvironmentName: C4OnDemand
+      ComputeEnvironmentName: C4Spot
       ComputeResources:
+        SpotIamFleetRole: !GetAtt FleetRole.Arn
+        BidPercentage: 100
         MaxvCpus: 128
         SecurityGroupIds:
           - !Ref InstanceSecurityGroup
-        Type: EC2
+        Type: SPOT
         Subnets:
           - !Ref PrivateSubnet
         MinvCpus: 0
-        ImageId: ami-a1b2c3d4
+        ImageId: ami-cb3a8cad
         InstanceRole: ecsInstanceRole
         InstanceTypes:
           - c4.large
@@ -324,6 +361,7 @@ Resources:
         Bucket: !Ref Bucket
         ExcludeFiles: exclude.txt
         Size: 128
+        Prefix: ""
       ContainerProperties:
         Command:
           - python3
@@ -339,11 +377,11 @@ Resources:
           - "Ref::Size"
           - --crop
           - "Ref::Prefix"
-        Memory: 200
+        Memory: 300
         JobRoleArn: !Ref JobRole
         Vcpus: 1
         Image: !Sub
-          - "${AWS::AccountId}.dkr.ecr.ap-northeast-1.amazonaws.com/${Repository}/image-converter"
+          - "${AWS::AccountId}.dkr.ecr.ap-northeast-1.amazonaws.com/${Repository}:latest"
           - {"Repository": !Ref MyRepository}
       RetryStrategy:
         Attempts: 1
@@ -358,6 +396,7 @@ Resources:
       Parameters:
         Bucket: !Ref Bucket
         ExcludeFiles: exclude.txt
+        Prefix: ""
       ContainerProperties:
         Command:
           - python3
@@ -370,11 +409,11 @@ Resources:
           - -e
           - "Ref::ExcludeFiles"
           - "Ref::Prefix"
-        Memory: 200
+        Memory: 300
         JobRoleArn: !Ref JobRole
         Vcpus: 1
         Image: !Sub
-          - "${AWS::AccountId}.dkr.ecr.ap-northeast-1.amazonaws.com/${Repository}/image-converter"
+          - "${AWS::AccountId}.dkr.ecr.ap-northeast-1.amazonaws.com/${Repository}:latest"
           - {"Repository": !Ref MyRepository}
       RetryStrategy:
         Attempts: 1
@@ -387,4 +426,3 @@ Resources:
           ComputeEnvironment: !Ref ComputeEnvironment
       State: ENABLED
       Priority: 1
-      JobQueueName: HighPriority

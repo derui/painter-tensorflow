@@ -23,11 +23,12 @@ def get_obj_exclusion_detector(s3client, bucket, key):
     ret = []
     with io.BytesIO() as f:
         s3client.download_fileobj(bucket, key, f)
+        f.seek(0)
 
-        ret = set(map(lambda x: x.chop(), f.readlines()))
+        ret = set(map(lambda x: x.decode('utf-8').strip(), f.readlines()))
 
     def func(key):
-        path = pathlib.PurePath(key)
+        path = pathlib.PurePath(key).with_suffix("")
 
         return path.name not in ret
 

@@ -45,6 +45,7 @@ def write_image(uploader, path, img):
     cv.imwrite(str(out_path), img)
 
     uploader(path.with_suffix('.png').name, out_path)
+    pathlib.Path(out_path).unlink()
 
 
 def process(s3, bucket, output_prefix, content):
@@ -65,7 +66,8 @@ def process(s3, bucket, output_prefix, content):
         img = extract_edge(img)
         write_image(uploader, path, img)
 
-        pathlib.Path(str(path)).unlink()
+        if pathlib.Path(path).exists():
+            pathlib.Path(path).unlink()
 
     except Exception as e:
         print(content['Key'], e)
@@ -79,12 +81,19 @@ if __name__ == "__main__":
     should_process = util.get_obj_exclusion_detector(client, args.bucket, args.exclude_file_key)
     iterator = util.get_obj_iterator(client, args.bucket, args.prefix)
 
+    print('{}: Start processing'.format(datetime.now()))
+
     num = 0
+    ignored = 0
     for page in iterator:
+        if 'Contents' not in page:
+            continue
+
         for content in page['Contents']:
             if not should_process(content['Key']):
+                ignored += 1
                 continue
 
             process(client, args.bucket, args.output_key_prefix, content)
         num += len(page['Contents'])
-        print('{}: Completed {} items'.format(datetime.now(), num))
+        print('{}: Completed {} items, {} ignored'.format(datetime.now(), num, ignored))
