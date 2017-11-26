@@ -5,12 +5,14 @@ from datetime import datetime
 import numpy as np
 import cv2 as cv
 import util
+import concurrent.futures
 
 argparser = argparse.ArgumentParser(description='Extract edge layer of a color image')
 argparser.add_argument('prefix', type=str, help='the prefix of images to extract edge layer')
 argparser.add_argument('-b', dest='bucket', type=str, required=True)
 argparser.add_argument('-d', dest='output_key_prefix', type=str, required=True)
 argparser.add_argument('-e', dest='exclude_file_key', type=str, required=True)
+argparser.add_argument('-p', dest='parallel', type=int, default=8, help="number of task in parallel")
 
 args = argparser.parse_args()
 
@@ -48,7 +50,10 @@ def write_image(uploader, path, img):
     pathlib.Path(out_path).unlink()
 
 
-def process(s3, bucket, output_prefix, content):
+def process(bucket, output_prefix, content):
+    session = boto3.session.Session()
+    s3 = session.client("s3")
+
     def downloader(key, output_dir):
         path = pathlib.PurePath('/tmp') / pathlib.PurePath(key).name
         s3.download_file(bucket, key, str(path))
@@ -85,15 +90,18 @@ if __name__ == "__main__":
 
     num = 0
     ignored = 0
-    for page in iterator:
-        if 'Contents' not in page:
-            continue
-
-        for content in page['Contents']:
-            if not should_process(content['Key']):
-                ignored += 1
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.parallel) as executor:
+        for page in iterator:
+            if 'Contents' not in page:
                 continue
 
-            process(client, args.bucket, args.output_key_prefix, content)
-        num += len(page['Contents'])
-        print('{}: Completed {} items, {} ignored'.format(datetime.now(), num, ignored))
+            for content in page['Contents']:
+                if not should_process(content['Key']):
+                    ignored += 1
+                    continue
+
+                executor.submit(process, args.bucket, args.output_key_prefix, content)
+
+            num += len(page['Contents'])
+
+    print('{}: Completed {} items, {} ignored'.format(datetime.now(), num, ignored))
