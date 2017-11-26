@@ -55,7 +55,7 @@ def dataset_input_fn(directory, batch_size, size, distorted=True):
         line_art = tf.cast(line_art, tf.float32)
         line_art = tf.multiply(line_art, 1 / 255.0)
 
-        return {'painted': painted, 'line_art': line_art}
+        return painted, line_art
 
     file_names = [str(pathlib.Path(directory) / "out.tfrecords")]
 
@@ -64,7 +64,7 @@ def dataset_input_fn(directory, batch_size, size, distorted=True):
     dataset = dataset.shuffle(buffer_size=batch_size * 10)
     dataset = dataset.batch(batch_size)
     dataset = dataset.repeat()
-    iterator = dataset.make_one_shot_iterator()
+    iterator = dataset.make_initializable_iterator()
 
     next_data = iterator.get_next()
-    return next_data['painted'], next_data['line_art']
+    return iterator, next_data

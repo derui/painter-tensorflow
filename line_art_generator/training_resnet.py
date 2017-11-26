@@ -36,7 +36,7 @@ def train():
         global_step_tensor = tf.Variable(0, trainable=False, name='global_step')
 
         with tf.device('/cpu:0'):
-            painted, line_art = dataset.dataset_input_fn(
+            iterator, (painted, line_art) = dataset.dataset_input_fn(
                 ARGS.dataset_dir, ARGS.batch_size, ARGS.image_size, distorted=ARGS.distorted)
 
         with tf.variable_scope('classifier'):
@@ -45,7 +45,6 @@ def train():
         tf.summary.image('encoded', encoded)
         tf.summary.image('painted', painted)
         tf.summary.image('line_art', line_art)
-
         tf.summary.scalar('learning_rate', learning_rate)
 
         lmap = model.loss_map(line_art, ARGS.bins, ARGS.alpha, ARGS.beta)
@@ -67,14 +66,14 @@ def train():
             def after_run(self, run_context, run_values):
                 duration = time.time() - self._start_time
 
-                if self._step % 10 == 0 and ARGS.full_trace:
+                if self._step % 10 == 0 and self._step > 0 and ARGS.full_trace:
                     # write train
                     tl = timeline.Timeline(run_metadata.step_stats)
                     ctf = tl.generate_chrome_trace_format()
                     with open('timeline.json', 'w') as f:
                         f.write(ctf)
 
-                if self._step % 10 == 0:
+                if self._step % 10 == 0 and self._step > 0:
                     examples_per_step = ARGS.batch_size / duration
                     loss_value = run_values.results
                     sec_per_batch = float(duration)
@@ -89,13 +88,16 @@ def train():
 
         lr_updater = parameter.PerEpochLossUpdater(learning_rate_v, steps_per_epoch=1000)
 
-        with tf.train.MonitoredTrainingSession(
+        scaffold = tf.train.Scaffold(local_init_op=tf.group(tf.local_variables_initializer(),
+                                                            iterator.initializer))
+        with tf.train.MonitoredTrainingSession(scaffold=scaffold, 
                 checkpoint_dir=ARGS.train_dir,
                 hooks=[tf.train.StopAtStepHook(num_steps=ARGS.max_steps), tf.train.NanTensorHook(loss), _LoggerHook()],
                 save_checkpoint_secs=60,
                 config=tf.ConfigProto(
                     gpu_options=tf.GPUOptions(per_process_gpu_memory_fraction=0.85),
                     log_device_placement=ARGS.log_device_placement)) as sess:
+
             while not sess.should_stop():
                 _, loss_v = sess.run([training, loss], options=run_options, run_metadata=run_metadata,
                                      feed_dict={learning_rate: learning_rate_v()})
