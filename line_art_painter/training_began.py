@@ -38,7 +38,7 @@ def train():
         gain = tf.Variable(initial_value=0, trainable=False, dtype=tf.float32)
 
         with tf.device('/cpu:0'):
-            iterator, original, x = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, ARGS.batch_size)
+            iterator, (original, x) = tf_dataset_input.dataset_input_fn(ARGS.dataset_dir, ARGS.batch_size)
             noise_base = tf.random_uniform([ARGS.batch_size, NOISE_SIZE], minval=-1.0, maxval=1.0, dtype=tf.float32)
 
         with tf.variable_scope('generator'):
@@ -128,14 +128,15 @@ def train():
 
         lr_updater = parameter.PerEpochLossUpdater(learning_rate_v, steps_per_epoch=1000)
 
-        with tf.train.MonitoredTrainingSession(
+        scaffold = tf.train.Scaffold(local_init_op=tf.group(tf.local_variables_initializer(),
+                                                            iterator.initializer))
+        with tf.train.MonitoredTrainingSession(scaffold=scaffold,
                 checkpoint_dir=ARGS.train_dir,
                 hooks=[
                     tf.train.StopAtStepHook(num_steps=ARGS.max_steps), tf.train.NanTensorHook(measure), _LoggerHook()
                 ],
                 save_checkpoint_secs=60,
                 config=tf.ConfigProto(log_device_placement=ARGS.log_device_placement)) as sess:
-            sess.run(iterator.initializer)
 
             while not sess.should_stop():
 

@@ -4,7 +4,7 @@ import math
 import argparse
 import numpy as np
 import tensorflow as tf
-from dnn_upscaler.lib.model import model as upscaler
+# from dnn_upscaler.lib.model import model as upscaler
 import cv2
 
 argparser = argparse.ArgumentParser(description='Learning painter model')
@@ -41,25 +41,16 @@ def main():
     image = np.multiply(image, 2.0)
     image = image - 1.0
     height, width = image.shape
-    s_height, s_width = (height // 4, width // 4)
-
-    work_h = int(math.pow(2, math.ceil(math.log2(s_height))))
-    work_w = int(math.pow(2, math.ceil(math.log2(s_width))))
-
     noise = tf.random_uniform([1, NOISE_SIZE], minval=-1.0, maxval=1.0, dtype=tf.float32)
 
     original_size = tf.placeholder(tf.float32, shape=[1, height, width, 1])
     x = tf.placeholder(tf.float32, shape=[1, height, width])
     x_ = tf.reshape(x, [1, height, width, 1])
-    x_ = tf.image.resize_images(x_, (s_height, s_width), method=tf.image.ResizeMethod.AREA)
-    x_ = tf.image.resize_image_with_crop_or_pad(x_, work_h, work_w)
     with tf.variable_scope('generator'):
         construction_op = model.generator(x_, noise)
 
-        construction_op = tf.image.resize_image_with_crop_or_pad(construction_op, s_height, s_width)
-
-    with tf.variable_scope('upscaler'):
-        upscaler_op = upscaler.generator(original_size, construction_op)
+    # with tf.variable_scope('upscaler'):
+    #     upscaler_op = upscaler.generator(original_size, construction_op)
 
     with tf.Session() as sess:
         var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
@@ -67,7 +58,7 @@ def main():
         ckpt = tf.train.get_checkpoint_state(ARGS.painter_checkpoint_dir)
         saver.restore(sess, ckpt.model_checkpoint_path)
 
-        ret = sess.run([upscaler_op], {x: [image]})
+        ret = sess.run([construction_op], {x: [image]})
 
         ret = normalize_image(ret[0][0])
         ret = ret.astype(np.uint8)
