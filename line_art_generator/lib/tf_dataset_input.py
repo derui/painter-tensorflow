@@ -62,8 +62,8 @@ def dataset_input_fn(directory, batch_size, size, distorted=True):
     dataset = tf.data.TFRecordDataset(file_names)
     dataset = dataset.map(read_pair, num_parallel_calls=8).prefetch(batch_size)
     dataset = dataset.shuffle(buffer_size=batch_size * 10)
-    dataset = dataset.batch(batch_size)
     dataset = dataset.repeat()
+    dataset = dataset.batch(batch_size)
     iterator = dataset.make_initializable_iterator()
 
     next_data = iterator.get_next()
