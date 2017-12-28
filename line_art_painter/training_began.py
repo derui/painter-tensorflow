@@ -55,11 +55,11 @@ def train():
         balance_d_loss = model.balanced_d_loss(original, D, G, D_G, ARGS.balance)
         measure = model.global_measure(original, D, balance_d_loss)
 
-        tf.summary.image('base', x, max_outputs=5)
-        tf.summary.image('gen', G, max_outputs=5)
-        tf.summary.image('discriminated', D, max_outputs=5)
-        tf.summary.image('discriminated_gen', D_G, max_outputs=5)
-        tf.summary.image('original', original, max_outputs=5)
+        tf.summary.image('base', x, max_outputs=4)
+        tf.summary.image('gen', G, max_outputs=4)
+        tf.summary.image('discriminated', D, max_outputs=4)
+        tf.summary.image('discriminated_gen', D_G, max_outputs=4)
+        tf.summary.image('original', original, max_outputs=4)
 
         with tf.name_scope('losses'):
             tf.summary.scalar('d_loss', d_loss)
@@ -146,7 +146,7 @@ def train():
                     options=run_options,
                     run_metadata=run_metadata)
 
-                lr_updater(loss_v)
+                # lr_updater(loss_v)
 
 
 if __name__ == '__main__':

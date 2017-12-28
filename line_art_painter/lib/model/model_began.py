@@ -109,9 +109,9 @@ class Discriminator(object):
 
         self.deconv3 = op.PixelShuffler(op.Encoder(256, 512, 3, 3, name='decoder3'), 128, 2)
         self.deconv3_f1 = op.Encoder(128, 128, 3, 3, name="decoder3_f1")
-        self.deconv2 = op.PixelShuffler(op.Encoder(128, 256, 3, 3, name='decoder2'), 64, 2)
+        self.deconv2 = op.PixelShuffler(op.Encoder(256, 256, 3, 3, name='decoder2'), 64, 2)
         self.deconv2_f1 = op.Encoder(64, 64, 3, 3, name="decoder2_f1")
-        self.deconv1 = op.PixelShuffler(op.Encoder(64, 128, 3, 3, name='decoder1'), 32, 2)
+        self.deconv1 = op.PixelShuffler(op.Encoder(128, 128, 3, 3, name='decoder1'), 32, 2)
         self.deconv1_f1 = op.Encoder(32, 32, 3, 3, name="decoder1_f1")
         self.deconv0 = op.Encoder(32, 3, 3, 3, name="decoder0")
 
@@ -141,11 +141,11 @@ def discriminator(img):
     net = D.fully_unconnect(net, h * w * c)
     net = tf.reshape(net, [-1, h, w, c])
 
-    net = relu(D.bnd3(D.deconv3(net)))
+    net = deconv3 = relu(D.bnd3(D.deconv3(net)))
     net = relu(D.bnd3_f(D.deconv3_f1(net)))
-    net = relu(D.bnd2(D.deconv2(net)))
+    net = deconv2 = relu(D.bnd2(D.deconv2(tf.concat([net, deconv3], 3))))
     net = relu(D.bnd2_f(D.deconv2_f1(net)))
-    net = relu(D.bnd1(D.deconv1(net)))
+    net = relu(D.bnd1(D.deconv1(tf.concat([net, deconv2], 3))))
     net = relu(D.bnd1_f(D.deconv1_f1(net)))
     net = tf.nn.tanh(D.deconv0(net))
 
@@ -157,8 +157,8 @@ def d_loss(real, real_pred, gen, gen_pred, gain):
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
-    real_loss = tf.square(real - real_pred)
-    gen_loss = tf.square(gen - gen_pred)
+    real_loss = tf.reduce_mean(tf.square(real - real_pred), [1,2,3])
+    gen_loss = tf.reduce_mean(tf.square(gen - gen_pred), [1,2,3])
 
     loss = tf.reduce_mean(real_loss - gen_loss * gain)
     return loss
@@ -169,8 +169,8 @@ def g_loss(gen, gen_pred, original):
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
-    penalty = tf.square(gen - original)
-    g_loss = tf.square(gen - gen_pred)
+    penalty = tf.reduce_mean(tf.square(gen - original), [1,2,3])
+    g_loss = tf.reduce_mean(tf.square(gen - gen_pred), [1,2,3])
 
     loss = tf.reduce_mean(g_loss + penalty)
     return loss
@@ -179,8 +179,8 @@ def g_loss(gen, gen_pred, original):
 def balanced_d_loss(real, real_pred, gen, gen_pred, balance):
     """Calculate balanced D loss.
     """
-    real_loss = tf.square(real - real_pred)
-    gen_loss = tf.square(gen - gen_pred)
+    real_loss = tf.reduce_mean(tf.square(real - real_pred), [1,2,3])
+    gen_loss = tf.reduce_mean(tf.square(gen - gen_pred), [1,2,3])
 
     loss = tf.reduce_mean(balance * real_loss - gen_loss)
     return loss
@@ -188,7 +188,7 @@ def balanced_d_loss(real, real_pred, gen, gen_pred, balance):
 
 def global_measure(real, real_pred, balanced_loss):
     # global convergence is calculated by |D(v) - D(G(v))|
-    d_loss = tf.abs(real - real_pred)
+    d_loss = tf.reduce_mean(tf.square(real - real_pred), [1,2,3])
     measure = tf.reduce_mean(d_loss + tf.abs(balanced_loss))
 
     return measure
