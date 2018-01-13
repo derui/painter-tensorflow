@@ -38,7 +38,7 @@ def train():
 
             noise_base = tf.random_uniform([ARGS.batch_size, NOISE_SIZE], minval=-1.0, maxval=1.0, dtype=tf.float32)
 
-            original, x = tf_dataset_input.dataset_input_fn(
+            iterator, (original, x) = tf_dataset_input.dataset_input_fn(
                 ARGS.dataset_dir, ARGS.batch_size, distorted=False)
 
             original = tf.image.resize_images(original, (SIZE, SIZE))
@@ -126,7 +126,9 @@ def train():
             run_options.trace_level = tf.RunOptions.FULL_TRACE
         run_metadata = tf.RunMetadata()
 
-        with tf.train.MonitoredTrainingSession(
+        scaffold = tf.train.Scaffold(local_init_op=tf.group(tf.local_variables_initializer(),
+                                                            iterator.initializer))
+        with tf.train.MonitoredTrainingSession(scaffold=scaffold,
                 checkpoint_dir=ARGS.train_dir,
                 hooks=[
                     tf.train.StopAtStepHook(num_steps=ARGS.max_steps), tf.train.NanTensorHook(c_loss), _LoggerHook()
