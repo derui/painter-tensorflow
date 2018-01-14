@@ -58,37 +58,39 @@ def train():
             iterator, (original, x) = tf_dataset_input.dataset_input_fn(
                 ARGS.dataset_dir, ARGS.batch_size)
 
-        with tf.variable_scope('encoder'):
-            D = model.encode(original)
+        with tf.variable_scope('style_encoder'):
+            with tf.variable_scope('encoder'):
+                D, pre = model.encode(original)
 
-        with tf.variable_scope('decoder'):
-            G = model.decode(D)
+            with tf.variable_scope('decoder'):
+                G = model.decode(D, pre)
 
-        loss = model.loss(G, original)
+            with tf.variable_scope('loss'):
+                loss = model.loss(G, original)
+
+            with tf.name_scope('e_train'):
+                e_trainer = model.Trainer()
+                e_training = e_trainer(
+                    loss,
+                    learning_rate=learning_rate,
+                    beta1=ARGS.beta1,
+                    var_list=tf.get_collection(
+                        tf.GraphKeys.TRAINABLE_VARIABLES, scope='style_encoder/encoder'))
+
+            with tf.name_scope('d_train'):
+                d_trainer = model.Trainer()
+                d_training = d_trainer(
+                    loss,
+                    learning_rate=ARGS.learning_rate,
+                    beta1=ARGS.beta1,
+                    var_list=tf.get_collection(
+                        tf.GraphKeys.TRAINABLE_VARIABLES, scope='style_encoder/decoder'))
 
         tf.summary.image('gen', G, max_outputs=4)
         tf.summary.image('original', original, max_outputs=4)
 
         tf.summary.scalar('loss', loss)
         tf.summary.scalar('learning_rate', learning_rate)
-
-        with tf.name_scope('e_train'):
-            e_trainer = model.Trainer()
-            e_training = e_trainer(
-                loss,
-                learning_rate=learning_rate,
-                beta1=ARGS.beta1,
-                var_list=tf.get_collection(
-                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='encoder'))
-
-        with tf.name_scope('d_train'):
-            d_trainer = model.Trainer()
-            d_training = d_trainer(
-                loss,
-                learning_rate=ARGS.learning_rate,
-                beta1=ARGS.beta1,
-                var_list=tf.get_collection(
-                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='decoder'))
 
         class _LoggerHook(tf.train.SessionRunHook):
             """Logs loss and runtime """
@@ -150,7 +152,7 @@ def train():
 
             while not sess.should_stop():
 
-                _, _, _, _, loss_v = sess.run(
+                _, _, _, loss_v = sess.run(
                     [d_training, e_training, update_global_step, loss],
                     feed_dict={learning_rate: learning_rate_v()},
                     options=run_options,

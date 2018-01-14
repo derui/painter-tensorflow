@@ -37,7 +37,7 @@ def encode(image):
 
     dense = gen.dense(conv4, 1024)
 
-    return conv4, dense
+    return dense, conv4
 
 
 class Decoder(object):
@@ -49,8 +49,8 @@ class Decoder(object):
 
         self.deconv4 = op.PixelShuffler(op.Encoder(512, 1024, 3, 3, name='decoder4'), 256, 2)
         self.deconv3 = op.PixelShuffler(op.Encoder(256, 512, 3, 3, name='decoder3'), 128, 2)
-        self.deconv2 = op.PixelShuffler(op.Encoder(256, 256, 3, 3, name='decoder2'), 64, 2)
-        self.deconv1 = op.PixelShuffler(op.Encoder(128, 128, 3, 3, name='decoder1'), 32, 2)
+        self.deconv2 = op.PixelShuffler(op.Encoder(128, 256, 3, 3, name='decoder2'), 64, 2)
+        self.deconv1 = op.PixelShuffler(op.Encoder(64, 128, 3, 3, name='decoder1'), 32, 2)
         self.deconv0 = op.Encoder(32, 3, 3, 3, name="decoder0")
 
         self.dense = op.Dense('dense')
@@ -70,8 +70,8 @@ def decode(fcl, pre_dense):
     net = tf.reshape(net, [-1, h, w, c])
 
     net = relu(D.bnd4(D.deconv4(net)))
-    net = relu(D.bnd3(D.deconv2(net)))
-    net = relu(D.bnd2(D.deconv3(net)))
+    net = relu(D.bnd3(D.deconv3(net)))
+    net = relu(D.bnd2(D.deconv2(net)))
     net = relu(D.bnd1(D.deconv1(net)))
     net = tf.nn.tanh(D.deconv0(net))
 
