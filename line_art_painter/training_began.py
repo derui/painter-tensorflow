@@ -84,18 +84,24 @@ def train(args):
 
         learning_rate_v = parameter.UpdatableParameter(args.learning_rate, 0.5)
 
-        learning_rate = tf.placeholder(tf.float32, shape=[], name="learning_rate")
+        learning_rate = tf.placeholder(
+            tf.float32, shape=[], name="learning_rate")
         gain = tf.Variable(initial_value=0, trainable=False, dtype=tf.float32)
 
         with tf.device('/cpu:0'):
             iterator, (original, x) = tf_dataset_input.dataset_input_fn(
                 args.dataset_dir, args.batch_size)
+            gray_original = tf.image.rgb_to_grayscale(original)
 
         with tf.variable_scope('style_encoder/encoder'):
             style, _ = style_encoder.encode(original)
 
         with tf.variable_scope('generator'):
-            G = model.generator(x, style)
+            prev_style, after_style, G = model.generator(x, style)
+
+        with tf.variable_scope('guide_decoder'):
+            G1 = model.guide_decoder1(prev_style)
+            G2 = model.guide_decoder2(after_style)
 
         with tf.variable_scope('discriminator'):
             D = model.discriminator(original)
@@ -103,7 +109,7 @@ def train(args):
         with tf.variable_scope('discriminator', reuse=True):
             D_G = model.discriminator(G)
 
-        g_loss = model.g_loss(G, D_G, original)
+        g_loss = model.g_loss(G, D_G, original, G1, G2, gray_original)
         d_loss = model.d_loss(original, D, G, D_G, gain)
         balance_d_loss = model.balanced_d_loss(original, D, G, D_G,
                                                args.balance)
@@ -114,6 +120,8 @@ def train(args):
         tf.summary.image('discriminated', D, max_outputs=4)
         tf.summary.image('discriminated_gen', D_G, max_outputs=4)
         tf.summary.image('original', original, max_outputs=4)
+        tf.summary.image('guide1', G1, max_outputs=4)
+        tf.summary.image('guide2', G2, max_outputs=4)
 
         with tf.name_scope('losses'):
             tf.summary.scalar('d_loss', d_loss)
@@ -134,13 +142,17 @@ def train(args):
                     tf.GraphKeys.TRAINABLE_VARIABLES, scope='discriminator'))
 
         with tf.name_scope('g_train'):
+            var_list = tf.get_collection(
+                tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator')
+            var_list.extend(
+                tf.get_collection(
+                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='guide_decoder'))
             g_trainer = model.Trainer()
             g_training = g_trainer(
                 g_loss,
                 learning_rate=learning_rate,
                 beta1=args.beta1,
-                var_list=tf.get_collection(
-                    tf.GraphKeys.TRAINABLE_VARIABLES, scope='generator'))
+                var_list=var_list)
 
         update_gain = gain.assign(
             tf.clip_by_value(gain + args.gain * balance_d_loss, 0, 1.0))
@@ -190,9 +202,10 @@ def train(args):
         lr_updater = parameter.PerEpochLossUpdater(
             learning_rate_v, steps_per_epoch=1000)
 
-        scaffold = tf.train.Scaffold(local_init_op=tf.group(
-            tf.local_variables_initializer(), iterator.initializer),
-                                     init_feed_dict={learning_rate: learning_rate_v()})
+        scaffold = tf.train.Scaffold(
+            local_init_op=tf.group(tf.local_variables_initializer(),
+                                   iterator.initializer),
+            init_feed_dict={learning_rate: learning_rate_v()})
         with tf.train.MonitoredTrainingSession(
                 scaffold=scaffold,
                 checkpoint_dir=args.train_dir,
@@ -207,7 +220,10 @@ def train(args):
             while not sess.should_stop():
 
                 _, _, _, _, loss_v = sess.run(
-                    [d_training, g_training, update_gain, update_global_step, g_loss],
+                    [
+                        d_training, g_training, update_gain,
+                        update_global_step, g_loss
+                    ],
                     feed_dict={learning_rate: learning_rate_v()},
                     options=run_options,
                     run_metadata=run_metadata)

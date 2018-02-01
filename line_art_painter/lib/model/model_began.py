@@ -83,8 +83,52 @@ def generator(image, style):
     deconv1 = relu(gen.bnd1(gen.deconv1(deconv2)))
     deconv0 = tf.nn.tanh(gen.deconv0(deconv1))
 
-    return deconv0
+    return conv8, deconv7, deconv0
 
+class GuideDecoder1(object):
+    def __init__(self):
+        self.bnd1 = op.BatchNormalization(name='guide1_bnd1')
+        self.bnd2 = op.BatchNormalization(name='guide1_bnd2')
+        self.bnd3 = op.BatchNormalization(name='guide1_bnd3')
+        self.bnd4 = op.BatchNormalization(name='guide1_bnd4')
+
+        self.deconv4 = op.PixelShuffler(None, 256, 2)
+        self.deconv3 = op.PixelShuffler(op.Encoder(256, 512, 3, 3, name='guide1_decoder3'), 128, 2)
+        self.deconv2 = op.PixelShuffler(op.Encoder(128, 256, 3, 3, name='guide1_decoder2'), 64, 2)
+        self.deconv1 = op.PixelShuffler(op.Encoder(64, 128, 3, 3, name='guide1_decoder1'), 32, 2)
+        self.deconv0 = op.Encoder(32, 3, 3, 3, name="guide1_decoder0")
+
+def guide_decoder1(last_conv):
+    dec = GuideDecoder1()
+
+    relu = tf.nn.relu
+    net = relu(dec.bnd4(dec.deconv4(last_conv)))
+    net = relu(dec.bnd3(dec.deconv3(net)))
+    net = relu(dec.bnd2(dec.deconv2(net)))
+    net = relu(dec.bnd1(dec.deconv1(net)))
+
+    return tf.nn.tanh(dec.deconv0(net))
+
+class GuideDecoder2(object):
+    def __init__(self):
+        self.bnd1 = op.BatchNormalization(name='guide2_bnd1')
+        self.bnd2 = op.BatchNormalization(name='guide2_bnd2')
+        self.bnd3 = op.BatchNormalization(name='guide2_bnd3')
+
+        self.deconv3 = op.PixelShuffler(op.Encoder(512, 512, 3, 3, name='guide2_decoder3'), 128, 2)
+        self.deconv2 = op.PixelShuffler(op.Encoder(128, 256, 3, 3, name='guide2_decoder2'), 64, 2)
+        self.deconv1 = op.PixelShuffler(op.Encoder(64, 128, 3, 3, name='guide2_decoder1'), 32, 2)
+        self.deconv0 = op.Encoder(32, 3, 3, 3, name="guide2_decoder0")
+
+def guide_decoder2(last_conv):
+    dec = GuideDecoder2()
+
+    relu = tf.nn.relu
+    net = relu(dec.bnd3(dec.deconv3(last_conv)))
+    net = relu(dec.bnd2(dec.deconv2(net)))
+    net = relu(dec.bnd1(dec.deconv1(net)))
+
+    return tf.nn.tanh(dec.deconv0(net))
 
 class Discriminator(object):
     def __init__(self, channels):
@@ -166,15 +210,17 @@ def d_loss(real, real_pred, gen, gen_pred, gain):
     return loss
 
 
-def g_loss(gen, gen_pred, original):
+def g_loss(gen, gen_pred, original, guide1, guide2, gray_original, alpha=0.3, beta=0.9):
     # minimize L(x) - kt * L(G(v))
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
     penalty = tf.reduce_mean(tf.square(gen - original), [1,2,3])
-    g_loss = tf.reduce_mean(tf.square(gen - gen_pred), [1,2,3])
+    g_loss = tf.reduce_mean(tf.abs(gen - gen_pred), [1,2,3])
+    g1_loss = alpha * tf.reduce_mean(tf.abs(gray_original - guide1), [1,2,3])
+    g2_loss = beta * tf.reduce_mean(tf.abs(original - guide2), [1,2,3])
 
-    loss = tf.reduce_mean(g_loss + penalty)
+    loss = tf.reduce_mean(g_loss + g1_loss + g2_loss + penalty)
     return loss
 
 
