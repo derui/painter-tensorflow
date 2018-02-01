@@ -28,8 +28,12 @@ def distorted_image(origin, wire):
     return origin, wire
 
 
-def dataset_input_fn(data_dir, batch_size, distorted=True):
-    file_names = [str(pathlib.Path(data_dir) / "train.tfrecords")]
+def dataset_input_fn(data_dir, batch_size, distorted=True, validation=True):
+    file_names = []
+    if validation:
+        file_names = [str(pathlib.Path(data_dir) / "validation.tfrecords")]
+    else:
+        file_names = [str(pathlib.Path(data_dir) / "train.tfrecords")]
 
     def read_pair(record):
 
