@@ -4,3 +4,7 @@ tensorflow-gpu
 msgpack-python
 msgpack-numpy
 scrapy
+matplotlib
+scipy
+GPy
+gpyopt
