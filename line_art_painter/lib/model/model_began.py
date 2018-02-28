@@ -19,14 +19,17 @@ class Generator(object):
 
         self.bnd1 = op.BatchNormalization(name='bnd1')
         self.bnd2 = op.BatchNormalization(name='bnd2')
+        self.bnd2_1 = op.BatchNormalization(name='bnd2_1')
         self.bnd3 = op.BatchNormalization(name='bnd3')
         self.bnd4 = op.BatchNormalization(name='bnd4')
+        self.bnd4_1 = op.BatchNormalization(name='bnd4_1')
         self.bnd5 = op.BatchNormalization(name='bnd5')
         self.bnd6 = op.BatchNormalization(name='bnd6')
+        self.bnd6_1 = op.BatchNormalization(name='bnd6_1')
         self.bnd7 = op.BatchNormalization(name='bnd7')
         self.bnd8 = op.BatchNormalization(name='bnd8')
 
-        self.conv0 = op.Encoder(channels, 32, 3, 3, strides=[1, 2, 2, 1], name='encoder0')
+        self.conv0 = op.Encoder(channels, 32, 3, 3, strides=[1, 1, 1, 1], name='encoder0')
         self.conv1 = op.Encoder(32, 32, 4, 4, strides=[1, 1, 1, 1], name='encoder1')
         self.conv2 = op.Encoder(32, 64, 4, 4, strides=[1, 2, 2, 1], name='encoder2')
         self.conv3 = op.Encoder(64, 64, 3, 3, strides=[1, 1, 1, 1], name='encoder3')
@@ -34,19 +37,22 @@ class Generator(object):
         self.conv5 = op.Encoder(128, 128, 3, 3, strides=[1, 1, 1, 1], name='encoder5')
         self.conv6 = op.Encoder(128, 256, 4, 4, strides=[1, 2, 2, 1], name='encoder6')
         self.conv7 = op.Encoder(256, 256, 3, 3, strides=[1, 1, 1, 1], name='encoder7')
-        self.conv8 = op.Encoder(256, 1024, 4, 4, strides=[1, 1, 1, 1], name='encoder8')
+        self.conv8 = op.Encoder(256, 1024, 4, 4, strides=[1, 2, 2, 1], name='encoder8')
 
         self.linear = op.LinearEncoder(1024)
 
         self.deconv8 = op.PixelShuffler(op.Encoder(2048, 2048, 3, 3, name='decoder8'), 512, 2)
-        self.deconv7 = op.Encoder(512, 512, 3, 3, name='decoder7')
-        self.deconv6 = op.PixelShuffler(op.Encoder(512 + 128, 512, 3, 3, name='decoder6'), 128, 2)
-        self.deconv5 = op.Encoder(128, 128, 3, 3, name='decoder5')
-        self.deconv4 = op.PixelShuffler(op.Encoder(128 + 64, 256, 3, 3, name='decoder4'), 64, 2)
-        self.deconv3 = op.Encoder(64, 64, 3, 3, name='decoder3')
-        self.deconv2 = op.PixelShuffler(op.Encoder(64 + 32, 128, 3, 3, name='decoder2'), 32, 2)
-        self.deconv1 = op.Encoder(32, 32, 3, 3, name='decoder1')
-        self.deconv0 = op.Encoder(32, 3, 3, 3, name='decoder0')
+        self.deconv7 = op.Encoder(512 + 256, 512, 3, 3, name='decoder7')
+        self.deconv6_1 = op.Encoder(512 + 256, 512, 3, 3, name='decoder6_1')
+        self.deconv6 = op.PixelShuffler(op.Encoder(512 + 256, 512, 3, 3, name='decoder6'), 128, 2)
+        self.deconv5 = op.Encoder(128 + 128, 128, 3, 3, name='decoder5')
+        self.deconv4_1 = op.Encoder(128 + 128, 128, 3, 3, name='decoder4_1')
+        self.deconv4 = op.PixelShuffler(op.Encoder(128 + 128, 256, 3, 3, name='decoder4'), 64, 2)
+        self.deconv3 = op.Encoder(64 + 64, 64, 3, 3, name='decoder3')
+        self.deconv2_1 = op.Encoder(64 + 64, 64, 3, 3, name='decoder2_1')
+        self.deconv2 = op.PixelShuffler(op.Encoder(64 + 64, 128, 3, 3, name='decoder2'), 32, 2)
+        self.deconv1 = op.Encoder(32 + 32, 32, 3, 3, name='decoder1')
+        self.deconv0 = op.Encoder(32 + 32, 3, 3, 3, name='decoder0')
 
 
 def generator(image, style):
@@ -74,14 +80,14 @@ def generator(image, style):
                          [1, shape[1], shape[2], 1])
 
     deconv8 = relu(gen.bnd8(gen.deconv8(tf.concat([conv8, replicated], 3))))
-    deconv7 = relu(gen.bnd7(gen.deconv7(deconv8)))
-    deconv6 = relu(gen.bnd6(gen.deconv6(tf.concat([deconv7, conv5], 3))))
-    deconv5 = relu(gen.bnd5(gen.deconv5(deconv6)))
-    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv5, conv3], 3))))
-    deconv3 = relu(gen.bnd3(gen.deconv3(deconv4)))
-    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv3, conv1], 3))))
-    deconv1 = relu(gen.bnd1(gen.deconv1(deconv2)))
-    deconv0 = tf.nn.tanh(gen.deconv0(deconv1))
+    deconv7 = relu(gen.bnd7(gen.deconv7(tf.concat([deconv8, conv7], 3))))
+    deconv6 = relu(gen.bnd6(gen.deconv6(tf.concat([deconv7, conv6], 3))))
+    deconv5 = relu(gen.bnd5(gen.deconv5(tf.concat([deconv6, conv5], 3))))
+    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv5, conv4], 3))))
+    deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv4, conv3], 3))))
+    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv3, conv2], 3))))
+    deconv1 = relu(gen.bnd1(gen.deconv1(tf.concat([deconv2, conv1], 3))))
+    deconv0 = tf.nn.tanh(gen.deconv0(tf.concat([deconv1, conv0], 3)))
 
     return conv8, deconv7, deconv0
 
@@ -210,12 +216,12 @@ def d_loss(real, real_pred, gen, gen_pred, gain):
     return loss
 
 
-def g_loss(gen, gen_pred, original, guide1, guide2, gray_original, alpha=0.3, beta=0.9):
+def g_loss(gen, gen_pred, original, guide1, guide2, gray_original, alpha=0.3, beta=0.7):
     # minimize L(x) - kt * L(G(v))
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
-    penalty = tf.reduce_mean(tf.square(gen - original), [1,2,3])
+    penalty = tf.reduce_mean(tf.abs(gen - original), [1,2,3])
     g_loss = tf.reduce_mean(tf.abs(gen - gen_pred), [1,2,3])
     g1_loss = alpha * tf.reduce_mean(tf.abs(gray_original - guide1), [1,2,3])
     g2_loss = beta * tf.reduce_mean(tf.abs(original - guide2), [1,2,3])
