@@ -19,13 +19,10 @@ class Generator(object):
 
         self.bnd1 = op.BatchNormalization(name='bnd1')
         self.bnd2 = op.BatchNormalization(name='bnd2')
-        self.bnd2_1 = op.BatchNormalization(name='bnd2_1')
         self.bnd3 = op.BatchNormalization(name='bnd3')
         self.bnd4 = op.BatchNormalization(name='bnd4')
-        self.bnd4_1 = op.BatchNormalization(name='bnd4_1')
         self.bnd5 = op.BatchNormalization(name='bnd5')
         self.bnd6 = op.BatchNormalization(name='bnd6')
-        self.bnd6_1 = op.BatchNormalization(name='bnd6_1')
         self.bnd7 = op.BatchNormalization(name='bnd7')
         self.bnd8 = op.BatchNormalization(name='bnd8')
 
@@ -41,15 +38,12 @@ class Generator(object):
 
         self.linear = op.LinearEncoder(1024)
 
-        self.deconv8 = op.PixelShuffler(op.Encoder(2048, 2048, 3, 3, name='decoder8'), 512, 2)
-        self.deconv7 = op.Encoder(512 + 256, 512, 3, 3, name='decoder7')
-        self.deconv6_1 = op.Encoder(512 + 256, 512, 3, 3, name='decoder6_1')
-        self.deconv6 = op.PixelShuffler(op.Encoder(512 + 256, 512, 3, 3, name='decoder6'), 128, 2)
+        self.deconv8 = op.PixelShuffler(op.Encoder(2048, 1024, 3, 3, name='decoder8'), 256, 2)
+        self.deconv7 = op.Encoder(256 + 256, 256, 3, 3, name='decoder7')
+        self.deconv6 = op.PixelShuffler(op.Encoder(256 + 256, 512, 3, 3, name='decoder6'), 128, 2)
         self.deconv5 = op.Encoder(128 + 128, 128, 3, 3, name='decoder5')
-        self.deconv4_1 = op.Encoder(128 + 128, 128, 3, 3, name='decoder4_1')
         self.deconv4 = op.PixelShuffler(op.Encoder(128 + 128, 256, 3, 3, name='decoder4'), 64, 2)
         self.deconv3 = op.Encoder(64 + 64, 64, 3, 3, name='decoder3')
-        self.deconv2_1 = op.Encoder(64 + 64, 64, 3, 3, name='decoder2_1')
         self.deconv2 = op.PixelShuffler(op.Encoder(64 + 64, 128, 3, 3, name='decoder2'), 32, 2)
         self.deconv1 = op.Encoder(32 + 32, 32, 3, 3, name='decoder1')
         self.deconv0 = op.Encoder(32 + 32, 3, 3, 3, name='decoder0')
