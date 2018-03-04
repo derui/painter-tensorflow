@@ -184,17 +184,6 @@ def run_began(style_encoder_graph, dataset_dir, train_dir, learning_rate,
                     with open('timeline.json', 'w') as f:
                         f.write(ctf)
 
-                if self._step % 10 == 0:
-                    examples_per_step = batch_size / duration
-                    measure_value = run_values.results
-                    sec_per_batch = float(duration)
-
-                    format_str = '{}: step {}, loss = {:.3f} ({:.1f} examples/sec; {:.3f} sec/batch)'
-                    print(
-                        format_str.format(datetime.now(), self._step,
-                                          measure_value, examples_per_step,
-                                          sec_per_batch))
-
         global_step_tensor = tf.Variable(
             0, trainable=False, name='global_step')
         update_global_step = tf.assign(global_step_tensor,
