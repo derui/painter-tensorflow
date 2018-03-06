@@ -121,13 +121,13 @@ def run_began(style_encoder_graph, dataset_dir, train_dir, learning_rate,
         balance_d_loss = model.balanced_d_loss(original, D, G, D_G, balance)
         measure = model.global_measure(original, D, balance_d_loss)
 
-        tf.summary.image('base', x, max_outputs=4)
-        tf.summary.image('gen', G, max_outputs=4)
-        tf.summary.image('discriminated', D, max_outputs=4)
-        tf.summary.image('discriminated_gen', D_G, max_outputs=4)
-        tf.summary.image('original', original, max_outputs=4)
-        tf.summary.image('guide1', G1, max_outputs=4)
-        tf.summary.image('guide2', G2, max_outputs=4)
+        tf.summary.image('base', x, max_outputs=2)
+        tf.summary.image('gen', G, max_outputs=2)
+        tf.summary.image('discriminated', D, max_outputs=2)
+        tf.summary.image('discriminated_gen', D_G, max_outputs=2)
+        tf.summary.image('original', original, max_outputs=2)
+        tf.summary.image('guide1', G1, max_outputs=2)
+        tf.summary.image('guide2', G2, max_outputs=2)
 
         with tf.name_scope('losses'):
             tf.summary.scalar('d_loss', d_loss)

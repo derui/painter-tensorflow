@@ -39,14 +39,14 @@ class Generator(object):
         self.linear = op.LinearEncoder(1024)
 
         self.deconv8 = op.PixelShuffler(op.Encoder(2048, 1024, 3, 3, name='decoder8'), 256, 2)
-        self.deconv7 = op.Encoder(256, 256, 3, 3, name='decoder7')
-        self.deconv6 = op.PixelShuffler(op.Encoder(256 + 256, 512, 3, 3, name='decoder6'), 128, 2)
-        self.deconv5 = op.Encoder(128, 128, 3, 3, name='decoder5')
-        self.deconv4 = op.PixelShuffler(op.Encoder(128 + 128, 256, 3, 3, name='decoder4'), 64, 2)
-        self.deconv3 = op.Encoder(64, 64, 3, 3, name='decoder3')
-        self.deconv2 = op.PixelShuffler(op.Encoder(64 + 64, 128, 3, 3, name='decoder2'), 32, 2)
-        self.deconv1 = op.Encoder(32, 32, 3, 3, name='decoder1')
-        self.deconv0 = op.Encoder(32 + 32, 3, 3, 3, name='decoder0')
+        self.deconv7 = op.Encoder(256 + 256, 256, 3, 3, name='decoder7')
+        self.deconv6 = op.PixelShuffler(op.Encoder(256, 512, 3, 3, name='decoder6'), 128, 2)
+        self.deconv5 = op.Encoder(128 + 128, 128, 3, 3, name='decoder5')
+        self.deconv4 = op.PixelShuffler(op.Encoder(128, 256, 3, 3, name='decoder4'), 64, 2)
+        self.deconv3 = op.Encoder(64 + 64, 64, 3, 3, name='decoder3')
+        self.deconv2 = op.PixelShuffler(op.Encoder(64, 128, 3, 3, name='decoder2'), 32, 2)
+        self.deconv1 = op.Encoder(32 + 32, 32, 3, 3, name='decoder1')
+        self.deconv0 = op.Encoder(32, 3, 3, 3, name='decoder0')
 
 
 def generator(image, style):
@@ -74,14 +74,14 @@ def generator(image, style):
                          [1, shape[1], shape[2], 1])
 
     deconv8 = relu(gen.bnd8(gen.deconv8(tf.concat([conv8, replicated], 3))))
-    deconv7 = relu(gen.bnd7(gen.deconv7(deconv8))) + deconv8
-    deconv6 = relu(gen.bnd6(gen.deconv6(tf.concat([deconv7, conv6], 3))))
-    deconv5 = relu(gen.bnd5(gen.deconv5(deconv6))) + deconv6
-    deconv4 = relu(gen.bnd4(gen.deconv4(tf.concat([deconv5, conv4], 3))))
-    deconv3 = relu(gen.bnd3(gen.deconv3(deconv4))) + deconv4
-    deconv2 = relu(gen.bnd2(gen.deconv2(tf.concat([deconv3, conv2], 3))))
-    deconv1 = relu(gen.bnd1(gen.deconv1(deconv2))) + deconv2
-    deconv0 = tf.nn.tanh(gen.deconv0(tf.concat([deconv1, conv0], 3)))
+    deconv7 = relu(gen.bnd7(gen.deconv7(tf.concat([deconv8, conv7], 3))))
+    deconv6 = relu(gen.bnd6(gen.deconv6(deconv7)))
+    deconv5 = relu(gen.bnd5(gen.deconv5(tf.concat([deconv6, conv5], 3))))
+    deconv4 = relu(gen.bnd4(gen.deconv4(deconv5)))
+    deconv3 = relu(gen.bnd3(gen.deconv3(tf.concat([deconv4, conv3], 3))))
+    deconv2 = relu(gen.bnd2(gen.deconv2(deconv3)))
+    deconv1 = relu(gen.bnd1(gen.deconv1(tf.concat([deconv2, conv1], 3))))
+    deconv0 = tf.nn.tanh(gen.deconv0(deconv1))
 
     return conv8, deconv7, deconv0
 
