@@ -3,7 +3,6 @@
 import argparse
 import time
 from datetime import datetime
-from tensorflow.python.client import timeline
 import tensorflow as tf
 from .lib.model import model_began as model
 
@@ -50,7 +49,7 @@ def create_arg_parser():
         help='Enable full trace of gpu')
     argparser.add_argument(
         '--reconstruct_balance',
-        default=0.3,
+        default=0.5,
         type=float,
         help='Enable full trace of gpu')
     argparser.add_argument(
@@ -172,11 +171,12 @@ def train(args):
                 duration = time.time() - self._start_time
 
                 if self._step % 10 == 0 and args.full_trace:
+                    pass
                     # write train
-                    tl = timeline.Timeline(run_metadata.step_stats)
-                    ctf = tl.generate_chrome_trace_format()
-                    with open('timeline.json', 'w') as f:
-                        f.write(ctf)
+                    # tl = timeline.Timeline(run_metadata.step_stats)
+                    # ctf = tl.generate_chrome_trace_format()
+                    # with open('timeline.json', 'w') as f:
+                    #     f.write(ctf)
 
                 if self._step % 10 == 0:
                     examples_per_step = args.batch_size / duration

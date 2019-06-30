@@ -27,26 +27,24 @@ class Generator(object):
         self.bnd8 = op.BatchNormalization(name='bnd8')
 
         self.conv0 = op.Encoder(channels, 32, 3, 3, strides=[1, 1, 1, 1], name='encoder0')
-        self.conv1 = op.Encoder(32, 32, 4, 4, strides=[1, 1, 1, 1], name='encoder1')
-        self.conv2 = op.Encoder(32, 64, 4, 4, strides=[1, 2, 2, 1], name='encoder2')
-        self.conv3 = op.Encoder(64, 64, 3, 3, strides=[1, 1, 1, 1], name='encoder3')
-        self.conv4 = op.Encoder(64, 128, 4, 4, strides=[1, 2, 2, 1], name='encoder4')
-        self.conv5 = op.Encoder(128, 128, 3, 3, strides=[1, 1, 1, 1], name='encoder5')
-        self.conv6 = op.Encoder(128, 256, 4, 4, strides=[1, 2, 2, 1], name='encoder6')
-        self.conv7 = op.Encoder(256, 256, 3, 3, strides=[1, 1, 1, 1], name='encoder7')
-        self.conv8 = op.Encoder(256, 1024, 4, 4, strides=[1, 2, 2, 1], name='encoder8')
-
-        self.linear = op.LinearEncoder(1024)
+        self.conv1 = op.ResNet(32, patch_size=3, name='encoder1')
+        self.conv2 = op.Encoder(32, 64, 3, 3, strides=[1, 2, 2, 1], name='encoder2')
+        self.conv3 = op.ResNet(64, patch_size=3, name='encoder3')
+        self.conv4 = op.Encoder(64, 128, 3, 3, strides=[1, 2, 2, 1], name='encoder4')
+        self.conv5 = op.ResNet(128, patch_size=3, name='encoder5')
+        self.conv6 = op.Encoder(128, 256, 3, 3, strides=[1, 2, 2, 1], name='encoder6')
+        self.conv7 = op.ResNet(256, patch_size=3, name='encoder7')
+        self.conv8 = op.Encoder(256, 1024, 3, 3, strides=[1, 2, 2, 1], name='encoder8')
 
         self.deconv8 = op.PixelShuffler(op.Encoder(2048, 1024, 3, 3, name='decoder8'), 256, 2)
-        self.deconv7 = op.Encoder(256 + 256, 256, 3, 3, name='decoder7')
-        self.deconv6 = op.PixelShuffler(op.Encoder(256, 512, 3, 3, name='decoder6'), 128, 2)
-        self.deconv5 = op.Encoder(128 + 128, 128, 3, 3, name='decoder5')
-        self.deconv4 = op.PixelShuffler(op.Encoder(128, 256, 3, 3, name='decoder4'), 64, 2)
-        self.deconv3 = op.Encoder(64 + 64, 64, 3, 3, name='decoder3')
-        self.deconv2 = op.PixelShuffler(op.Encoder(64, 128, 3, 3, name='decoder2'), 32, 2)
-        self.deconv1 = op.Encoder(32 + 32, 32, 3, 3, name='decoder1')
-        self.deconv0 = op.Encoder(32, 3, 3, 3, name='decoder0')
+        self.deconv7 = op.ResNet(256 + 256, patch_size=3, name='decoder7')
+        self.deconv6 = op.PixelShuffler(op.Encoder(512,512,3,3,name="decoder6"), 128, 2)
+        self.deconv5 = op.ResNet(128 + 128, patch_size=3, name='decoder5')
+        self.deconv4 = op.PixelShuffler(op.Encoder(256,256,3,3,name="decoder4"), 64, 2)
+        self.deconv3 = op.ResNet(64 + 64, patch_size=3, name='decoder3')
+        self.deconv2 = op.PixelShuffler(op.Encoder(128,128,3,3,name="decoder2"), 32, 2)
+        self.deconv1 = op.ResNet(32 + 32, patch_size=3, name='decoder1')
+        self.deconv0 = op.Encoder(64, 3, 3, 3, name='decoder0')
 
 
 def generator(image, style):
@@ -115,7 +113,7 @@ class GuideDecoder2(object):
         self.bnd2 = op.BatchNormalization(name='guide2_bnd2')
         self.bnd3 = op.BatchNormalization(name='guide2_bnd3')
 
-        self.deconv3 = op.PixelShuffler(op.Encoder(256, 512, 3, 3, name='guide2_decoder3'), 128, 2)
+        self.deconv3 = op.PixelShuffler(op.Encoder(512, 512, 3, 3, name='guide2_decoder3'), 128, 2)
         self.deconv2 = op.PixelShuffler(op.Encoder(128, 256, 3, 3, name='guide2_decoder2'), 64, 2)
         self.deconv1 = op.PixelShuffler(op.Encoder(64, 128, 3, 3, name='guide2_decoder1'), 32, 2)
         self.deconv0 = op.Encoder(32, 3, 3, 3, name="guide2_decoder0")
@@ -146,14 +144,14 @@ class Discriminator(object):
         self.bnd3 = op.BatchNormalization(name='bnd3')
         self.bnd3_f = op.BatchNormalization(name='bnd3_f')
 
-        self.conv1 = op.Encoder(channels, 64, 3, 3, strides=[1, 2, 2, 1], name='encoder1')
-        self.conv1_f1 = op.Encoder(64, 64, 3, 3, name="encoder1_f1")
-        self.conv2 = op.Encoder(64, 128, 3, 3, strides=[1, 2, 2, 1], name='encoder2')
-        self.conv2_f1 = op.Encoder(128, 128, 3, 3, name="encoder2_f1")
-        self.conv3 = op.Encoder(128, 256, 3, 3, strides=[1, 2, 2, 1], name='encoder3')
-        self.conv3_f1 = op.Encoder(256, 256, 3, 3, name="encoder3_f1")
+        self.conv1 = op.Encoder(channels, 32, 3, 3, strides=[1, 2, 2, 1], name='encoder1')
+        self.conv1_f1 = op.Encoder(32, 32, 3, 3, name="encoder1_f1")
+        self.conv2 = op.Encoder(32, 64, 3, 3, strides=[1, 2, 2, 1], name='encoder2')
+        self.conv2_f1 = op.Encoder(64, 64, 3, 3, name="encoder2_f1")
+        self.conv3 = op.Encoder(64, 128, 3, 3, strides=[1, 2, 2, 1], name='encoder3')
+        self.conv3_f1 = op.Encoder(128, 128, 3, 3, name="encoder3_f1")
 
-        self.deconv3 = op.PixelShuffler(op.Encoder(256, 512, 3, 3, name='decoder3'), 128, 2)
+        self.deconv3 = op.PixelShuffler(op.Encoder(128, 512, 3, 3, name='decoder3'), 128, 2)
         self.deconv3_f1 = op.Encoder(128, 128, 3, 3, name="decoder3_f1")
         self.deconv2 = op.PixelShuffler(op.Encoder(256, 256, 3, 3, name='decoder2'), 64, 2)
         self.deconv2_f1 = op.Encoder(64, 64, 3, 3, name="decoder2_f1")
@@ -183,7 +181,7 @@ def discriminator(img):
     net = relu(D.bnc3_f(D.conv3_f1(net)))
 
     _, h, w, c = net.get_shape().as_list()
-    net = D.fully_connect(net, 256)
+    net = D.fully_connect(net, 1024)
     net = D.fully_unconnect(net, h * w * c)
     net = tf.reshape(net, [-1, h, w, c])
 
@@ -210,13 +208,13 @@ def d_loss(real, real_pred, gen, gen_pred, gain):
     return loss
 
 
-def g_loss(gen, gen_pred, original, guide1, guide2, gray_original, alpha=0.3, beta=0.7):
+def g_loss(gen, gen_pred, original, guide1, guide2, gray_original, alpha=0.3, beta=0.9):
     # minimize L(x) - kt * L(G(v))
     # where L(v) = |v - D(v)|
     # EBGAN's discriminator as is autoencoder.
 
-    penalty = tf.reduce_mean(tf.square(gen - original), [1,2,3])
-    g_loss = tf.reduce_mean(tf.abs(gen - gen_pred), [1,2,3])
+    penalty = tf.reduce_mean(tf.abs(gen - original), [1,2,3])
+    g_loss = tf.reduce_mean(tf.square(gen - gen_pred), [1,2,3])
     g1_loss = alpha * tf.reduce_mean(tf.abs(gray_original - guide1), [1,2,3])
     g2_loss = beta * tf.reduce_mean(tf.abs(original - guide2), [1,2,3])
 

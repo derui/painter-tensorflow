@@ -1,9 +1,11 @@
 # coding: utf-8
 
 from pathlib import Path
+import numpy as np
 import argparse
 import time
-from datetime import datetime
+import pickle
+
 from tensorflow.python.client import timeline
 import tensorflow as tf
 
@@ -81,8 +83,7 @@ def load_style_encoder_graph(graph_filename):
 
 
 def run_began(style_encoder_graph, dataset_dir, train_dir, learning_rate,
-              beta1,
-              batch_size, balance, gain_balance, max_steps,
+              beta1, batch_size, balance, gain_balance, max_steps,
               log_device_placement, full_trace):
 
     style_encoder_graph = load_style_encoder_graph(style_encoder_graph)
@@ -229,29 +230,33 @@ def run_began(style_encoder_graph, dataset_dir, train_dir, learning_rate,
     return loss_v
 
 
-def bayesian_optimize(args):
-    count = 0
+def bayesian_optimize(args, options=None):
+    if options is None:
+        local_options = {'count': 0}
+    else:
+        local_options = options
 
     def f(x):
-        nonlocal count
+        nonlocal local_options
         print(x)
         evaluation = run_began(
             style_encoder_graph=args.style_encoder_graph,
             dataset_dir=args.dataset_dir,
-            train_dir=str(Path(args.train_dir, "log_{}".format(count))),
+            train_dir=str(
+                Path(args.train_dir, "log_{}".format(local_options['count']))),
             log_device_placement=args.log_device_placement,
             full_trace=args.full_trace,
             learning_rate=args.learning_rate,
-            beta1=float(x[:,0]),
-            balance=float(x[:,1]),
-            gain_balance=float(x[:,2]),
-            batch_size=int(x[:,3]),
-            max_steps=int(x[:,4]))
+            beta1=float(x[:, 0]),
+            balance=float(x[:, 1]),
+            gain_balance=float(x[:, 2]),
+            batch_size=int(x[:, 3]),
+            max_steps=30000)
 
-        count = count + 1
+        local_options['count'] += 1
         return evaluation
 
-    return f
+    return f, local_options
 
 
 if __name__ == '__main__':
@@ -259,15 +264,52 @@ if __name__ == '__main__':
     args = argparser.parse_args()
 
     bounds = [
-        {'name': 'beta1', 'type': 'continuous', 'domain': (0.5, 0.9)},
-        {'name': 'balance', 'type': 'continuous', 'domain': (0.25, 0.75)},
-        {'name': 'gain_balance', 'type': 'continuous', 'domain': (0.001, 0.1)},
-        {'name': 'batch_size', 'type': 'discrete', 'domain': (2,3,4,5)},
-        {'name': 'max_steps', 'type': 'discrete', 'domain': (40000, 50000, 60000)},
+        {
+            'name': 'beta1',
+            'type': 'continuous',
+            'domain': (0.5, 0.9)
+        },
+        {
+            'name': 'balance',
+            'type': 'continuous',
+            'domain': (0.25, 0.75)
+        },
+        {
+            'name': 'gain_balance',
+            'type': 'continuous',
+            'domain': (0.001, 0.1)
+        },
+        {
+            'name': 'batch_size',
+            'type': 'discrete',
+            'domain': (2, 3, 4, 5)
+        }
     ]
 
-    opt_gan = GPyOpt.methods.BayesianOptimization(f=bayesian_optimize(args), domain=bounds)
+    stored_bayesian_param_file = Path(args.train_dir, "bayesian.npz")
+    stored_option = Path(args.train_dir, "options.pickle")
 
-    opt_gan.run_options(max_iter=50)
-    print("Optimized parameters: {}".format(opt_gan.x_opt))
-    print("Optimized loss: {}".format(opt_gan.fx_opt))
+    options = None
+    X = None
+    Y = None
+    if stored_bayesian_param_file.exists():
+        npzfile = np.load(str(stored_bayesian_param_file))
+        X = npzfile['arr_0']
+        Y = npzfile['arr_1']
+
+    if stored_option.exists():
+        with open(str(stored_option), "rb") as f:
+            options = pickle.load(f)
+
+    f, options = bayesian_optimize(args, options)
+    opt_gan = GPyOpt.methods.BayesianOptimization(f=f, domain=bounds, X=X, Y=Y)
+    try:
+        opt_gan.run_optimization(max_iter=50)
+        print("Optimized parameters: {}".format(opt_gan.x_opt))
+        print("Optimized loss: {}".format(opt_gan.fx_opt))
+    finally:
+        print("Save param files")
+        np.savez_compressed(
+            str(stored_bayesian_param_file), opt_gan.x_opt, opt_gan.fx_opt)
+        with open(str(stored_option), "wb") as f:
+            pickle.dump(options, f)
